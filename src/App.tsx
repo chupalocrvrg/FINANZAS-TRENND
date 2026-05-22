@@ -20,6 +20,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
 import { Bell, Menu, X, ChevronDown } from 'lucide-react';
 import { cn } from './lib/utils';
+import { db } from './lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
   const { user, settings, loading, onboarding } = useAuth();
@@ -27,12 +29,49 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
 
   useEffect(() => {
     if (!loading) {
       setIsLoaded(true);
     }
   }, [loading]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Escuchar transacciones impagas
+    const qTxs = query(collection(db, 'transactions'), where('ownerId', '==', user.uid), where('isPaid', '==', false));
+    const unsubTxs = onSnapshot(qTxs, (txSnap) => {
+      const txCount = txSnap.size;
+
+      // Escuchar servicios digitales
+      const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
+      const unsubSer = onSnapshot(qSer, (serSnap) => {
+        const now = new Date();
+        let serAlertCount = 0;
+        serSnap.docs.forEach(doc => {
+          const ser = doc.data();
+          if (ser.status === 'expired') {
+            serAlertCount++;
+          } else if (ser.expirationDate) {
+            const expiry = new Date(ser.expirationDate);
+            const diffTime = expiry.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays <= 7) {
+              serAlertCount++;
+            }
+          }
+        });
+
+        setNotifCount(txCount + serAlertCount);
+      });
+
+      return () => unsubSer();
+    });
+
+    return () => unsubTxs();
+  }, [user]);
 
   if (!isLoaded) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -119,7 +158,11 @@ export default function App() {
                   )}
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+                  {notifCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-mono text-[9px] font-black rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center border-2 border-white shrink-0 animate-bounce">
+                      {notifCount}
+                    </span>
+                  )}
                 </button>
                 
                 <AnimatePresence>

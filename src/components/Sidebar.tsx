@@ -60,54 +60,58 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 flex flex-col h-screen sticky top-0 border-r border-slate-800 text-slate-300 overflow-y-auto scrollbar-hide text-left">
-      <div className="p-6">
-        <div className="flex items-center gap-3 mb-8 border-b border-slate-800 pb-6">
-          <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center">
-            <div className="w-4 h-4 border-2 border-white"></div>
+    <aside className="w-72 bg-slate-950/90 lg:bg-slate-900 flex flex-col h-[calc(100vh-2rem)] lg:h-screen lg:rounded-none rounded-2xl my-4 ml-4 lg:my-0 lg:ml-0 sticky top-4 lg:top-0 border border-slate-800/80 lg:border-none lg:border-r text-slate-300 overflow-y-auto scrollbar-hide text-left shadow-2xl lg:shadow-none z-50">
+      <div className="p-6 flex-1 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-8 border-b border-slate-800/50 pb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-white"></div>
+              </div>
+              <div className="overflow-hidden">
+                <h1 className="font-extrabold text-white text-base tracking-tighter uppercase whitespace-nowrap truncate">
+                  {settings?.companyName || 'Control Financiero'}
+                </h1>
+              </div>
+            </div>
           </div>
-          <div className="overflow-hidden">
-            <h1 className="font-extrabold text-white text-base tracking-tighter uppercase whitespace-nowrap truncate">
-              {settings?.companyName || 'Control Financiero'}
-            </h1>
-          </div>
+
+          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mb-3.5">Módulos Administrativos</div>
+          <nav className="space-y-1">
+            {menuItems.slice(0, 4).map((item) => (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                active={activeTab === item.id}
+                onClick={() => setActiveTab(item.id)}
+              />
+            ))}
+          </nav>
+
+          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mt-8 mb-3.5">Configuración y Alertas</div>
+          <nav className="space-y-1">
+            {menuItems.slice(4).map((item) => (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                active={activeTab === item.id}
+                onClick={() => setActiveTab(item.id)}
+              />
+            ))}
+          </nav>
         </div>
 
-        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] px-3 mb-4">Control Financiero</div>
-        <nav className="space-y-1">
-          {menuItems.slice(0, 4).map((item) => (
-            <NavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              active={activeTab === item.id}
-              onClick={() => setActiveTab(item.id)}
-            />
-          ))}
-        </nav>
-
-        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] px-3 mt-8 mb-4">Registro Personal</div>
-        <nav className="space-y-1">
-          {menuItems.slice(4).map((item) => (
-            <NavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              active={activeTab === item.id}
-              onClick={() => setActiveTab(item.id)}
-            />
-          ))}
-        </nav>
-      </div>
-
-      <div className="mt-auto p-4 border-t border-slate-800 bg-slate-900/50 sticky bottom-0">
-        <div className="bg-slate-800/50 rounded-lg p-3 flex items-center space-x-3">
-          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-700 shrink-0 capitalize">
-            {settings?.displayName?.charAt(0) || user?.email?.charAt(0)}
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-white truncate break-all">{settings?.displayName || 'User'}</div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{settings?.companyName || 'Global Ops'}</div>
+        <div className="mt-8">
+          <div className="bg-slate-900 border border-slate-800/60 rounded-xl p-3 flex items-center space-x-3">
+            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-700 shrink-0 capitalize">
+              {settings?.displayName?.charAt(0) || user?.email?.charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-white truncate break-all">{settings?.displayName || 'User'}</div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{settings?.companyName || 'Global Ops'}</div>
+            </div>
           </div>
         </div>
       </div>
