@@ -11,7 +11,8 @@ import {
   Save,
   Loader2,
   Trash2,
-  Search
+  Search,
+  MessageCircle
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';

@@ -13,6 +13,7 @@ export function Settings() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [walletForm, setWalletForm] = useState({ id: '', name: '', type: 'bank', balance: '0' });
+  const isDark = settings?.theme === 'dark';
 
   useEffect(() => {
     if (!user) return;
@@ -79,8 +80,10 @@ export function Settings() {
       title: 'Identidad Global',
       icon: Smartphone,
       items: [
-        { label: 'Nombre de la Empresa', field: 'companyName', type: 'text', value: settings?.companyName },
+        { label: 'Nombre de la Empresa o Entidad', field: 'companyName', type: 'text', value: settings?.companyName },
         { label: 'Nombre Completo del Propietario', field: 'displayName', type: 'text', value: settings?.displayName },
+        { label: 'Cédula o RUC', field: 'ruc', type: 'text', value: settings?.ruc },
+        { label: 'Número de Celular', field: 'phone', type: 'text', value: settings?.phone || '' },
       ]
     },
     {
@@ -103,18 +106,41 @@ export function Settings() {
     },
     {
       id: 'security',
-      title: 'Núcleo de Seguridad',
+      title: 'Núcleo de Seguridad y Bloqueo',
       icon: Shield,
       items: [
-        { label: 'PIN de Seguridad', field: 'securityPin', type: 'password', value: settings?.securityPin },
+        { label: 'PIN de Seguridad (4 dígitos)', field: 'securityPin', type: 'password', value: settings?.securityPin },
+        { 
+          label: 'Desbloqueo con Datos Biométricos', 
+          field: 'biometricEnabled', 
+          type: 'select', 
+          options: [
+            { id: true, label: 'Habilitado' }, 
+            { id: false, label: 'Deshabilitado' }
+          ],
+          value: settings?.biometricEnabled ?? false
+        },
+        { 
+          label: 'Temporizador Bloqueo por Inactividad', 
+          field: 'autoLockTimer', 
+          type: 'select', 
+          options: [
+            { id: 0, label: 'Desactivado' }, 
+            { id: 1, label: '1 minuto' }, 
+            { id: 5, label: '5 minutos' }, 
+            { id: 10, label: '10 minutos' }, 
+            { id: 15, label: '15 minutos' }
+          ],
+          value: settings?.autoLockTimer ?? 5
+        }
       ]
     }
   ];
 
   return (
-    <div className="p-8 max-w-4xl mx-auto pb-24 text-left">
+    <div className={cn("p-8 max-w-4xl mx-auto pb-24 text-left", isDark ? "text-slate-100" : "text-slate-900")}>
       <div className="mb-12">
-        <h1 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
+        <h1 className={cn("text-3xl font-bold tracking-tight flex items-center gap-3", isDark ? "text-white" : "text-slate-800")}>
           <SettingsIcon className="w-8 h-8 text-indigo-500" />
           Configuración del Sistema
         </h1>
@@ -128,24 +154,24 @@ export function Settings() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div className="flex items-center justify-between border-b border-indigo-100/20 pb-2">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-slate-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Cuentas Bancarias y Billeteras</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-black">Cuentas Bancarias y Billeteras</h2>
             </div>
             <button 
               onClick={() => { resetWalletForm(); setIsWalletModalOpen(true); }}
-              className="text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 flex items-center gap-1 transition-colors cursor-pointer"
+              className="text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-950/80 flex items-center gap-1 transition-colors cursor-pointer border border-indigo-500/20"
             >
               <Plus className="w-3.5 h-3.5" /> Agregar Cuenta
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {wallets.map(w => (
-              <div key={w.id} className="p-4 border rounded-2xl flex items-center justify-between bg-white shadow-sm hover:shadow-md transition-all">
+              <div key={w.id} className={cn("p-4 border rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all", isDark ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-100")}>
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{w.type === 'bank' ? 'Banco' : w.type === 'cash' ? 'Efectivo' : 'Digital'}</span>
-                  <p className="font-bold text-slate-800">{w.name}</p>
+                  <p className={cn("font-bold", isDark ? "text-slate-100" : "text-slate-800")}>{w.name}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button 
@@ -176,32 +202,35 @@ export function Settings() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+            <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
               <section.icon className="w-4 h-4 text-slate-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{section.title}</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-black">{section.title}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {section.items.map((item) => (
                 <div key={item.field} className="space-y-2">
-                  <label className="text-xs font-bold text-slate-600 block">{item.label}</label>
+                  <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-600")}>{item.label}</label>
                   {item.type === 'text' || item.type === 'password' ? (
                     <input 
                       type={item.type}
                       value={item.value || ''}
                       onChange={(e) => updateSettings({ [item.field]: e.target.value })}
-                      className="w-full bg-white border border-slate-200 p-3 rounded-lg text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm text-slate-800"
+                      className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm", isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800")}
                     />
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                       {item.options?.map((opt) => (
                         <button
-                          key={opt.id}
+                          key={String(opt.id)}
+                          type="button"
                           onClick={() => updateSettings({ [item.field]: opt.id })}
                           className={cn(
-                            "flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition-all",
+                            "flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer min-w-[80px]",
                             item.value === opt.id 
                               ? "bg-indigo-600 text-white border-indigo-600" 
+                              : isDark 
+                              ? "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800"
                               : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
                           )}
                         >
@@ -219,7 +248,7 @@ export function Settings() {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="pt-12 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4"
+          className="pt-12 border-t border-indigo-100/20 flex flex-col sm:flex-row justify-between items-center gap-4"
         >
           <div className="flex flex-col text-left">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">

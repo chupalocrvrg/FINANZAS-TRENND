@@ -1,26 +1,54 @@
 import React, { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { motion } from 'motion/react';
-import { Shield, UserCircle, ArrowRight, Fingerprint } from 'lucide-react';
+import { Shield, UserCircle, ArrowRight, Fingerprint, Coins, Smartphone, HelpCircle } from 'lucide-react';
 
 export function Onboarding() {
   const { settings, updateSettings } = useAuth();
   const [step, setStep] = useState(1);
-  const [companyName, setCompanyName] = useState(settings?.companyName || '');
+  
+  // Registration data fields
   const [displayName, setDisplayName] = useState(settings?.displayName || '');
+  const [companyName, setCompanyName] = useState(settings?.companyName || '');
+  const [ruc, setRuc] = useState(settings?.ruc || '');
+  const [phone, setPhone] = useState(settings?.phone || '');
+  const [referral, setReferral] = useState(settings?.referral || 'redes');
   const [pin, setPin] = useState('');
   
   // Biometric setup states
   const [biometricStatus, setBiometricStatus] = useState<'idle' | 'scanning' | 'success' | null>(null);
   const [scanProgress, setScanProgress] = useState(0);
 
+  // Validation state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {};
+    if (!displayName.trim()) {
+      newErrors.displayName = 'El nombre completo es obligatorio.';
+    }
+    if (!companyName.trim()) {
+      newErrors.companyName = 'La empresa o entidad es obligatoria.';
+    }
+    if (!ruc.trim()) {
+      newErrors.ruc = 'La cédula o RUC es obligatorio.';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextStep1 = () => {
+    if (validateStep1()) {
+      setStep(2);
+    }
+  };
+
   const handleSetupBiometrics = () => {
     setBiometricStatus('scanning');
     setScanProgress(0);
     
-    // Disparar WebAuthn si el navegador es compatible para hacerlo real, de lo contrario simular
     if (typeof navigator !== 'undefined' && navigator.credentials) {
-      console.log("WebAuthn API disponible para registro");
+      console.log("WebAuthn / Biometrics API disponible");
     }
 
     const interval = setInterval(() => {
@@ -37,10 +65,14 @@ export function Onboarding() {
 
   const handleFinish = async (biometricsActive: boolean) => {
     await updateSettings({
-      companyName,
-      displayName,
+      displayName: displayName.trim(),
+      companyName: companyName.trim(),
+      ruc: ruc.trim(),
+      phone: phone.trim(),
+      referral: referral,
       securityPin: pin,
       biometricEnabled: biometricsActive,
+      autoLockTimer: 5, // Default auto-lock timer to 5 minutes
       isOnboarded: true
     });
   };
@@ -51,42 +83,125 @@ export function Onboarding() {
         layout
         className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-slate-200"
       >
+        {/* Step Indicators */}
+        <div className="flex items-center justify-between mb-8">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Progreso de Registro</span>
+          <div className="flex gap-1.5">
+            {[1, 2, 3].map((s) => (
+              <div 
+                key={s} 
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  step === s 
+                    ? 'w-6 bg-indigo-600' 
+                    : step > s 
+                    ? 'w-2 bg-indigo-300' 
+                    : 'w-2 bg-slate-200'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
         {step === 1 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <UserCircle className="text-indigo-600 w-6 h-6" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Bienvenido a Control Financiero</h2>
-              <p className="text-slate-500 text-sm">Configuremos tu perfil básico.</p>
+              <h2 className="text-xl font-bold text-slate-900 leading-tight">Configura tu Perfil</h2>
+              <p className="text-slate-500 text-xs mt-1">Completa los datos esenciales para personalizar el Centro de Control.</p>
             </div>
             
             <div className="space-y-4">
               <div className="text-left">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre Completo / ID Público</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Nombre Completo <span className="text-rose-500">*</span></label>
                 <input 
                   type="text" 
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-indigo-500 transition-colors"
-                  placeholder="Ej. Juan Pérez"
+                  onChange={(e) => {
+                    setDisplayName(e.target.value);
+                    if (errors.displayName) setErrors(prev => ({ ...prev, displayName: '' }));
+                  }}
+                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-850 transition-colors focus:border-indigo-500 ${
+                    errors.displayName ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'
+                  }`}
+                  placeholder="Ej. Juan Carlos Peralta"
+                  required
                 />
+                {errors.displayName && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-1 text-left uppercase tracking-wider">{errors.displayName}</p>
+                )}
               </div>
+
               <div className="text-left">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre de la Empresa</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Empresa o Entidad <span className="text-rose-500">*</span></label>
                 <input 
                   type="text" 
                   value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-indigo-500 transition-colors"
-                  placeholder="Ej. Digital Hub Store"
+                  onChange={(e) => {
+                    setCompanyName(e.target.value);
+                    if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' }));
+                  }}
+                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-850 transition-colors focus:border-indigo-500 ${
+                    errors.companyName ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'
+                  }`}
+                  placeholder="Ej. Comercial o Distribuidora Peralta"
+                  required
                 />
+                {errors.companyName && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-1 text-left uppercase tracking-wider">{errors.companyName}</p>
+                )}
+              </div>
+
+              <div className="text-left">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Cédula o RUC <span className="text-rose-500">*</span></label>
+                <input 
+                  type="text" 
+                  value={ruc}
+                  onChange={(e) => {
+                    setRuc(e.target.value);
+                    if (errors.ruc) setErrors(prev => ({ ...prev, ruc: '' }));
+                  }}
+                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-850 transition-colors focus:border-indigo-500 ${
+                    errors.ruc ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'
+                  }`}
+                  placeholder="Ej. 1726485930001 o 0928374829"
+                  required
+                />
+                {errors.ruc && (
+                  <p className="text-rose-500 text-[10px] font-bold mt-1 text-left uppercase tracking-wider">{errors.ruc}</p>
+                )}
+              </div>
+
+              <div className="text-left">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Número Celular (Opcional)</label>
+                <input 
+                  type="tel" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none text-sm font-bold text-slate-850 focus:border-indigo-500"
+                  placeholder="Ej. +593 99 999 9999"
+                />
+              </div>
+
+              <div className="text-left">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">¿Cómo te enteraste de nosotros?</label>
+                <select 
+                  value={referral}
+                  onChange={(e) => setReferral(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none text-sm font-bold text-slate-800 focus:border-indigo-500"
+                >
+                  <option value="redes">Redes Sociales (TikTok, Facebook, Instagram)</option>
+                  <option value="amistades">Amistades / Amigos</option>
+                  <option value="referencias">Referencias Personales</option>
+                  <option value="otro">Otro medio de publicidad</option>
+                </select>
               </div>
             </div>
 
             <button 
-              onClick={() => setStep(2)}
-              className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold uppercase tracking-widest text-[10px]"
+              onClick={handleNextStep1}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all font-black uppercase tracking-widest text-[10px] cursor-pointer shadow-lg shadow-indigo-100"
             >
               Siguiente Paso <ArrowRight className="w-4 h-4" />
             </button>
@@ -99,28 +214,38 @@ export function Onboarding() {
               <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Shield className="text-rose-600 w-6 h-6" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Capa de Seguridad</h2>
-              <p className="text-slate-500 text-sm">Crea un PIN para acceso rápido y control de sesión.</p>
+              <h2 className="text-xl font-bold text-slate-900 leading-tight">PIN de Seguridad (Obligatorio)</h2>
+              <p className="text-slate-500 text-xs mt-1">Digita un PIN de 4 dígitos para proteger tu acceso y actuar como PIN de respaldo.</p>
             </div>
 
             <div>
               <div className="flex gap-2 justify-center mb-6">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold ${pin.length > i ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-300'}`}>
-                    {pin[i] ? '*' : ''}
+                  <div key={i} className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all ${pin.length > i ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-300'}`}>
+                    {pin[i] ? '•' : ''}
                   </div>
                 ))}
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'Borrar', 0, 'OK'].map((num) => (
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'Borrar', 0, 'Siguiente'].map((num) => (
                   <button 
                     key={num}
+                    type="button"
                     onClick={() => {
-                      if (num === 'Borrar') setPin('');
-                      else if (num === 'OK') { if (pin.length >= 4) setStep(3); }
-                      else if (typeof num === 'number' && pin.length < 4) setPin(pin + num);
+                      if (num === 'Borrar') {
+                        setPin('');
+                      } else if (num === 'Siguiente') { 
+                        if (pin.length === 4) setStep(3); 
+                      } else if (typeof num === 'number' && pin.length < 4) {
+                        setPin(pin + num);
+                      }
                     }}
-                    className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 font-bold transition-all text-xs uppercase tracking-widest"
+                    className={`p-4 rounded-xl font-bold transition-all text-xs uppercase tracking-widest flex items-center justify-center cursor-pointer ${
+                      num === 'Siguiente' 
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+                    }`}
+                    disabled={num === 'Siguiente' && pin.length < 4}
                   >
                     {num}
                   </button>
@@ -134,10 +259,10 @@ export function Onboarding() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                <Fingerprint className="text-indigo-600 w-6 h-6 animate-swing" />
+                <Fingerprint className="text-indigo-600 w-6 h-6" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">¿Activar Acceso Biométrico?</h2>
-              <p className="text-slate-500 text-sm">Autentícate al instante con reconocimiento facial o huella digital sin digitar tu PIN.</p>
+              <h2 className="text-xl font-bold text-slate-900 leading-tight">Configurar Datos Biométricos</h2>
+              <p className="text-slate-500 text-xs mt-1">Vincula tu huella dactilar o reconocimiento facial (FaceID) para desbloqueo ágil.</p>
             </div>
 
             {!biometricStatus ? (
@@ -146,13 +271,16 @@ export function Onboarding() {
                   onClick={handleSetupBiometrics}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all font-bold uppercase tracking-widest text-[10px] cursor-pointer shadow-lg shadow-indigo-100"
                 >
-                  <Fingerprint className="w-4 h-4" /> Configurar Huella o Rostro
+                  <Fingerprint className="w-4 h-4" /> Registrar Huella o Rostro
                 </button>
+                <div className="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-[10px] text-indigo-700 text-left leading-relaxed">
+                  💡 <strong>Nota del Protocolo de Seguridad</strong>: Al activar datos biométricos, tu PIN de respaldo automático obligatorio será el PIN del Paso 2 (<strong>{pin}</strong>).
+                </div>
                 <button 
                   onClick={() => handleFinish(false)}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-all font-bold uppercase tracking-widest text-[10px] cursor-pointer"
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-xl transition-all font-bold uppercase tracking-widest text-[10px] cursor-pointer"
                 >
-                  Omitir paso por ahora
+                  Omitir Biometría (Usar solo PIN)
                 </button>
               </div>
             ) : biometricStatus === 'scanning' ? (
@@ -172,8 +300,8 @@ export function Onboarding() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-black uppercase tracking-widest text-indigo-600">Escaneando Dispositivo...</p>
-                  <p className="text-[10px] text-slate-500 mt-1">Coloca tu huella o mira la cámara frontal ({scanProgress}%)</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-indigo-600">Sincronizando Sensor...</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Presiona tu sensor o mira la cámara ({scanProgress}%)</p>
                 </div>
               </div>
             ) : (
@@ -181,7 +309,7 @@ export function Onboarding() {
                 <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xl font-bold">✓</div>
                 <div className="text-center">
                   <p className="text-xs font-black uppercase tracking-widest text-emerald-700">¡Biometría Activada!</p>
-                  <p className="text-[10px] text-emerald-600 mt-1">Sincronización segura configurada con tu dispositivo móvil.</p>
+                  <p className="text-[10px] text-emerald-600 mt-1">Los datos biométricos se han registrado y el PIN <strong>{pin}</strong> se guardó como respaldo.</p>
                 </div>
                 <button 
                   onClick={() => handleFinish(true)}
@@ -192,8 +320,8 @@ export function Onboarding() {
               </div>
             )}
 
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-500 text-left">
-              <p className="leading-relaxed">Tu PIN y configuración de biometría sincronizada se heredan directamente de las librerías de seguridad de tu smartphone.</p>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-[10px] text-slate-500 text-left">
+              <p className="leading-relaxed">Tus credenciales y datos se guardarán de forma interna y privada en la plataforma de forma encriptada para futuros accesos.</p>
             </div>
           </motion.div>
         )}

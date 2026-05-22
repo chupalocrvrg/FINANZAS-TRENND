@@ -141,7 +141,7 @@ export function NotificationsPopover({ onClose }: NotificationsPopoverProps) {
     e.stopPropagation();
     const phone = alert.contact.replace(/\D/g, '');
     if (!phone) {
-      alert("No hay número guardado para este cliente.");
+      window.alert("No hay número guardado para este cliente.");
       return;
     }
     const text = alert.type === 'expiration'

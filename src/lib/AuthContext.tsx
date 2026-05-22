@@ -11,6 +11,11 @@ interface UserSettings {
   language: 'es' | 'en';
   theme: 'light' | 'dark' | 'system';
   securityPin: string;
+  ruc: string;
+  phone: string;
+  referral: string;
+  biometricEnabled: boolean;
+  autoLockTimer: number; // minutes: 0 means Never, 1, 5, 10
   isOnboarded: boolean;
   updatedAt: string;
 }
@@ -52,6 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               language: 'es',
               theme: 'system',
               securityPin: '',
+              ruc: '',
+              phone: '',
+              referral: 'redes',
+              biometricEnabled: false,
+              autoLockTimer: 5, // 5 minutes standard auto lock default
               isOnboarded: false,
               updatedAt: new Date().toISOString(),
             };

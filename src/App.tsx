@@ -15,6 +15,7 @@ import { DigitalServices } from './components/DigitalServices';
 import { Login } from './components/Login';
 import { Onboarding } from './components/Onboarding';
 import { AIAssistant } from './components/AIAssistant';
+import { LockScreen } from './components/LockScreen';
 import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
@@ -30,12 +31,42 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  const [isLocked, setIsLocked] = useState(true);
 
   useEffect(() => {
     if (!loading) {
       setIsLoaded(true);
     }
   }, [loading]);
+
+  // Temporizador de inactividad que bloquea el sistema
+  useEffect(() => {
+    if (!user || onboarding || !settings) return;
+
+    // Obtener los minutos del temporizador configurado (por defecto 5, 0 significa desactivado)
+    const minutes = settings.autoLockTimer ?? 5;
+    if (minutes === 0) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsLocked(true);
+      }, minutes * 60 * 1000);
+    };
+
+    // Registrar detectores de eventos de actividad directos
+    const userEvents = ['mousemove', 'keypress', 'click', 'scroll', 'touchstart'];
+    userEvents.forEach((ev) => window.addEventListener(ev, resetTimer));
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      userEvents.forEach((ev) => window.removeEventListener(ev, resetTimer));
+    };
+  }, [user, onboarding, settings?.autoLockTimer, settings]);
 
   useEffect(() => {
     if (!user) return;
@@ -85,6 +116,7 @@ export default function App() {
 
   if (!user) return <Login />;
   if (onboarding) return <Onboarding />;
+  if (isLocked) return <LockScreen settings={settings} onUnlock={() => setIsLocked(false)} />;
 
   return (
     <div className={`flex min-h-screen ${settings?.theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} font-sans overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-900`}>
