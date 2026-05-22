@@ -22,24 +22,66 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
     }
   }, [settings]);
 
-  const handleBiometricUnlock = () => {
+  const handleBiometricUnlock = async () => {
     if (!settings?.biometricEnabled) return;
     setBiometricStatus('scanning');
     setScanProgress(0);
+    setErrorMessage('');
 
+    // Start a progress bar for visual feedback
+    let currentProgress = 0;
     const interval = setInterval(() => {
-      setScanProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
+      currentProgress = Math.min(currentProgress + 8, 90);
+      setScanProgress(currentProgress);
+    }, 80);
+
+    try {
+      // Use the standard Web Authentication (WebAuthn) Credential API if supported by browsers
+      if (typeof navigator !== 'undefined' && navigator.credentials && window.PublicKeyCredential) {
+        
+        // Cryptographic challenge to execute verification securely
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        // Secure credential assertion call utilizing device credential hardware (TouchID/FaceID)
+        const credential = await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            userVerification: 'required', // Demands biometric identification
+            timeout: 15000, // Safe 15 seconds scan threshold
+          }
+        });
+
+        clearInterval(interval);
+
+        if (credential) {
+          setScanProgress(100);
           setBiometricStatus('success');
+          setErrorMessage('');
           setTimeout(() => {
             onUnlock();
           }, 450);
-          return 100;
+        } else {
+          throw new Error("No se pudo confirmar la identidad biométrica.");
         }
-        return prev + 15;
-      });
-    }, 100);
+      } else {
+        throw new Error("Lector biométrico no soportado en este dispositivo o navegador.");
+      }
+    } catch (err: any) {
+      clearInterval(interval);
+      console.warn("Autenticación biométrica fallida o no soportada:", err);
+      setScanProgress(0);
+      setBiometricStatus('error');
+
+      // Check for user cancel or device sensor error
+      if (err.name === 'NotAllowedError') {
+        setErrorMessage("Verificación denegada. Coloca tu huella o destapa la cámara.");
+      } else if (err.name === 'SecurityError' || err.name === 'NotSupportedError') {
+        setErrorMessage("Entorno seguro restringido. Por favor, usa tu PIN de respaldo.");
+      } else {
+        setErrorMessage(err.message || "Error al autenticar datos biométricos.");
+      }
+    }
   };
 
   const handlePinInput = (num: number) => {

@@ -48,7 +48,7 @@ export function Settings() {
       resetWalletForm();
     } catch (e) {
       console.error(e);
-      alert("Error al guardar la cuenta");
+      window.alert("Error al guardar la cuenta");
     } finally {
       setIsSubmitting(false);
     }
@@ -58,19 +58,26 @@ export function Settings() {
     setWalletForm({ id: '', name: '', type: 'bank', balance: '0' });
   };
 
-  const handleEditWallet = (wallet: Wallet) => {
+  const handleEditWallet = (wallet: any) => {
+    if (!wallet) return;
     setWalletForm({
-      id: wallet.id,
-      name: wallet.name,
-      type: wallet.type,
-      balance: (wallet.balance || 0).toString()
+      id: wallet.id || '',
+      name: wallet.name || '',
+      type: wallet.type || 'bank',
+      balance: (wallet.balance !== undefined && wallet.balance !== null ? wallet.balance : 0).toString()
     });
     setIsWalletModalOpen(true);
   };
 
   const handleDeleteWallet = async (id: string) => {
-    if (confirm("¿Eliminar esta cuenta definitivamente?")) {
-      await deleteDoc(doc(db, 'wallets', id));
+    if (!id) return;
+    if (window.confirm("¿Eliminar esta cuenta definitivamente?")) {
+      try {
+        await deleteDoc(doc(db, 'wallets', id));
+      } catch (err) {
+        console.error("Error al eliminar la cuenta:", err);
+        window.alert("No se pudo eliminar la cuenta bancaria.");
+      }
     }
   };
 
@@ -282,11 +289,11 @@ export function Settings() {
               <form onSubmit={handleAddWallet} className="space-y-4">
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-500">Nombre del Banco/Cuenta</label>
-                  <input required type="text" value={walletForm.name} onChange={e => setWalletForm({...walletForm, name: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border focus:border-indigo-500 outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-slate-50 border-slate-200 text-slate-805")} />
+                  <input required type="text" value={walletForm.name} onChange={e => setWalletForm({...walletForm, name: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border focus:border-indigo-500 outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800")} />
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-500">Tipo</label>
-                  <select required value={walletForm.type} onChange={e => setWalletForm({...walletForm, type: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-slate-50 border-slate-200 text-slate-805")}>
+                  <select required value={walletForm.type} onChange={e => setWalletForm({...walletForm, type: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800")}>
                     <option value="bank">Banco / Transferencia</option>
                     <option value="cash">Efectivo</option>
                     <option value="digital_wallet">Billetera Digital/App</option>
@@ -294,7 +301,7 @@ export function Settings() {
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-500">Saldo actual o Inicial ($)</label>
-                  <input required type="number" step="0.01" value={walletForm.balance} onChange={e => setWalletForm({...walletForm, balance: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border focus:border-indigo-500 outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-slate-50 border-slate-200 text-slate-850")} />
+                  <input required type="number" step="0.01" value={walletForm.balance} onChange={e => setWalletForm({...walletForm, balance: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border focus:border-indigo-500 outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800")} />
                 </div>
                 <button disabled={isSubmitting} type="submit" className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-700 cursor-pointer">
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {walletForm.id ? 'Guardar Cambios' : 'Registrar Cuenta'}
