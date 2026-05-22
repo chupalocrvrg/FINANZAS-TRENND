@@ -1,0 +1,6 @@
+{
+  "name": "Control Financiero",
+  "description": "Control Financiero de Tesorería y CRM con modo offline inteligente.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

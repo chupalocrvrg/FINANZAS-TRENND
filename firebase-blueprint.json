@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile and Settings",
+      "description": "Stores user customization, security PIN, and company info.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "companyName": { "type": "string" },
+        "email": { "type": "string" },
+        "language": { "type": "string", "enum": ["es", "en"] },
+        "theme": { "type": "string", "enum": ["light", "dark", "system"] },
+        "securityPin": { "type": "string" },
+        "isOnboarded": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "financialEntity": {
+      "title": "Financial Entity",
+      "description": "Clients, Intermediaries or Suppliers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["client", "intermediary", "supplier"] },
+        "contact": { "type": "string" },
+        "rate": { "type": "number" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "type", "ownerId"]
+    },
+    "transaction": {
+      "title": "Transaction",
+      "description": "Transactional records for ANT updates.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "intermediaryId": { "type": "string" },
+        "intermediaryName": { "type": "string" },
+        "finalClientName": { "type": "string" },
+        "warehouse": { "type": "string" },
+        "billingDate": { "type": "string" },
+        "chargedRate": { "type": "number" },
+        "isPaid": { "type": "boolean" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "intermediaryId", "ownerId"]
+    },
+    "wallet": {
+      "title": "Wallet",
+      "description": "Treasury wallet.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["cash", "bank", "digital_wallet"] },
+        "balance": { "type": "number" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["id", "name", "type", "ownerId"]
+    },
+    "ledgerEntry": {
+      "title": "Ledger Entry",
+      "description": "Income and expense records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["personal", "business"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "walletId": { "type": "string" },
+        "date": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["id", "type", "amount", "walletId", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "Public and private user data."
+    },
+    "/entities/{entityId}": {
+      "schema": "financialEntity",
+      "description": "Entities owned by the user."
+    },
+    "/transactions/{txId}": {
+      "schema": "transaction",
+      "description": "Transactions owned by the user."
+    },
+    "/wallets/{walletId}": {
+      "schema": "wallet",
+      "description": "Wallets owned by the user."
+    },
+    "/ledgerEntries/{entryId}": {
+      "schema": "ledgerEntry",
+      "description": "Ledger entries owned by the user."
+    }
+  }
+}

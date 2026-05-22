@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ---- HELPERS ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+
+    // ---- VALIDATION HELPERS ----
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid == request.auth.uid &&
+             data.email is string &&
+             (!('language' in data) || data.language in ['es', 'en']) &&
+             (!('theme' in data) || data.theme in ['light', 'dark', 'system']) &&
+             (!('securityPin' in data) || (data.securityPin is string && data.securityPin.size() <= 6));
+    }
+    
+    function isValidEntity(data) {
+      return data.keys().hasAll(['id', 'name', 'type', 'ownerId']) &&
+             data.id is string && data.id.size() <= 64 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.type in ['client', 'intermediary', 'supplier'] &&
+             data.ownerId == request.auth.uid;
+    }
+    
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['id', 'intermediaryId', 'ownerId']) &&
+             data.ownerId == request.auth.uid &&
+             data.chargedRate is number &&
+             data.isPaid is bool;
+    }
+    
+    function isValidWallet(data) {
+      return data.keys().hasAll(['id', 'name', 'type', 'ownerId']) &&
+             data.ownerId == request.auth.uid &&
+             data.type in ['cash', 'bank', 'digital_wallet'] &&
+             data.balance is number;
+    }
+    
+    function isValidLedger(data) {
+      return data.keys().hasAll(['id', 'type', 'amount', 'walletId', 'ownerId']) &&
+             data.ownerId == request.auth.uid &&
+             data.type in ['personal', 'business'] &&
+             data.amount is number;
+    }
+
+    // ---- RULES ----
+    
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    match /entities/{entityId} {
+      allow read, write: if isOwner(resource.data.ownerId) || (incoming().ownerId == request.auth.uid);
+    }
+    
+    match /transactions/{txId} {
+      allow read, write: if isOwner(resource.data.ownerId) || (incoming().ownerId == request.auth.uid);
+    }
+    
+    match /wallets/{walletId} {
+      allow read, write: if isOwner(resource.data.ownerId) || (incoming().ownerId == request.auth.uid);
+    }
+    
+    match /ledger/{entryId} {
+      allow read, write: if isOwner(resource.data.ownerId) || (incoming().ownerId == request.auth.uid);
+    }
+
+    match /digital_services/{serviceId} {
+      allow read, write: if isOwner(resource.data.ownerId) || (incoming().ownerId == request.auth.uid);
+    }
+  }
+}
