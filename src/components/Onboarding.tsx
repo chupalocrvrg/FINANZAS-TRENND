@@ -3,6 +3,16 @@ import { useAuth } from '../lib/AuthContext';
 import { motion } from 'motion/react';
 import { Shield, UserCircle, ArrowRight, Fingerprint, Coins, Smartphone, HelpCircle } from 'lucide-react';
 
+// Helper to convert raw credentials to string database storage
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
 export function Onboarding() {
   const { settings, updateSettings } = useAuth();
   const [step, setStep] = useState(1);
@@ -18,6 +28,7 @@ export function Onboarding() {
   // Biometric setup states
   const [biometricStatus, setBiometricStatus] = useState<'idle' | 'scanning' | 'success' | null>(null);
   const [scanProgress, setScanProgress] = useState(0);
+  const [registeredCredId, setRegisteredCredId] = useState<string>('');
 
   // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,24 +54,86 @@ export function Onboarding() {
     }
   };
 
-  const handleSetupBiometrics = () => {
+  const handleSetupBiometrics = async () => {
     setBiometricStatus('scanning');
     setScanProgress(0);
+    setErrors({});
     
-    if (typeof navigator !== 'undefined' && navigator.credentials) {
-      console.log("WebAuthn / Biometrics API disponible");
-    }
+    let currentProgress = 0;
+    const progressInterval = setInterval(() => {
+      currentProgress = Math.min(currentProgress + 10, 90);
+      setScanProgress(currentProgress);
+    }, 100);
 
-    const interval = setInterval(() => {
-      setScanProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setBiometricStatus('success');
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 120);
+    try {
+      if (typeof navigator === 'undefined' || !navigator.credentials || !window.PublicKeyCredential) {
+        throw new Error("Este dispositivo o navegador no admite claves de acceso biométricas (WebAuthn). Elige la opción de usar solo PIN.");
+      }
+
+      // Generar desafío criptográfico aleatorio
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      // ID único de usuario convertido a bytes
+      const userId = new TextEncoder().encode(settings?.uid || 'user_onboarding');
+
+      const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
+        challenge: challenge,
+        rp: {
+          name: companyName ? companyName.trim() : "Control Financiero",
+          id: window.location.hostname,
+        },
+        user: {
+          id: userId,
+          name: displayName ? displayName.trim().toLowerCase().replace(/\s+/g, '_') + "@trennd.store" : "user@trennd.store",
+          displayName: displayName || "Usuario",
+        },
+        pubKeyCredParams: [
+          { alg: -7, type: "public-key" }, // ES256 (Algoritmo estándar de criptografía de curva elíptica)
+          { alg: -257, type: "public-key" } // RS255 (Algoritmo alterno)
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: "platform", // FaceID / Huella digital local del dispositivo
+          userVerification: "required",        // Exige validación obligatoria
+          residentKey: "required",
+          requireResidentKey: true,
+        },
+        timeout: 60000,
+        attestation: "none"
+      };
+
+      const credential = await navigator.credentials.create({
+        publicKey: publicKeyCredentialCreationOptions
+      }) as PublicKeyCredential | null;
+
+      clearInterval(progressInterval);
+
+      if (!credential) {
+        throw new Error("El sistema biométrico del dispositivo no retornó una firma válida.");
+      }
+
+      // Convertir rawId a Base64 para guardarlo de manera persistente en Firestore
+      const b64Id = arrayBufferToBase64(credential.rawId);
+      setRegisteredCredId(b64Id);
+      setScanProgress(100);
+      setBiometricStatus('success');
+
+    } catch (err: any) {
+      clearInterval(progressInterval);
+      console.warn("Biometric registration failure:", err);
+      setScanProgress(0);
+      setBiometricStatus(null);
+
+      let msg = "No se pudo registrar la huella o rostro. ";
+      if (err.name === 'NotAllowedError') {
+        msg += "Proceso cancelado o huella/rostro no reconocidos. Intenta de nuevo.";
+      } else if (err.name === 'SecurityError' || err.name === 'NotSupportedError') {
+        msg += "Restricción de seguridad del navegador para WebAuthn en este dominio.";
+      } else {
+        msg += err.message || "Por favor intenta de nuevo o usa solo PIN.";
+      }
+      setErrors({ biometric: msg });
+    }
   };
 
   const handleFinish = async (biometricsActive: boolean) => {
@@ -72,6 +145,7 @@ export function Onboarding() {
       referral: referral,
       securityPin: pin,
       biometricEnabled: biometricsActive,
+      biometricCredentialId: biometricsActive ? registeredCredId : '',
       autoLockTimer: 5, // Default auto-lock timer to 5 minutes
       isOnboarded: true
     });
@@ -273,6 +347,13 @@ export function Onboarding() {
                 >
                   <Fingerprint className="w-4 h-4" /> Registrar Huella o Rostro
                 </button>
+                
+                {errors.biometric && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-[10px] text-rose-600 text-left leading-relaxed font-bold uppercase">
+                    ⚠️ {errors.biometric}
+                  </div>
+                )}
+
                 <div className="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-[10px] text-indigo-700 text-left leading-relaxed">
                   💡 <strong>Nota del Protocolo de Seguridad</strong>: Al activar datos biométricos, tu PIN de respaldo automático obligatorio será el PIN del Paso 2 (<strong>{pin}</strong>).
                 </div>

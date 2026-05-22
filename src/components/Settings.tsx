@@ -7,6 +7,16 @@ import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, B
 import { cn } from '../lib/utils';
 import { Wallet } from '../types';
 
+// Helper to convert raw credentials to string database storage
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
 export function Settings() {
   const { user, settings, updateSettings } = useAuth();
   const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -78,6 +88,83 @@ export function Settings() {
         console.error("Error al eliminar la cuenta:", err);
         window.alert("No se pudo eliminar la cuenta bancaria.");
       }
+    }
+  };
+
+  const handleSettingClick = async (field: string, value: any) => {
+    if (field === 'biometricEnabled' && value === true) {
+      try {
+        if (typeof navigator === 'undefined' || !navigator.credentials || !window.PublicKeyCredential) {
+          window.alert("Este dispositivo o navegador no admite claves biométricas (WebAuthn).");
+          return;
+        }
+
+        const confirmReg = window.confirm("Para habilitar el desbloqueo por biometría, registre su huella o rostro a continuación. Pulse Aceptar para iniciar:");
+        if (!confirmReg) return;
+
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        const userId = new TextEncoder().encode(user?.uid || 'user_settings');
+
+        const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
+          challenge: challenge,
+          rp: {
+            name: settings?.companyName || "Control Financiero",
+            id: window.location.hostname,
+          },
+          user: {
+            id: userId,
+            name: (settings?.displayName || "user").trim().toLowerCase().replace(/\s+/g, '_') + "@trennd.store",
+            displayName: settings?.displayName || "Usuario",
+          },
+          pubKeyCredParams: [
+            { alg: -7, type: "public-key" },
+            { alg: -257, type: "public-key" }
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required",
+            residentKey: "required",
+            requireResidentKey: true,
+          },
+          timeout: 60000,
+          attestation: "none"
+        };
+
+        const credential = await navigator.credentials.create({
+          publicKey: publicKeyCredentialCreationOptions
+        }) as PublicKeyCredential | null;
+
+        if (!credential) {
+          throw new Error("El sensor biométrico no retornó una credencial válida.");
+        }
+
+        const b64Id = arrayBufferToBase64(credential.rawId);
+        await updateSettings({
+          biometricEnabled: true,
+          biometricCredentialId: b64Id
+        });
+        window.alert("¡Biometría registrada y activada correctamente!");
+
+      } catch (err: any) {
+        console.warn("Error registering biometric from settings:", err);
+        let msg = "No se pudo registrar la biometría. ";
+        if (err.name === 'NotAllowedError') {
+          msg += "El proceso fue cancelado por el usuario.";
+        } else {
+          msg += err.message || "";
+        }
+        window.alert(msg);
+      }
+    } else if (field === 'biometricEnabled' && value === false) {
+      await updateSettings({
+        biometricEnabled: false,
+        biometricCredentialId: ''
+      });
+      window.alert("Biometría desactivada correctamente.");
+    } else {
+      await updateSettings({ [field]: value });
     }
   };
 
@@ -231,7 +318,7 @@ export function Settings() {
                         <button
                           key={String(opt.id)}
                           type="button"
-                          onClick={() => updateSettings({ [item.field]: opt.id })}
+                          onClick={() => handleSettingClick(item.field, opt.id)}
                           className={cn(
                             "flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer min-w-[80px]",
                             item.value === opt.id 
