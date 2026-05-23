@@ -10,7 +10,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // API Routes (Placeholders as most logic is client-side with Firestore, 
   // but fulfilling the requested FastAPI-style endpoints)
@@ -56,14 +57,20 @@ async function startServer() {
         }
       }
 
-      const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es ayudar al usuario a entender cómo registrar transacciones, manejar cuentas por cobrar, cuentas por pagar, productos digitales y ver sus balances.
+      const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es ayudar al usuario a registrar transacciones, productos digitales y ver balances.
+
+REGLA CRÍTICA PRIMORDIAL DE NO-ASUNCIÓN (MUY IMPORTANTE):
+- Si en la imagen, captura o texto de chat compartida NO se muestra, menciona ni se hace referencia explícita al nombre o existencia de un proveedor, revendedor, distribuidor, intermediario o cliente final, el sistema NO DEBE asumir ningún nombre automáticamente.
+- No debes inventar, suponer, ni asumir nombres ni de ejemplo para 'finalClientName', 'warehouse', 'intermediaryId', 'supplierId' o 'supplierName'.
+- En caso de que no lo indique la captura, pon estrictamente una cadena de texto vacía ("") para esos campos.
+- NUNCA crees o asignes valores automáticamente a menos que estén claramente visibles o escritos en el archivo adjunto.
 
 ¡TIENES DOS SÚPER PODERES INCREÍBLES!:
 1. PROCESAR IMÁGENES/CAPTURAS DE ACTUALIZACIONES ANT:
-   - Extraer: Cliente Final, Bodega/Establecimiento y asociarlo con la lista de Distribuidores.
+   - Extraer: Cliente Final ("finalClientName"), Bodega/Establecimiento ("warehouse") y asociarlo con la lista de Distribuidores.
 2. PROCESAR IMÁGENES/CHAT CON PROVEEDORES DE CUENTAS DIGITALES (Netflix, Disney+, etc.):
    - Puedes analizar capturas de chats, mensajes de WhatsApp o recibos con proveedores que te entregan cuentas activadas.
-   - Extraerás automáticamente los datos claves:
+   - Extraerás los datos claves:
      * Nombre del Producto / Servicio (ej. Netflix 1 Pantalla, Disney+, Max)
      * Correo electrónico de la cuenta ("email")
      * Contraseña ("password")
@@ -72,6 +79,7 @@ async function startServer() {
      * Costo del proveedor ("cost")
      * Precio sugerido o real de venta ("revenue" / precio de venta)
      * Nombre e ID del Proveedor ("supplierId" y "supplierName")
+     * Número de teléfono, celular o contacto del cliente si se menciona o se ve en la captura ("clientContact")
 
 CONTEXTO DEL USUARIO:
 - Distribuidores/Intermediarios de ANT: ${JSON.stringify(intermediaries || [], null, 2)}
@@ -80,14 +88,14 @@ CONTEXTO DEL USUARIO:
 
 INSTRUCCIÓN DE TRABAJO:
 Si es un caso de Actualización ANT:
-- Presenta qué datos lograste extraer (Cliente, Bodega).
-- DEBES incluir al final un bloque \`\`\`json-action con:
+- Presenta qué datos lograste extraer (Socio Comercial, Bodega).
+- DEBES incluir al final un bloque \`\`\`json-action con el formato exacto. Si no se puede extraer con certeza, pon "":
 \`\`\`json-action
 {
   "type": "add_transaction",
-  "finalClientName": "NOMBRE_CLIENTE",
-  "warehouse": "BODEGA_O_ESTABLECIMIENTO",
-  "intermediaryId": "ID_INTERMEDIARIO_O_VACIO"
+  "finalClientName": "NOMBRE_CLIENTE_EXTRAIDO_O_VACIO",
+  "warehouse": "BODEGA_O_ESTABLECIMIENTO_EXTRAIDA_O_VACIO",
+  "intermediaryId": "ID_INTERMEDIARIO_EXTRAIDO_O_VACIO"
 }
 \`\`\`
 
@@ -107,7 +115,8 @@ Si es un caso de Venta de Cuenta/Servicio Digital (de proveedor o chat de entreg
   "cost": COSTO_NUMERICO_EXTRAIDO_O_POR_CATALOGO,
   "revenue": INGRESO_VENTA_NUMERICO_O_POR_CATALOGO,
   "supplierId": "ID_PROVEEDOR_COINCIDENTE_O_VACIO",
-  "supplierName": "NOMBRE_PROVEEDOR_COINCIDENTE_O_VACIO"
+  "supplierName": "NOMBRE_PROVEEDOR_COINCIDENTE_O_VACIO",
+  "clientContact": "NUMERO_TELEFONO_CLIENTE_O_VACIO"
 }
 \`\`\`
 

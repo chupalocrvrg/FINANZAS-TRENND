@@ -61,6 +61,9 @@ export interface DigitalServiceItem {
   pin?: string;
   status?: 'active' | 'expired' | 'pending';
   isPaid?: boolean;
+  isCostPaid?: boolean;
+  revenueWalletId?: string;
+  costWalletId?: string;
   createdAt?: string;
 }
 
@@ -81,6 +84,7 @@ export function DigitalServices() {
 
   // Payment processing state
   const [paymentService, setPaymentService] = useState<DigitalServiceItem | null>(null);
+  const [paymentType, setPaymentType] = useState<'revenue' | 'cost'>('revenue');
   const [targetWalletId, setTargetWalletId] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -101,7 +105,10 @@ export function DigitalServices() {
     password: '',
     pin: '',
     status: 'active' as 'active' | 'expired' | 'pending',
-    isPaid: false
+    isPaid: true,
+    isCostPaid: true,
+    revenueWalletId: '',
+    costWalletId: ''
   });
 
   const isDark = settings?.theme === 'dark';
@@ -153,6 +160,9 @@ export function DigitalServices() {
       pin: formData.pin,
       status: formData.status,
       isPaid: formData.isPaid,
+      isCostPaid: formData.isCostPaid,
+      revenueWalletId: formData.revenueWalletId || '',
+      costWalletId: formData.costWalletId || '',
       ownerId: user.uid,
       updatedAt: new Date().toISOString()
     };
@@ -170,6 +180,50 @@ export function DigitalServices() {
           createdAt: new Date().toISOString()
         });
         await logServiceHistory(docRef.id, 'created', serviceData);
+
+        // Revenue ledger & wallet balance increment if isPaid & revenueWalletId selected
+        if (formData.isPaid && formData.revenueWalletId) {
+          try {
+            await addDoc(collection(db, 'ledger'), {
+              amount: parseFloat(formData.revenue) || 0,
+              category: 'Venta de Servicio Digital',
+              description: `Cobro de ${formData.name} a ${formData.clientName || 'Cliente'}`,
+              date: new Date().toISOString().split('T')[0],
+              walletId: formData.revenueWalletId,
+              isExpense: false,
+              ownerId: user.uid,
+              createdAt: new Date().toISOString()
+            });
+            const { doc, updateDoc, increment } = await import('firebase/firestore');
+            await updateDoc(doc(db, 'wallets', formData.revenueWalletId), {
+              balance: increment(parseFloat(formData.revenue) || 0)
+            });
+          } catch (revenueLedgErr) {
+            console.error("Error creating manual revenue ledger entry:", revenueLedgErr);
+          }
+        }
+
+        // Cost ledger & wallet balance decrement if isCostPaid & costWalletId selected
+        if (formData.isCostPaid && formData.costWalletId) {
+          try {
+            await addDoc(collection(db, 'ledger'), {
+              amount: -(parseFloat(formData.cost) || 0),
+              category: 'Costo de Servicio Digital',
+              description: `Pago de costo por ${formData.name} a proveedor`,
+              date: new Date().toISOString().split('T')[0],
+              walletId: formData.costWalletId,
+              isExpense: true,
+              ownerId: user.uid,
+              createdAt: new Date().toISOString()
+            });
+            const { doc, updateDoc, increment } = await import('firebase/firestore');
+            await updateDoc(doc(db, 'wallets', formData.costWalletId), {
+              balance: increment(-(parseFloat(formData.cost) || 0))
+            });
+          } catch (costLedgErr) {
+            console.error("Error creating manual cost ledger entry:", costLedgErr);
+          }
+        }
         
         // Show success modal for new sales
         if (serviceData.clientContact) {
@@ -205,7 +259,10 @@ export function DigitalServices() {
       password: '',
       pin: '',
       status: 'active',
-      isPaid: false
+      isPaid: true,
+      isCostPaid: true,
+      revenueWalletId: '',
+      costWalletId: ''
     });
   };
 
@@ -224,7 +281,10 @@ export function DigitalServices() {
       password: service.password || '',
       pin: service.pin || '',
       status: service.status || 'active',
-      isPaid: service.isPaid || false
+      isPaid: service.isPaid !== false, // default true if not false
+      isCostPaid: service.isCostPaid !== false,
+      revenueWalletId: service.revenueWalletId || '',
+      costWalletId: service.costWalletId || ''
     });
     setIsModalOpen(true);
   };
@@ -260,26 +320,49 @@ export function DigitalServices() {
     if (!paymentService || !targetWalletId) return;
     setIsProcessingPayment(true);
     try {
-      await updateDoc(doc(db, 'digital_services', paymentService.id), { isPaid: true, updatedAt: new Date().toISOString() });
-      await logServiceHistory(paymentService.id, 'payment_processed', { amount: paymentService.revenue, targetWalletId });
+      const { updateDoc, doc, addDoc, collection, increment } = await import('firebase/firestore');
       
-      await addDoc(collection(db, 'ledger'), {
-        amount: paymentService.revenue,
-        category: 'Venta de Servicio Digital',
-        description: `Cobro de ${paymentService.name} a ${paymentService.clientName || 'Cliente'}`,
-        date: new Date().toISOString().split('T')[0],
-        walletId: targetWalletId,
-        isExpense: false,
-        ownerId: user!.uid,
-        createdAt: new Date().toISOString()
-      });
+      if (paymentType === 'revenue') {
+        await updateDoc(doc(db, 'digital_services', paymentService.id), { isPaid: true, revenueWalletId: targetWalletId, updatedAt: new Date().toISOString() });
+        await logServiceHistory(paymentService.id, 'payment_processed', { amount: paymentService.revenue, targetWalletId });
+        
+        await addDoc(collection(db, 'ledger'), {
+          amount: paymentService.revenue,
+          category: 'Venta de Servicio Digital',
+          description: `Cobro de ${paymentService.name} a ${paymentService.clientName || 'Cliente'}`,
+          date: new Date().toISOString().split('T')[0],
+          walletId: targetWalletId,
+          isExpense: false,
+          ownerId: user!.uid,
+          createdAt: new Date().toISOString()
+        });
 
-      await updateDoc(doc(db, 'wallets', targetWalletId), {
-        balance: increment(paymentService.revenue)
-      });
-      
-      // Enviar notificacion push simulada o real de Firebase confirmando el pago
-      await sendLocalPushNotification('Pago Registrado ✅', `El servicio ${paymentService.name} cambió su estado a PAGADO.`);
+        await updateDoc(doc(db, 'wallets', targetWalletId), {
+          balance: increment(paymentService.revenue)
+        });
+        
+        await sendLocalPushNotification('Pago Registrado ✅', `El servicio ${paymentService.name} cambió su estado a PAGADO.`);
+      } else {
+        await updateDoc(doc(db, 'digital_services', paymentService.id), { isCostPaid: true, costWalletId: targetWalletId, updatedAt: new Date().toISOString() });
+        await logServiceHistory(paymentService.id, 'cost_payment_processed', { amount: paymentService.cost || 0, targetWalletId });
+        
+        await addDoc(collection(db, 'ledger'), {
+          amount: -(paymentService.cost || 0),
+          category: 'Costo de Servicio Digital',
+          description: `Pago de costo por ${paymentService.name} a proveedor`,
+          date: new Date().toISOString().split('T')[0],
+          walletId: targetWalletId,
+          isExpense: true,
+          ownerId: user!.uid,
+          createdAt: new Date().toISOString()
+        });
+
+        await updateDoc(doc(db, 'wallets', targetWalletId), {
+          balance: increment(-(paymentService.cost || 0))
+        });
+        
+        await sendLocalPushNotification('Costo Pagado ✅', `Se registró el pago de costo de ${paymentService.name} al proveedor.`);
+      }
       
       setPaymentService(null);
       setTargetWalletId('');
@@ -469,20 +552,42 @@ export function DigitalServices() {
                           <p className={cn("font-bold truncate", isDark ? "text-slate-300" : "text-slate-800")}>
                             👤 {service.clientName}
                           </p>
-                          <button 
-                            onClick={(e) => {
-                               e.stopPropagation();
-                               if (!service.isPaid) setPaymentService(service);
-                            }}
-                            disabled={service.isPaid}
-                            className={cn(
-                            "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0 outline-none transition-colors",
-                            service.isPaid
-                              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                              : "bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 cursor-pointer"
-                          )}>
-                            {service.isPaid ? 'Pagado' : 'Cobrar (CxC)'}
-                          </button>
+                          <div className="flex flex-col gap-1 items-end shrink-0">
+                            <button 
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 if (!service.isPaid) {
+                                   setPaymentType('revenue');
+                                   setPaymentService(service);
+                                 }
+                              }}
+                              disabled={service.isPaid}
+                              className={cn(
+                              "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full outline-none transition-colors",
+                              service.isPaid
+                                ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                                : "bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 cursor-pointer"
+                            )}>
+                              {service.isPaid ? 'Cobrado' : 'Cobrar (CxC)'}
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 if (service.isCostPaid === false) {
+                                   setPaymentType('cost');
+                                   setPaymentService(service);
+                                 }
+                              }}
+                              disabled={service.isCostPaid !== false}
+                              className={cn(
+                              "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full outline-none transition-colors",
+                              service.isCostPaid !== false
+                                ? "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
+                                : "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 cursor-pointer"
+                            )}>
+                              {service.isCostPaid !== false ? 'Costo Pago' : 'Pagar Costo'}
+                            </button>
+                          </div>
                         </div>
                         {service.clientContact && (
                           <p className="text-[10px] text-slate-500 font-mono">
@@ -800,17 +905,92 @@ export function DigitalServices() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-4 bg-indigo-50/50 border border-dashed border-slate-200/50 rounded-xl">
-                  <input 
-                    type="checkbox"
-                    id="isPaidCheck"
-                    checked={formData.isPaid}
-                    onChange={(e) => setFormData({...formData, isPaid: e.target.checked})}
-                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                  />
-                  <label htmlFor="isPaidCheck" className="text-xs font-bold text-slate-600 cursor-pointer select-none">
-                    Marcar como pagado (El cliente ya canceló este servicio digital)
-                  </label>
+                <div className={cn("p-4 border border-dashed rounded-2xl space-y-4", isDark ? "border-slate-800 bg-slate-950/20" : "border-slate-200 bg-slate-50/50")}>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 block">Flujo de Cobro (Cobranza Cliente)</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, isPaid: true }))}
+                        className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
+                          formData.isPaid
+                            ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                        )}
+                      >
+                        Cobrado
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, isPaid: false, revenueWalletId: '' }))}
+                        className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
+                          !formData.isPaid
+                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                        )}
+                      >
+                        Pendiente (CxC)
+                      </button>
+                    </div>
+
+                    {formData.isPaid && (
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Billetera de Destino (Ingreso)</label>
+                        <select 
+                          required={formData.isPaid}
+                          value={formData.revenueWalletId}
+                          onChange={(e) => setFormData(prev => ({ ...prev, revenueWalletId: e.target.value }))}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200")}
+                        >
+                          <option value="">Seleccione Billetera...</option>
+                          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-dashed border-slate-200/50 dark:border-slate-800">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-rose-500 block">Flujo de Inversión (Pago Proveedor)</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, isCostPaid: true }))}
+                        className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
+                          formData.isCostPaid
+                            ? "bg-indigo-600 text-white border-indigo-650 shadow-sm"
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                        )}
+                      >
+                        Pagado
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, isCostPaid: false, costWalletId: '' }))}
+                        className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
+                          !formData.isCostPaid
+                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                        )}
+                      >
+                        Pendiente (CxP)
+                      </button>
+                    </div>
+
+                    {formData.isCostPaid && (
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Billetera de Origen (Egreso)</label>
+                        <select 
+                          required={formData.isCostPaid}
+                          value={formData.costWalletId}
+                          onChange={(e) => setFormData(prev => ({ ...prev, costWalletId: e.target.value }))}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200")}
+                        >
+                          <option value="">Seleccione Billetera...</option>
+                          {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <button 
@@ -1014,16 +1194,24 @@ export function DigitalServices() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPaymentService(null)} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="flex justify-between items-center mb-6">
-                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Registrar Cobro</h3>
+                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                   {paymentType === 'revenue' ? 'Registrar Cobro de Venta' : 'Registrar Pago de Costo'}
+                 </h3>
                  <button onClick={() => setPaymentService(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
               </div>
               <div className="space-y-4">
                  <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl">
-                   <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">Valor a Cobrar (PVP)</p>
-                   <p className="text-2xl font-black font-mono text-indigo-700 dark:text-indigo-400">{formatCurrency(paymentService.revenue)}</p>
+                   <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">
+                     {paymentType === 'revenue' ? 'Valor a Cobrar (PVP)' : 'Valor de Costo a Pagar'}
+                   </p>
+                   <p className="text-2xl font-black font-mono text-indigo-700 dark:text-indigo-400">
+                     {formatCurrency(paymentType === 'revenue' ? paymentService.revenue : (paymentService.cost || 0))}
+                   </p>
                  </div>
                  <div className="space-y-1.5">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Destino (Ingreso)</label>
+                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+                     {paymentType === 'revenue' ? 'Billetera de Destino (Ingreso)' : 'Billetera de Origen (Egreso)'}
+                   </label>
                    <select 
                      value={targetWalletId}
                      onChange={e => setTargetWalletId(e.target.value)}
@@ -1039,7 +1227,7 @@ export function DigitalServices() {
                    className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
                  >
                    {isProcessingPayment ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5"/>}
-                   Confirmar Cobro
+                   {paymentType === 'revenue' ? 'Confirmar Cobro' : 'Confirmar Pago'}
                  </button>
               </div>
             </motion.div>
