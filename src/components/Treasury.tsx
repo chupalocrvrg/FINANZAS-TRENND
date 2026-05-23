@@ -218,34 +218,26 @@ export function Treasury() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 animate-fade-in">
         {wallets.length > 0 ? wallets.map(wallet => (
           <motion.div 
-            whileHover={{ y: -2 }}
+            whileHover={{ y: -1, scale: 1.01 }}
             key={wallet.id}
             onClick={() => setSelectedWalletForDetail(wallet)}
             className={cn(
-              "p-6 rounded-3xl border relative overflow-hidden group transition-all duration-300 cursor-pointer",
-              isDark ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200 shadow-sm hover:border-slate-300"
+              "p-3 rounded-2xl border transition-all duration-300 cursor-pointer text-left flex flex-col justify-between min-h-[72px]",
+              isDark ? "bg-slate-900/60 border-slate-800/80 hover:border-indigo-500/40" : "bg-white border-slate-200/80 shadow-xs hover:border-indigo-500/30 hover:shadow-sm"
             )}
           >
-            <div className="relative z-10 text-left">
-              <div className="flex items-center justify-between mb-4">
-                <div className={cn("p-2.5 rounded-xl border transition-colors", isDark ? "bg-slate-800 text-slate-500 group-hover:text-indigo-400 border-slate-700" : "bg-slate-50 text-slate-400 group-hover:text-indigo-500 border-slate-100")}>
-                  {wallet.type === 'cash' && <WalletIcon className="w-5 h-5" />}
-                  {wallet.type === 'bank' && <Building2 className="w-5 h-5" />}
-                  {wallet.type === 'digital_wallet' && <CreditCard className="w-5 h-5" />}
-                </div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  {wallet.type === 'digital_wallet' ? 'Virtual' : wallet.type === 'cash' ? 'Efectivo' : 'Banco'}
-                </div>
-              </div>
-              <p className="text-slate-500 font-black text-[10px] uppercase tracking-widest mb-1">{wallet.name}</p>
-              <h4 className={cn("text-xl lg:text-2xl font-bold tracking-tighter font-mono", isDark ? "text-white" : "text-slate-900")}>{formatCurrency(wallet.balance)}</h4>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block truncate">
+              {wallet.name}
+            </span>
+            <div className={cn("text-base font-extrabold tracking-tight font-sans mt-0.5", isDark ? "text-white" : "text-slate-900")}>
+              {formatCurrency(wallet.balance)}
             </div>
           </motion.div>
         )) : (
-          <div className="lg:col-span-3 py-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px] border border-dashed rounded-3xl">
+          <div className="col-span-full py-6 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px] border border-dashed rounded-2xl">
             No hay billeteras configuradas.
           </div>
         )}

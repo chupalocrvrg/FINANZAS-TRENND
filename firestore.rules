@@ -33,32 +33,31 @@ service cloud.firestore {
     }
     
     function isValidEntity(data) {
-      return data.keys().hasAll(['id', 'name', 'type', 'ownerId']) &&
-             data.id is string && data.id.size() <= 64 &&
+      return data.keys().hasAll(['name', 'type', 'ownerId']) &&
              data.name is string && data.name.size() <= 100 &&
              data.type in ['client', 'intermediary', 'supplier'] &&
              data.ownerId == request.auth.uid;
     }
     
     function isValidTransaction(data) {
-      return data.keys().hasAll(['id', 'intermediaryId', 'ownerId']) &&
+      return data.keys().hasAll(['intermediaryId', 'ownerId', 'chargedRate', 'isPaid']) &&
              data.ownerId == request.auth.uid &&
              data.chargedRate is number &&
              data.isPaid is bool;
     }
     
     function isValidWallet(data) {
-      return data.keys().hasAll(['id', 'name', 'type', 'ownerId']) &&
+      return data.keys().hasAll(['name', 'type', 'ownerId', 'balance']) &&
              data.ownerId == request.auth.uid &&
              data.type in ['cash', 'bank', 'digital_wallet'] &&
              data.balance is number;
     }
     
     function isValidLedger(data) {
-      return data.keys().hasAll(['id', 'type', 'amount', 'walletId', 'ownerId']) &&
+      return data.keys().hasAll(['amount', 'walletId', 'ownerId']) &&
              data.ownerId == request.auth.uid &&
-             data.type in ['personal', 'business'] &&
-             data.amount is number;
+             data.amount is number &&
+             (!('type' in data) || data.type in ['personal', 'business']);
     }
 
     // ---- RULES ----
@@ -102,6 +101,10 @@ service cloud.firestore {
       allow read, delete: if isOwner(resource.data.ownerId);
       allow create: if incoming().ownerId == request.auth.uid;
       allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid;
+
+      match /service_history/{historyId} {
+        allow read, write: if isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId);
+      }
     }
     
     match /digital_catalog/{catalogId} {

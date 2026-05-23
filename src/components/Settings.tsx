@@ -23,6 +23,7 @@ export function Settings() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [walletForm, setWalletForm] = useState({ id: '', name: '', type: 'bank', balance: '0' });
+  const [showRegisteredWallets, setShowRegisteredWallets] = useState(false);
   const isDark = settings?.theme === 'dark';
 
   useEffect(() => {
@@ -241,47 +242,71 @@ export function Settings() {
         <motion.section 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
+          className="space-y-4"
         >
           <div className="flex items-center justify-between border-b border-indigo-100/20 pb-2">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-slate-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-black">Cuentas Bancarias y Billeteras</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-extrabold">Cuentas Bancarias y Billeteras</h2>
             </div>
             <button 
               onClick={() => { resetWalletForm(); setIsWalletModalOpen(true); }}
               className="text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-950/80 flex items-center gap-1 transition-colors cursor-pointer border border-indigo-500/20"
             >
-              <Plus className="w-3.5 h-3.5" /> Agregar Cuenta
+              <Plus className="w-3.5 h-3.5" /> Añadir
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {wallets.map(w => (
-              <div key={w.id} className={cn("p-4 border rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all", isDark ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-100")}>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{w.type === 'bank' ? 'Banco' : w.type === 'cash' ? 'Efectivo' : 'Digital'}</span>
-                  <p className={cn("font-bold", isDark ? "text-slate-100" : "text-slate-800")}>{w.name}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => handleEditWallet(w)} 
-                    title="Editar cuenta"
-                    className="p-2 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteWallet(w.id)} 
-                    title="Eliminar de forma definitiva"
-                    className="p-2 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4"/>
-                  </button>
-                </div>
-              </div>
-            ))}
-            {wallets.length === 0 && <div className="col-span-2 py-8 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">No hay cuentas configuradas</div>}
+
+          <div className={cn("p-4 rounded-2xl flex items-center justify-between border transition-all", isDark ? "bg-slate-900/20 border-slate-800/60" : "bg-slate-50/50 border-slate-100")}>
+            <span className={cn("text-xs font-bold", isDark ? "text-slate-350" : "text-slate-600")}>
+              Mostrar cuentas registradas
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowRegisteredWallets(!showRegisteredWallets)}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                showRegisteredWallets ? "bg-indigo-600" : (isDark ? "bg-slate-800" : "bg-slate-200")
+              )}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  showRegisteredWallets ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
           </div>
+
+          <AnimatePresence>
+            {showRegisteredWallets && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  {wallets.map(w => (
+                    <div key={w.id} className={cn("p-4 border rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all", isDark ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-100")}>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{w.type === 'bank' ? 'Banco' : w.type === 'cash' ? 'Efectivo' : 'Digital'}</span>
+                        <p className={cn("font-bold text-sm", isDark ? "text-slate-100" : "text-slate-800")}>{w.name}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleEditWallet(w)} 
+                        title="Editar cuenta"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer border border-indigo-500/10 transition-colors"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" /> Editar
+                      </button>
+                    </div>
+                  ))}
+                  {wallets.length === 0 && <div className="col-span-2 py-8 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">No hay cuentas configuradas</div>}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.section>
 
         {sections.map((section) => (
@@ -344,7 +369,7 @@ export function Settings() {
               Última Sincronización: {settings?.updatedAt ? new Date(settings.updatedAt).toLocaleString() : 'Nunca'}
             </span>
             <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase mt-1">
-              Control Financiero • Versión 1.1.3
+              Control Financiero • Versión 2.3.8
             </span>
           </div>
           <button 
@@ -388,6 +413,21 @@ export function Settings() {
                 <button disabled={isSubmitting} type="submit" className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-700 cursor-pointer">
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {walletForm.id ? 'Guardar Cambios' : 'Registrar Cuenta'}
                 </button>
+                {walletForm.id && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm("¿Está seguro de que desea eliminar esta billetera de forma definitiva?")) {
+                        await handleDeleteWallet(walletForm.id);
+                        setIsWalletModalOpen(false);
+                        resetWalletForm();
+                      }
+                    }}
+                    className="w-full mt-2 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 p-4 rounded-2xl text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border border-rose-500/20 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Eliminar Billetera
+                  </button>
+                )}
               </form>
             </motion.div>
           </div>
