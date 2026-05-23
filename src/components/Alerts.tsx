@@ -266,7 +266,7 @@ export function Alerts() {
                       
                       const cleanPhone = alert.contact.replace(/\D/g, '');
                       if (!cleanPhone) {
-                        alert("No hay teléfono de WhatsApp válido guardado para este cliente. Por favor regístrelo en CRM o en el Servicio Digital para automatizar.");
+                        window.alert("No hay teléfono de WhatsApp válido guardado para este cliente. Por favor regístrelo en CRM o en el Servicio Digital para automatizar.");
                         return;
                       }
                       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');

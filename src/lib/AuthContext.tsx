@@ -15,6 +15,7 @@ interface UserSettings {
   phone: string;
   referral: string;
   biometricEnabled: boolean;
+  biometricCredentialId?: string;
   autoLockTimer: number; // minutes: 0 means Never, 1, 5, 10
   isOnboarded: boolean;
   updatedAt: string;

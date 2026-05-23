@@ -74,6 +74,8 @@ export interface LedgerEntry {
   isPending?: boolean;
   dueDate?: string; // Fecha de pago programada (if pending or recurring)
   installments?: number; // Cuotas a pagar
+  isCreditCardPayment?: boolean;
+  targetWalletId?: string;
 }
 
 export interface DashboardStats {

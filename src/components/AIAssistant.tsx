@@ -31,7 +31,8 @@ export function AIAssistant() {
     setIsTyping(true);
 
     try {
-      const response = await fetch('/api/assistant', {
+      const apiUrl = (import.meta as any).env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/assistant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

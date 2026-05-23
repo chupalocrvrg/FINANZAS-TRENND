@@ -69,31 +69,33 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUser(incoming());
+      allow delete: if isOwner(userId);
     }
     
     match /entities/{entityId} {
       allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid;
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid;
+      allow create: if incoming().ownerId == request.auth.uid && isValidEntity(incoming());
+      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidEntity(incoming());
     }
     
     match /transactions/{txId} {
       allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid;
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid;
+      allow create: if incoming().ownerId == request.auth.uid && isValidTransaction(incoming());
+      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidTransaction(incoming());
     }
     
     match /wallets/{walletId} {
       allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid;
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid;
+      allow create: if incoming().ownerId == request.auth.uid && isValidWallet(incoming());
+      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidWallet(incoming());
     }
     
     match /ledger/{entryId} {
       allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid;
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid;
+      allow create: if incoming().ownerId == request.auth.uid && isValidLedger(incoming());
+      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidLedger(incoming());
     }
 
     match /digital_services/{serviceId} {
