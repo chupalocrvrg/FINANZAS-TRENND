@@ -32,7 +32,14 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  const [txCount, setTxCount] = useState(0);
+  const [serAlertCount, setSerAlertCount] = useState(0);
   const [isLocked, setIsLocked] = useState(true);
+
+  // Combine counts for notifications
+  useEffect(() => {
+    setNotifCount(txCount + serAlertCount);
+  }, [txCount, serAlertCount]);
 
   useEffect(() => {
     if (!loading) {
@@ -76,52 +83,60 @@ export default function App() {
     };
   }, [user, onboarding, settings?.autoLockTimer, settings]);
 
+  // Escuchar transacciones impagas
   useEffect(() => {
     if (!user) return;
 
-    // Escuchar transacciones impagas
     const qTxs = query(collection(db, 'transactions'), where('ownerId', '==', user.uid), where('isPaid', '==', false));
     const unsubTxs = onSnapshot(qTxs, (txSnap) => {
-      const txCount = txSnap.size;
-
-      // Escuchar servicios digitales
-      const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
-      const unsubSer = onSnapshot(qSer, (serSnap) => {
-        const now = new Date();
-        let serAlertCount = 0;
-        let approachingServices: string[] = [];
-
-        serSnap.docs.forEach(doc => {
-          const ser = doc.data();
-          if (ser.status === 'expired') {
-            serAlertCount++;
-          } else if (ser.expirationDate) {
-            const expiry = new Date(ser.expirationDate);
-            const diffTime = expiry.getTime() - now.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays >= 0 && diffDays <= 7) {
-              serAlertCount++;
-              approachingServices.push(ser.name);
-            }
-          }
-        });
-
-        // Trigger push notification once per session if there are expirations approaching
-        if (approachingServices.length > 0 && !sessionStorage.getItem('expiration_notified')) {
-           sendLocalPushNotification(
-             'Aviso de Vencimiento ⚠️', 
-             `Tienes ${approachingServices.length} servicios por vencer pronto (Ej: ${approachingServices[0]}).`
-           );
-           sessionStorage.setItem('expiration_notified', 'true');
-        }
-
-        setNotifCount(txCount + serAlertCount);
-      });
-
-      return () => unsubSer();
+      setTxCount(txSnap.size);
+    }, (error) => {
+      console.error("Error listening transactions:", error);
     });
 
     return () => unsubTxs();
+  }, [user]);
+
+  // Escuchar servicios digitales
+  useEffect(() => {
+    if (!user) return;
+
+    const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
+    const unsubSer = onSnapshot(qSer, (serSnap) => {
+      const now = new Date();
+      let count = 0;
+      let approachingServices: string[] = [];
+
+      serSnap.docs.forEach(doc => {
+        const ser = doc.data();
+        if (ser.status === 'expired') {
+          count++;
+        } else if (ser.expirationDate) {
+          const expiry = new Date(ser.expirationDate);
+          const diffTime = expiry.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0 && diffDays <= 7) {
+            count++;
+            approachingServices.push(ser.name);
+          }
+        }
+      });
+
+      // Trigger push notification once per session if there are expirations approaching
+      if (approachingServices.length > 0 && !sessionStorage.getItem('expiration_notified')) {
+         sendLocalPushNotification(
+           'Aviso de Vencimiento ⚠️', 
+           `Tienes ${approachingServices.length} servicios por vencer pronto (Ej: ${approachingServices[0]}).`
+         );
+         sessionStorage.setItem('expiration_notified', 'true');
+      }
+
+      setSerAlertCount(count);
+    }, (error) => {
+      console.error("Error listening digital services:", error);
+    });
+
+    return () => unsubSer();
   }, [user]);
 
   if (!isLoaded) return (
@@ -228,7 +243,7 @@ export default function App() {
                 className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-700 font-bold border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-colors"
                 title="Settings"
               >
-                {settings?.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
+                {settings?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
               </div>
             </div>
           </div>
