@@ -50,6 +50,7 @@ export interface Transaction {
   baseCost: number; // default $5.00
   chargedRate: number; // from intermediary.rate
   isPaid: boolean;
+  status: 'pending' | 'realized';
   liquidationId?: string;
   createdAt: string;
 }
@@ -69,6 +70,10 @@ export interface LedgerEntry {
   description: string;
   walletId: string;
   date: string;
+  isRecurring?: boolean;
+  isPending?: boolean;
+  dueDate?: string; // Fecha de pago programada (if pending or recurring)
+  installments?: number; // Cuotas a pagar
 }
 
 export interface DashboardStats {

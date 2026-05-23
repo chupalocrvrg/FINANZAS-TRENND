@@ -19,6 +19,7 @@ import { LockScreen } from './components/LockScreen';
 import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
+import { requestNotificationPermission, setupMessageListener, sendLocalPushNotification } from './lib/notifications';
 import { Bell, Menu, X, ChevronDown } from 'lucide-react';
 import { cn } from './lib/utils';
 import { db } from './lib/firebase';
@@ -38,6 +39,13 @@ export default function App() {
       setIsLoaded(true);
     }
   }, [loading]);
+
+  useEffect(() => {
+    if (user) {
+      requestNotificationPermission();
+      setupMessageListener();
+    }
+  }, [user]);
 
   // Temporizador de inactividad que bloquea el sistema
   useEffect(() => {
@@ -81,6 +89,8 @@ export default function App() {
       const unsubSer = onSnapshot(qSer, (serSnap) => {
         const now = new Date();
         let serAlertCount = 0;
+        let approachingServices: string[] = [];
+
         serSnap.docs.forEach(doc => {
           const ser = doc.data();
           if (ser.status === 'expired') {
@@ -89,11 +99,21 @@ export default function App() {
             const expiry = new Date(ser.expirationDate);
             const diffTime = expiry.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays <= 7) {
+            if (diffDays >= 0 && diffDays <= 7) {
               serAlertCount++;
+              approachingServices.push(ser.name);
             }
           }
         });
+
+        // Trigger push notification once per session if there are expirations approaching
+        if (approachingServices.length > 0 && !sessionStorage.getItem('expiration_notified')) {
+           sendLocalPushNotification(
+             'Aviso de Vencimiento ⚠️', 
+             `Tienes ${approachingServices.length} servicios por vencer pronto (Ej: ${approachingServices[0]}).`
+           );
+           sessionStorage.setItem('expiration_notified', 'true');
+        }
 
         setNotifCount(txCount + serAlertCount);
       });

@@ -349,7 +349,7 @@ export function Settings() {
               Última Sincronización: {settings?.updatedAt ? new Date(settings.updatedAt).toLocaleString() : 'Nunca'}
             </span>
             <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase mt-1">
-              Control Financiero • Versión Beta 1.0.0
+              Control Financiero • Versión 1.1.3
             </span>
           </div>
           <button 

@@ -86,9 +86,19 @@ export function Dashboard() {
       setWallets(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
-    // Cuentas por Cobrar (Transactions matches isPaid == false)
-    const unsubReceivables = onSnapshot(query(collection(db, 'transactions'), where('ownerId', '==', user.uid), where('isPaid', '==', false)), (snap) => {
-      setReceivables(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+    // Cuentas por Cobrar (Transactions + DigitalServices matches isPaid == false)
+    const unsubReceivablesTx = onSnapshot(query(collection(db, 'transactions'), where('ownerId', '==', user.uid), where('isPaid', '==', false)), (snap) => {
+      setReceivables(prev => {
+        const others = prev.filter(p => !p.isTx);
+        return [...others, ...snap.docs.map(d => ({ id: d.id, isTx: true, ...(d.data() as any) }))];
+      });
+    });
+
+    const unsubReceivablesDs = onSnapshot(query(collection(db, 'digital_services'), where('ownerId', '==', user.uid), where('isPaid', '==', false)), (snap) => {
+      setReceivables(prev => {
+        const others = prev.filter(p => p.isTx);
+        return [...others, ...snap.docs.map(d => ({ id: d.id, isTx: false, chargedRate: d.data().revenue, finalClientName: d.data().clientName, warehouse: d.data().name, ...(d.data() as any) }))];
+      });
     });
 
     // Cuentas por Pagar (Ledger where isPending == true and amount < 0)
@@ -101,7 +111,7 @@ export function Dashboard() {
       setEntities(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
-    return () => { unsubWallets(); unsubReceivables(); unsubPayables(); unsubEntities(); };
+    return () => { unsubWallets(); unsubReceivablesTx(); unsubReceivablesDs(); unsubPayables(); unsubEntities(); };
   }, [user]);
 
   const totalReceivables = receivables.reduce((sum, tx) => sum + (tx.chargedRate || 0), 0);

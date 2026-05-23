@@ -9,27 +9,40 @@ import {
   X,
   Save,
   Loader2,
-  Trash2
+  Trash2,
+  Wallet,
+  Edit2
 } from 'lucide-react';
-import { Transaction, Entity } from '../types';
+import { Transaction, Entity, Wallet as WalletType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, orderBy, increment } from 'firebase/firestore';
 
 export function Transactions() {
   const { user, settings } = useAuth();
   const [selectedIntermediary, setSelectedIntermediary] = useState<string>('all');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [intermediaries, setIntermediaries] = useState<Entity[]>([]);
+  const [wallets, setWallets] = useState<WalletType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Payment processing state
+  const [paymentTx, setPaymentTx] = useState<Transaction | null>(null);
+  const [targetWalletId, setTargetWalletId] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
+  // Success Message
+  const [successMsg, setSuccessMsg] = useState({show: false, phone: '', text: ''});
 
   const [formData, setFormData] = useState({
+    id: '',
     intermediaryId: '',
     finalClientName: '',
     warehouse: '',
+    isPaid: false
   });
 
   const isDark = settings?.theme === 'dark';
@@ -55,9 +68,15 @@ export function Transactions() {
       setLoading(false);
     });
 
+    const qWallets = query(collection(db, 'wallets'), where('ownerId', '==', user.uid));
+    const unsubWallets = onSnapshot(qWallets, (snapshot) => {
+      setWallets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WalletType)));
+    });
+
     return () => {
       unsubEnt();
       unsubTx();
+      unsubWallets();
     };
   }, [user]);
 
@@ -98,38 +117,94 @@ export function Transactions() {
 
     // Reset UI state immediately
     setIsModalOpen(false);
-    setFormData({ intermediaryId: '', finalClientName: '', warehouse: '' });
+    const editingId = formData.id;
+    setFormData({ id: '', intermediaryId: '', finalClientName: '', warehouse: '', isPaid: false });
     setIsSubmitting(false);
 
     try {
-      addDoc(collection(db, 'transactions'), {
-        intermediaryId,
-        intermediaryName,
-        finalClientName,
-        warehouse,
-        billingDate: new Date().toISOString().split('T')[0],
-        baseCost: 5.0,
-        chargedRate,
-        isPaid: false,
-        ownerId: user.uid,
-        createdAt: new Date().toISOString()
-      }).catch(err => console.error("Error creating transaction:", err));
+      if (editingId) {
+        await updateDoc(doc(db, 'transactions', editingId), {
+          intermediaryId,
+          intermediaryName,
+          finalClientName,
+          warehouse,
+          chargedRate,
+          isPaid: formData.isPaid,
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        await addDoc(collection(db, 'transactions'), {
+          intermediaryId,
+          intermediaryName,
+          finalClientName,
+          warehouse,
+          billingDate: new Date().toISOString().split('T')[0],
+          baseCost: 5.0,
+          chargedRate,
+          isPaid: formData.isPaid,
+          status: 'pending',
+          ownerId: user.uid,
+          createdAt: new Date().toISOString()
+        });
+        
+        const phone = inter?.contact || '';
+        const text = `Hola *${inter?.name || 'Distribuidor'}*, confirmamos que la actualización ANT para el cliente *${finalClientName}* (${warehouse}) se ha procedido a registrar exitosamente ✅.\n\nValor a cancelar: *${formatCurrency(chargedRate)}*.\n\nGracias por confiar en nosotros.`;
+        setSuccessMsg({ show: true, phone, text });
+      }
     } catch (error) {
       console.error(error);
       alert("Error al iniciar el guardado de datos.");
     }
   };
 
-  const togglePaid = async (tx: Transaction) => {
-    await updateDoc(doc(db, 'transactions', tx.id), {
-      isPaid: !tx.isPaid
-    });
+  const processPayment = async () => {
+    if (!paymentTx || !targetWalletId) return;
+    setIsProcessingPayment(true);
+    try {
+      await updateDoc(doc(db, 'transactions', paymentTx.id), { isPaid: true, updatedAt: new Date().toISOString() });
+      
+      await addDoc(collection(db, 'ledger'), {
+        amount: paymentTx.chargedRate,
+        category: 'Cobro de Actualización ANT',
+        description: `Cobro a ${paymentTx.intermediaryName} por ${paymentTx.finalClientName}`,
+        date: new Date().toISOString().split('T')[0],
+        walletId: targetWalletId,
+        isExpense: false,
+        ownerId: user!.uid,
+        createdAt: new Date().toISOString()
+      });
+
+      await updateDoc(doc(db, 'wallets', targetWalletId), {
+        balance: increment(paymentTx.chargedRate)
+      });
+      
+      setPaymentTx(null);
+      setTargetWalletId('');
+    } catch (e) {
+      console.error("Error validando pago", e);
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleToggleRealized = async (tx: Transaction) => {
+    const nextStatus = tx.status === 'realized' ? 'pending' : 'realized';
+    await updateDoc(doc(db, 'transactions', tx.id), { status: nextStatus, updatedAt: new Date().toISOString() });
+    
+    if (nextStatus === 'realized') {
+      const inter = intermediaries.find(i => i.id === tx.intermediaryId);
+      const phone = inter?.contact || '';
+      if (phone) {
+        const text = `Hola *${inter?.name || tx.intermediaryName}*, confirmamos que la actualización ANT para el cliente *${tx.finalClientName}* (${tx.warehouse}) se ha realizado con ÉXITO ✅.\n\nGracias por confiar en nosotros.`;
+        if (confirm("Actualización marcada como realizada. ¿Desea notificar al intermediario por WhatsApp ahora?")) {
+          window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+        }
+      }
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("¿Eliminar registro?")) {
-      await deleteDoc(doc(db, 'transactions', id));
-    }
+    await deleteDoc(doc(db, 'transactions', id));
   };
 
   return (
@@ -142,7 +217,10 @@ export function Transactions() {
           <p className="text-slate-500 font-medium">Registro de datos transaccionales y liquidación de intermediarios.</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setFormData({ id: '', intermediaryId: '', finalClientName: '', warehouse: '', isPaid: false });
+            setIsModalOpen(true);
+          }}
           className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95"
         >
           <Plus className="w-5 h-5" />
@@ -181,7 +259,8 @@ export function Transactions() {
                 <th className="px-6 lg:px-8 py-4">Intermediario</th>
                 <th className="px-6 lg:px-8 py-4">Fecha</th>
                 <th className="px-6 lg:px-8 py-4 text-right">Tarifa</th>
-                <th className="px-6 lg:px-8 py-4 text-center">Estado</th>
+                <th className="px-6 lg:px-8 py-4">Status Act.</th>
+                <th className="px-6 lg:px-8 py-4 text-center">Pago</th>
                 <th className="px-6 lg:px-8 py-4 text-right">Acciones</th>
               </tr>
             </thead>
@@ -209,9 +288,31 @@ export function Transactions() {
                   <td className={cn("px-6 lg:px-8 py-4 text-right font-mono font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
                     {formatCurrency(tx.chargedRate)}
                   </td>
+                  <td className="px-6 lg:px-8 py-4">
+                    <button 
+                      onClick={() => handleToggleRealized(tx)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-1 mx-auto",
+                        tx.status === 'realized'
+                          ? (isDark ? "bg-indigo-950/30 text-indigo-500 border-indigo-900/50 hover:bg-indigo-900/50" : "bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100") 
+                          : (isDark ? "bg-amber-950/30 text-amber-500 border-amber-900/50 hover:bg-amber-900/50" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100")
+                      )}
+                    >
+                      {tx.status === 'realized' ? <><CheckCircle2 className="w-3.5 h-3.5" /> Realizada</> : <><MoreHorizontal className="w-3.5 h-3.5" /> Pendiente</>}
+                    </button>
+                  </td>
                   <td className="px-6 lg:px-8 py-4 text-center">
                     <button 
-                      onClick={() => togglePaid(tx)}
+                      onClick={() => {
+                        if (!tx.isPaid) {
+                          setPaymentTx(tx);
+                        } else {
+                          // Un-paying not fully supported with wallet deduction yet, just visual toggle initially
+                          // But we disable it for simplicity or show alert. Let's do nothing on paid.
+                          // Or we could revert it, but it gets complicated. Let's just alert.
+                          if(confirm("El pago ya fue registrado en caja. No puede desmarcarlo desde aquí.")) return;
+                        }
+                      }}
                       className={cn(
                         "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-1 mx-auto",
                         tx.isPaid 
@@ -243,8 +344,25 @@ export function Transactions() {
                         </button>
                       )}
                       <button 
+                        onClick={() => {
+                          setFormData({
+                            id: tx.id,
+                            intermediaryId: tx.intermediaryId,
+                            finalClientName: tx.finalClientName,
+                            warehouse: tx.warehouse,
+                            isPaid: tx.isPaid
+                          });
+                          setIsModalOpen(true);
+                        }}
+                        className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                        title="Modificar"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
                         onClick={() => handleDelete(tx.id)}
                         className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                        title="Eliminar"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -278,8 +396,13 @@ export function Transactions() {
               className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Nueva Actualización ANT</h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                  {formData.id ? "Modificar Actualización" : "Nueva Actualización ANT"}
+                </h3>
+                <button onClick={() => {
+                  setIsModalOpen(false);
+                  setFormData({ id: '', intermediaryId: '', finalClientName: '', warehouse: '', isPaid: false });
+                }} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <X />
                 </button>
               </div>
@@ -320,6 +443,19 @@ export function Transactions() {
                   />
                 </div>
 
+                <div className="flex items-center gap-3 p-4 bg-indigo-50/50 border border-dashed border-slate-200/50 rounded-xl">
+                  <input 
+                    type="checkbox"
+                    id="isPaidCheck"
+                    checked={formData.isPaid}
+                    onChange={(e) => setFormData({...formData, isPaid: e.target.checked})}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <label htmlFor="isPaidCheck" className="text-xs font-bold text-slate-600 cursor-pointer select-none">
+                    Marcar como pagado (El cliente ya pagó o es en efectivo)
+                  </label>
+                </div>
+
                 <button 
                   disabled={isSubmitting}
                   type="submit"
@@ -329,6 +465,80 @@ export function Transactions() {
                   Confirmar Actualización
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paymentTx && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPaymentTx(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Registrar Cobro</h3>
+                 <button onClick={() => setPaymentTx(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
+              </div>
+              <div className="space-y-4">
+                 <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl">
+                   <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">Valor a Cobrar</p>
+                   <p className="text-2xl font-black font-mono text-indigo-700 dark:text-indigo-400">{formatCurrency(paymentTx.chargedRate)}</p>
+                 </div>
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Destino</label>
+                   <select 
+                     value={targetWalletId}
+                     onChange={e => setTargetWalletId(e.target.value)}
+                     className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200")}
+                   >
+                     <option value="">Seleccione Billetera / Cuenta...</option>
+                     {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                   </select>
+                 </div>
+                 <button 
+                   disabled={isProcessingPayment || !targetWalletId}
+                   onClick={processPayment}
+                   className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                 >
+                   {isProcessingPayment ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5"/>}
+                   Confirmar Cobro
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Success Notification Modal with WhatsApp Action */}
+      <AnimatePresence>
+        {successMsg.show && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-emerald-950/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }} className={cn("relative w-full max-w-sm p-6 sm:p-8 rounded-3xl border shadow-2xl z-10 flex flex-col items-center text-center", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-slate-900")}>Actualización Creada</h3>
+              <p className="text-slate-500 text-sm mb-6">El registro se guardó existosamente. ¿Desea notificar al intermediario vía WhatsApp?</p>
+              
+              <div className="flex w-full gap-3">
+                <button 
+                  onClick={() => setSuccessMsg({show: false, phone: '', text: ''})}
+                  className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest", isDark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+                >
+                  Cerrar
+                </button>
+                <button 
+                  onClick={() => {
+                     const encoded = encodeURIComponent(successMsg.text);
+                     window.open(`https://wa.me/${successMsg.phone.replace(/\D/g, '')}?text=${encoded}`, '_blank');
+                     setSuccessMsg({show: false, phone: '', text: ''});
+                  }}
+                  className="flex-1 bg-emerald-500 text-white px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4"/> WhatsApp
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

@@ -12,12 +12,16 @@ import {
   Loader2,
   Trash2,
   Search,
-  MessageCircle
+  MessageCircle,
+  CheckCircle2,
+  Wallet
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { Wallet as WalletType } from '../types';
+import { sendLocalPushNotification } from '../lib/notifications';
 
 interface Entity {
   id: string;
@@ -26,7 +30,21 @@ interface Entity {
   rate: number;
 }
 
-interface DigitalServiceItem {
+export interface CatalogItem {
+  id: string;
+  name: string;
+  category: string;
+  pvp?: number;
+  providers: {
+    supplierId: string;
+    cost: number;
+    pvp?: number; // optionally per provider instead? let's do both or just per provider. The prompt says "el PVP", I can add it to provider, or to CatalogItem. Let's add it to the provider.
+  }[];
+  createdAt: string;
+  ownerId: string;
+}
+
+export interface DigitalServiceItem {
   id: string;
   name: string;
   category: string;
@@ -42,6 +60,7 @@ interface DigitalServiceItem {
   password?: string;
   pin?: string;
   status?: 'active' | 'expired' | 'pending';
+  isPaid?: boolean;
   createdAt?: string;
 }
 
@@ -49,10 +68,24 @@ export function DigitalServices() {
   const { user, settings } = useAuth();
   const [services, setServices] = useState<DigitalServiceItem[]>([]);
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [wallets, setWallets] = useState<WalletType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [showNewCatalogForm, setShowNewCatalogForm] = useState(false);
+  const [newCatalogName, setNewCatalogName] = useState('');
+  const [activeSupplierCatalogId, setActiveSupplierCatalogId] = useState<string | null>(null);
+  const [newSupplierProv, setNewSupplierProv] = useState({ supplierId: '', cost: '', pvp: '' });
+
+  // Payment processing state
+  const [paymentService, setPaymentService] = useState<DigitalServiceItem | null>(null);
+  const [targetWalletId, setTargetWalletId] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Success Message
+  const [successMsg, setSuccessMsg] = useState({show: false, phone: '', text: ''});
 
   const [formData, setFormData] = useState({
     id: '', // for edit mode
@@ -67,7 +100,8 @@ export function DigitalServices() {
     email: '',
     password: '',
     pin: '',
-    status: 'active' as 'active' | 'expired' | 'pending'
+    status: 'active' as 'active' | 'expired' | 'pending',
+    isPaid: false
   });
 
   const isDark = settings?.theme === 'dark';
@@ -85,7 +119,17 @@ export function DigitalServices() {
       setSuppliers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entity)));
     });
 
-    return () => { unsubSer(); unsubSup(); };
+    const qCat = query(collection(db, 'digital_catalog'), where('ownerId', '==', user.uid));
+    const unsubCat = onSnapshot(qCat, (snapshot) => {
+      setCatalogItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CatalogItem)));
+    });
+
+    const qWallets = query(collection(db, 'wallets'), where('ownerId', '==', user.uid));
+    const unsubWallets = onSnapshot(qWallets, (snapshot) => {
+      setWallets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WalletType)));
+    });
+
+    return () => { unsubSer(); unsubSup(); unsubCat(); unsubWallets(); };
   }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,6 +152,7 @@ export function DigitalServices() {
       password: formData.password,
       pin: formData.pin,
       status: formData.status,
+      isPaid: formData.isPaid,
       ownerId: user.uid,
       updatedAt: new Date().toISOString()
     };
@@ -117,12 +162,21 @@ export function DigitalServices() {
         // Edit Mode
         const { updateDoc, doc } = await import('firebase/firestore');
         await updateDoc(doc(db, 'digital_services', formData.id), serviceData);
+        await logServiceHistory(formData.id, 'updated', serviceData);
       } else {
         // Create Mode
-        await addDoc(collection(db, 'digital_services'), {
+        const docRef = await addDoc(collection(db, 'digital_services'), {
           ...serviceData,
           createdAt: new Date().toISOString()
         });
+        await logServiceHistory(docRef.id, 'created', serviceData);
+        
+        // Show success modal for new sales
+        if (serviceData.clientContact) {
+            const phone = serviceData.clientContact;
+            const text = `Hola *${serviceData.clientName || 'Cliente'}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nConfirmamos la activación de tu servicio de *${serviceData.name}*.\n👤 Usuario: ${serviceData.email || 'N/A'}\n🔑 Clave: ${serviceData.password || 'N/A'}\n🔒 PIN/Mesa: ${serviceData.pin || 'N/A'}\n\nFecha de vencimiento: *${serviceData.expirationDate}*.\n\n¡Gracias por tu compra! 🎉`;
+            setSuccessMsg({ show: true, phone, text });
+        }
       }
       
       // Reset UI state immediately
@@ -150,7 +204,8 @@ export function DigitalServices() {
       email: '',
       password: '',
       pin: '',
-      status: 'active'
+      status: 'active',
+      isPaid: false
     });
   };
 
@@ -168,9 +223,23 @@ export function DigitalServices() {
       email: service.email || '',
       password: service.password || '',
       pin: service.pin || '',
-      status: service.status || 'active'
+      status: service.status || 'active',
+      isPaid: service.isPaid || false
     });
     setIsModalOpen(true);
+  };
+
+  const logServiceHistory = async (serviceId: string, action: string, details: any) => {
+    try {
+      await addDoc(collection(db, 'digital_services', serviceId, 'service_history'), {
+        action,
+        details,
+        userId: user?.uid,
+        createdAt: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error("Error logging service history:", e);
+    }
   };
 
   const handleToggleStatus = async (service: DigitalServiceItem) => {
@@ -181,8 +250,43 @@ export function DigitalServices() {
         status: nextStatus,
         updatedAt: new Date().toISOString()
       });
+      await logServiceHistory(service.id, 'status_changed', { oldStatus: service.status, newStatus: nextStatus });
     } catch (e) {
       console.error("Error toggling status:", e);
+    }
+  };
+
+  const processPayment = async () => {
+    if (!paymentService || !targetWalletId) return;
+    setIsProcessingPayment(true);
+    try {
+      await updateDoc(doc(db, 'digital_services', paymentService.id), { isPaid: true, updatedAt: new Date().toISOString() });
+      await logServiceHistory(paymentService.id, 'payment_processed', { amount: paymentService.revenue, targetWalletId });
+      
+      await addDoc(collection(db, 'ledger'), {
+        amount: paymentService.revenue,
+        category: 'Venta de Servicio Digital',
+        description: `Cobro de ${paymentService.name} a ${paymentService.clientName || 'Cliente'}`,
+        date: new Date().toISOString().split('T')[0],
+        walletId: targetWalletId,
+        isExpense: false,
+        ownerId: user!.uid,
+        createdAt: new Date().toISOString()
+      });
+
+      await updateDoc(doc(db, 'wallets', targetWalletId), {
+        balance: increment(paymentService.revenue)
+      });
+      
+      // Enviar notificacion push simulada o real de Firebase confirmando el pago
+      await sendLocalPushNotification('Pago Registrado ✅', `El servicio ${paymentService.name} cambió su estado a PAGADO.`);
+      
+      setPaymentService(null);
+      setTargetWalletId('');
+    } catch (e) {
+      console.error("Error validando pago", e);
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -209,17 +313,35 @@ export function DigitalServices() {
         expirationDate: newDateStr,
         updatedAt: new Date().toISOString()
       });
+      await logServiceHistory(service.id, 'renewed', { oldExpiration: service.expirationDate, newExpiration: newDateStr });
     } catch (e) {
       console.error("Error renewing service:", e);
     }
   };
 
   const handleSupplierChange = (supId: string) => {
-    const sup = suppliers.find(s => s.id === supId);
+    const matchedCatalogItem = catalogItems.find(c => c.name === formData.name);
+    let autoCost = formData.cost;
+    let autoRevenue = formData.revenue;
+    
+    if (matchedCatalogItem) {
+      const matchProv = matchedCatalogItem.providers.find(p => p.supplierId === supId);
+      if (matchProv) {
+         autoCost = matchProv.cost.toString();
+         if (matchProv.pvp) {
+           autoRevenue = matchProv.pvp.toString();
+         }
+      }
+    } else {
+      const sup = suppliers.find(s => s.id === supId);
+      if (sup) autoCost = sup.rate?.toString() || '0';
+    }
+
     setFormData(prev => ({
       ...prev,
       supplierId: supId,
-      cost: sup ? sup.rate.toString() : '0'
+      cost: autoCost,
+      revenue: autoRevenue
     }));
   };
 
@@ -345,9 +467,25 @@ export function DigitalServices() {
                     {/* Cliente Info */}
                     {service.clientName && (
                       <div className={cn("p-2.5 rounded-xl text-xs mb-3 flex flex-col gap-0.5", isDark ? "bg-slate-950/40" : "bg-slate-50")}>
-                        <p className={cn("font-bold truncate", isDark ? "text-slate-300" : "text-slate-800")}>
-                          👤 {service.clientName}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className={cn("font-bold truncate", isDark ? "text-slate-300" : "text-slate-800")}>
+                            👤 {service.clientName}
+                          </p>
+                          <button 
+                            onClick={(e) => {
+                               e.stopPropagation();
+                               if (!service.isPaid) setPaymentService(service);
+                            }}
+                            disabled={service.isPaid}
+                            className={cn(
+                            "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0 outline-none transition-colors",
+                            service.isPaid
+                              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                              : "bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 cursor-pointer"
+                          )}>
+                            {service.isPaid ? 'Pagado' : 'Cobrar (CxC)'}
+                          </button>
+                        </div>
                         {service.clientContact && (
                           <p className="text-[10px] text-slate-500 font-mono">
                             📞 {service.clientContact}
@@ -492,14 +630,30 @@ export function DigitalServices() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Servicio / Producto</label>
-                    <input 
+                    <select 
                       required
-                      type="text"
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={(e) => {
+                         const pickedName = e.target.value;
+                         let updateData: any = { name: pickedName };
+                         
+                         const cItem = catalogItems.find(c => c.name === pickedName);
+                         if (cItem) {
+                            updateData.category = cItem.category || 'Streaming';
+                            if (cItem.providers && cItem.providers.length === 1) {
+                               const p = cItem.providers[0];
+                               updateData.supplierId = p.supplierId;
+                               updateData.cost = p.cost.toString();
+                               if (p.pvp) updateData.revenue = p.pvp.toString();
+                            }
+                         }
+                         setFormData(prev => ({...prev, ...updateData}));
+                      }}
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
-                      placeholder="Ej. Netflix Premium 1 Pantalla"
-                    />
+                    >
+                      <option value="">Seleccionar del Catálogo...</option>
+                      {catalogItems.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Categoría</label>
@@ -610,7 +764,16 @@ export function DigitalServices() {
                     className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
                   >
                     <option value="">Seleccione un Proveedor...</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} (${s.rate})</option>)}
+                    {(() => {
+                      const matchedItem = catalogItems.find(c => c.name === formData.name);
+                      if (matchedItem && matchedItem.providers.length > 0) {
+                        return matchedItem.providers.map(p => {
+                          const sup = suppliers.find(s => s.id === p.supplierId);
+                          return <option key={p.supplierId} value={p.supplierId}>{sup?.name || p.supplierId} (Costo Catálogo: ${p.cost})</option>;
+                        });
+                      }
+                      return suppliers.map(s => <option key={s.id} value={s.id}>{s.name} (${s.rate || 0})</option>);
+                    })()}
                   </select>
                 </div>
 
@@ -637,6 +800,19 @@ export function DigitalServices() {
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-indigo-50/50 border border-dashed border-slate-200/50 rounded-xl">
+                  <input 
+                    type="checkbox"
+                    id="isPaidCheck"
+                    checked={formData.isPaid}
+                    onChange={(e) => setFormData({...formData, isPaid: e.target.checked})}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <label htmlFor="isPaidCheck" className="text-xs font-bold text-slate-600 cursor-pointer select-none">
+                    Marcar como pagado (El cliente ya canceló este servicio digital)
+                  </label>
                 </div>
 
                 <button 
@@ -675,25 +851,150 @@ export function DigitalServices() {
                   <h3 className={cn("text-2xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Catálogo Global</h3>
                   <p className="text-slate-500 text-sm">Seleccione servicios predefinidos para su inventario.</p>
                 </div>
-                <button onClick={() => setShowCatalog(false)} className="p-2 bg-slate-100 rounded-full text-slate-500 cursor-pointer">
-                  <X />
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowNewCatalogForm(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold uppercase">
+                    + Nuevo
+                  </button>
+                  <button onClick={() => setShowCatalog(false)} className="p-2 bg-slate-100/10 rounded-full text-slate-500 cursor-pointer hover:bg-slate-200/20 transition-colors">
+                    <X />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-                {['Netflix', 'Disney+', 'Spotify', 'HBO Max', 'Prime Video', 'YouTube Prem.'].map(item => (
+              {showNewCatalogForm && (
+                <div className={cn("p-4 mb-4 rounded-xl border flex items-center gap-3", isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-100")}>
+                  <input 
+                    type="text"
+                    autoFocus
+                    placeholder="Nombre del nuevo producto/servicio"
+                    value={newCatalogName}
+                    onChange={(e) => setNewCatalogName(e.target.value)}
+                    className={cn("flex-1 p-2 rounded-lg text-sm font-bold border outline-none", isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200")}
+                  />
                   <button 
-                    key={item}
                     onClick={() => {
-                      setFormData(prev => ({ ...prev, name: item }));
-                      setShowCatalog(false);
-                      setIsModalOpen(true);
-                    }}
-                    className={cn("p-4 rounded-2xl border text-center font-bold text-sm transition-all hover:border-indigo-500 hover:bg-indigo-50/50 cursor-pointer", isDark ? "border-slate-800 text-slate-300" : "border-slate-100 text-slate-600")}
+                      if (newCatalogName.trim()) {
+                        addDoc(collection(db, 'digital_catalog'), {
+                          name: newCatalogName.trim(), category: 'Streaming', providers: [], ownerId: user.uid, createdAt: new Date().toISOString()
+                        });
+                        setNewCatalogName('');
+                        setShowNewCatalogForm(false);
+                      }
+                    }} 
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold uppercase hover:bg-emerald-700"
                   >
-                    {item}
+                    Guardar
                   </button>
-                ))}
+                  <button onClick={() => setShowNewCatalogForm(false)} className="p-2 text-slate-400 hover:text-slate-600"><X className="w-4 h-4"/></button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 max-h-[60vh] overflow-y-auto">
+                {catalogItems.length > 0 ? catalogItems.map(item => (
+                  <div key={item.id} className={cn("p-4 rounded-2xl border transition-all relative flex flex-col group", isDark ? "border-slate-800 bg-slate-800/10" : "border-slate-200 bg-slate-50")}>
+                    <div className="flex justify-between items-center mb-2">
+                       <button 
+                         onClick={() => {
+                           setFormData(prev => ({ ...prev, name: item.name, category: item.category }));
+                           setShowCatalog(false);
+                           setIsModalOpen(true);
+                         }}
+                         className={cn("text-left font-bold text-sm hover:text-indigo-500", isDark ? "text-slate-200" : "text-slate-800")}
+                       >
+                         {item.name}
+                       </button>
+                       <button onClick={async () => { 
+                         // Simulated confirm using custom logic could go here, but since it's just deleting a catalog item let's keep it simple or implement a quick toggle state.
+                         // For simplicity, we just delete it directly if clicking the trash icon.
+                         await deleteDoc(doc(db, 'digital_catalog', item.id)); 
+                       }} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Trash2 className="w-4 h-4" />
+                       </button>
+                    </div>
+                    <div className="space-y-2 mt-2">
+                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center justify-between">
+                        Proveedores y Costos
+                      </p>
+                      {item.providers.length === 0 ? (
+                        <p className="text-[10px] text-slate-500">Sin proveedores</p>
+                      ) : (
+                         item.providers.map((p, idx) => {
+                           const supplierInfo = suppliers.find(s => s.id === p.supplierId);
+                           return (
+                             <div key={idx} className="flex justify-between items-center bg-black/5 p-1 px-2 rounded">
+                               <span className="text-[10px] font-bold">{supplierInfo?.name || 'Desconocido'}</span>
+                               <span className="text-[10px] font-mono text-emerald-600">C:${p.cost} | V:${p.pvp || 0}</span>
+                             </div>
+                           );
+                         })
+                      )}
+                      
+                      {activeSupplierCatalogId !== item.id ? (
+                        <button 
+                          onClick={() => setActiveSupplierCatalogId(item.id)}
+                          className="text-[10px] text-indigo-500 hover:underline font-bold mt-2"
+                        >
+                          + Añadir Proveedor
+                        </button>
+                      ) : (
+                        <div className="mt-2 space-y-2 p-2 bg-indigo-50/50 dark:bg-indigo-950/20 rounded border border-indigo-100 dark:border-indigo-900/50">
+                          <select 
+                            value={newSupplierProv.supplierId}
+                            onChange={(e) => setNewSupplierProv({...newSupplierProv, supplierId: e.target.value})}
+                            className="w-full text-xs p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
+                          >
+                            <option value="">Proveedor...</option>
+                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                          <div className="flex gap-2">
+                            <input 
+                              type="number"
+                              placeholder="Costo ($)"
+                              value={newSupplierProv.cost}
+                              onChange={(e) => setNewSupplierProv({...newSupplierProv, cost: e.target.value})}
+                              className="w-full text-xs p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
+                            />
+                            <input 
+                              type="number"
+                              placeholder="PVP ($)"
+                              value={newSupplierProv.pvp}
+                              onChange={(e) => setNewSupplierProv({...newSupplierProv, pvp: e.target.value})}
+                              className="w-full text-xs p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                               onClick={() => {
+                                 if (newSupplierProv.supplierId && newSupplierProv.cost) {
+                                    const pCost = parseFloat(newSupplierProv.cost);
+                                    const pPvp = parseFloat(newSupplierProv.pvp || '0');
+                                    const dbImport = import('firebase/firestore');
+                                    dbImport.then(({ updateDoc, doc }) => {
+                                      const updatedProv = [...item.providers, { supplierId: newSupplierProv.supplierId, cost: pCost, pvp: pPvp }];
+                                      updateDoc(doc(db, 'digital_catalog', item.id), { providers: updatedProv });
+                                    });
+                                    setActiveSupplierCatalogId(null);
+                                    setNewSupplierProv({supplierId: '', cost: '', pvp: ''});
+                                 }
+                               }}
+                               className="flex-1 bg-indigo-600 text-white text-[10px] font-bold uppercase py-1 rounded"
+                            >
+                              Guardar
+                            </button>
+                            <button 
+                               onClick={() => setActiveSupplierCatalogId(null)}
+                               className="px-2 bg-slate-200 dark:bg-slate-700 text-[10px] font-bold uppercase rounded"
+                            >
+                              <X className="w-3 h-3"/>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-slate-500 text-sm py-4 col-span-2 text-center">No hay productos en el catálogo.</p>
+                )}
               </div>
 
               <div className={cn("p-4 rounded-2xl flex items-center gap-3", isDark ? "bg-slate-800/50" : "bg-slate-50")}>
@@ -703,6 +1004,79 @@ export function DigitalServices() {
                   placeholder="Buscar en el ecosistema global..." 
                   className="bg-transparent border-none outline-none text-sm font-bold w-full"
                 />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paymentService && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPaymentService(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Registrar Cobro</h3>
+                 <button onClick={() => setPaymentService(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
+              </div>
+              <div className="space-y-4">
+                 <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl">
+                   <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">Valor a Cobrar (PVP)</p>
+                   <p className="text-2xl font-black font-mono text-indigo-700 dark:text-indigo-400">{formatCurrency(paymentService.revenue)}</p>
+                 </div>
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Destino (Ingreso)</label>
+                   <select 
+                     value={targetWalletId}
+                     onChange={e => setTargetWalletId(e.target.value)}
+                     className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-white border-slate-200")}
+                   >
+                     <option value="">Seleccione Billetera / Cuenta...</option>
+                     {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                   </select>
+                 </div>
+                 <button 
+                   disabled={isProcessingPayment || !targetWalletId}
+                   onClick={processPayment}
+                   className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                 >
+                   {isProcessingPayment ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5"/>}
+                   Confirmar Cobro
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {successMsg.show && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-emerald-950/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }} className={cn("relative w-full max-w-sm p-6 sm:p-8 rounded-3xl border shadow-2xl z-10 flex flex-col items-center text-center", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-slate-900")}>Servicio Creado</h3>
+              <p className="text-slate-500 text-sm mb-6">La venta digital se registró. ¿Desea notificar al cliente vía WhatsApp?</p>
+              
+              <div className="flex w-full gap-3">
+                <button 
+                  onClick={() => setSuccessMsg({show: false, phone: '', text: ''})}
+                  className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest", isDark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+                >
+                  Cerrar
+                </button>
+                <button 
+                  onClick={() => {
+                     const encoded = encodeURIComponent(successMsg.text);
+                     window.open(`https://wa.me/${successMsg.phone.replace(/\D/g, '')}?text=${encoded}`, '_blank');
+                     setSuccessMsg({show: false, phone: '', text: ''});
+                  }}
+                  className="flex-1 bg-emerald-500 text-white px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4"/> WhatsApp
+                </button>
               </div>
             </motion.div>
           </div>

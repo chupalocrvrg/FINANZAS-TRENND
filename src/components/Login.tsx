@@ -72,7 +72,7 @@ export function Login() {
             <LogIn className="text-white w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-tighter">Control Financiero</h1>
-          <p className="text-slate-500 text-sm mt-2 font-medium">Sistema Control Financiero (Beta 1.0.0)</p>
+          <p className="text-slate-500 text-sm mt-2 font-medium">Sistema Control Financiero (V1.1.3)</p>
         </div>
 
         <div className="space-y-3">
@@ -130,7 +130,7 @@ export function Login() {
         )}
 
         <p className="text-[10px] text-slate-400 text-center mt-8 uppercase font-bold tracking-[0.2em]">
-          Arquitectura Segura • Versión Beta 1.0.0
+          Arquitectura Segura • Versión 1.1.3
         </p>
       </motion.div>
     </div>

@@ -12,7 +12,8 @@ import {
   X,
   Save,
   Loader2,
-  Trash2
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { LedgerType, Wallet, LedgerEntry } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
@@ -28,15 +29,23 @@ export function Treasury() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [selectedWalletForDetail, setSelectedWalletForDetail] = useState<Wallet | null>(null);
+  const [editingLedgerEntry, setEditingLedgerEntry] = useState<LedgerEntry | null>(null);
 
   const [formData, setFormData] = useState({
+    id: '',
     category: '',
     amount: '',
     description: '',
     walletId: '',
     isExpense: false,
     isRecurring: false,
-    isPending: false
+    isPending: false,
+    dueDate: '',
+    installments: '1',
+    isCreditCardPayment: false,
+    targetWalletId: ''
   });
 
   const isDark = settings?.theme === 'dark';
@@ -85,36 +94,74 @@ export function Treasury() {
     const wallId = formData.isPending ? '' : formData.walletId;
     const isRec = formData.isRecurring;
     const isPend = formData.isPending;
+    const dDate = formData.dueDate;
+    const instls = parseInt(formData.installments) || 1;
+    const isCcPaid = formData.isCreditCardPayment;
+    const tWallId = formData.targetWalletId;
 
+    const editingId = formData.id;
     // Reset UI state immediately (optimistic offline-first pattern)
     setIsModalOpen(false);
-    setFormData({ category: '', amount: '', description: '', walletId: '', isExpense: false, isRecurring: false, isPending: false });
+    setFormData({ id: '', category: '', amount: '', description: '', walletId: '', isExpense: false, isRecurring: false, isPending: false, dueDate: '', installments: '1', isCreditCardPayment: false, targetWalletId: '' });
     setIsSubmitting(false);
 
     try {
-      // Create Ledger Entry and update balance in background
-      // Firebase Firestore automatically queues these writes offline and applies them locally instantly
-      const ledgerPromise = addDoc(collection(db, 'ledger'), {
-        type: activeType,
-        category: cat,
-        amount: amount,
-        description: desc,
-        walletId: wallId,
-        date: new Date().toISOString().split('T')[0],
-        ownerId: user.uid,
-        isRecurring: isRec,
-        isPending: isPend,
-        createdAt: new Date().toISOString()
-      });
-
-      if (!isPend && wallId) {
-        ledgerPromise.then(async () => {
-          await updateDoc(doc(db, 'wallets', wallId), {
-            balance: increment(amount)
-          });
-        }).catch(err => {
-          console.error("Firestore background update error:", err);
+      if (editingId && editingLedgerEntry) {
+         await updateDoc(doc(db, 'ledger', editingId), {
+            category: cat,
+            amount: amount,
+            description: desc,
+            walletId: wallId,
+            isRecurring: isRec,
+            isPending: isPend,
+            dueDate: dDate,
+            installments: instls,
+            isCreditCardPayment: isCcPaid,
+            targetWalletId: tWallId,
+            updatedAt: new Date().toISOString()
+         });
+         // Revert old
+         if (!editingLedgerEntry.isPending && editingLedgerEntry.walletId) {
+             await updateDoc(doc(db, 'wallets', editingLedgerEntry.walletId), { balance: increment(-editingLedgerEntry.amount) });
+         }
+         // Apply new
+         if (!isPend && wallId) {
+             await updateDoc(doc(db, 'wallets', wallId), { balance: increment(amount) });
+         }
+         setEditingLedgerEntry(null);
+      } else {
+        const ledgerPromise = addDoc(collection(db, 'ledger'), {
+          type: activeType,
+          category: cat,
+          amount: amount,
+          description: desc,
+          walletId: wallId,
+          date: new Date().toISOString().split('T')[0],
+          ownerId: user.uid,
+          isRecurring: isRec,
+          isPending: isPend,
+          dueDate: dDate,
+          installments: instls,
+          isCreditCardPayment: isCcPaid,
+          targetWalletId: tWallId,
+          createdAt: new Date().toISOString()
         });
+
+        if (!isPend && wallId) {
+          ledgerPromise.then(async () => {
+            await updateDoc(doc(db, 'wallets', wallId), {
+              balance: increment(amount)
+            });
+            
+            if (isCcPaid && tWallId) {
+               await updateDoc(doc(db, 'wallets', tWallId), {
+                 balance: increment(Math.abs(amount))
+               });
+            }
+          }).catch(err => {
+            console.error("Firestore background update error:", err);
+          });
+        }
       }
     } catch (error) {
       console.error(error);
@@ -176,9 +223,10 @@ export function Treasury() {
           <motion.div 
             whileHover={{ y: -2 }}
             key={wallet.id}
+            onClick={() => setSelectedWalletForDetail(wallet)}
             className={cn(
-              "p-6 rounded-3xl border relative overflow-hidden group transition-all duration-300",
-              isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"
+              "p-6 rounded-3xl border relative overflow-hidden group transition-all duration-300 cursor-pointer",
+              isDark ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200 shadow-sm hover:border-slate-300"
             )}
           >
             <div className="relative z-10 text-left">
@@ -229,8 +277,18 @@ export function Treasury() {
                   {entry.amount > 0 ? <ArrowUpCircle className="w-5 h-5" /> : <ArrowDownCircle className="w-5 h-5" />}
                 </div>
                 <div className="min-w-0">
-                  <h5 className={cn("font-bold tracking-tight text-sm truncate", isDark ? "text-slate-200" : "text-slate-800")}>{entry.category}</h5>
+                  <h5 className={cn("font-bold tracking-tight text-sm truncate flex items-center gap-2", isDark ? "text-slate-200" : "text-slate-800")}>
+                    {entry.category}
+                    {entry.isRecurring && <span className="px-1.5 py-0.5 bg-indigo-500/10 text-indigo-500 text-[8px] uppercase tracking-widest rounded">Recurrente</span>}
+                    {entry.isPending && <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] uppercase tracking-widest rounded">Pendiente</span>}
+                  </h5>
                   <p className="text-slate-500 text-xs font-medium uppercase tracking-wider truncate">{entry.description}</p>
+                  {(entry.dueDate || entry.installments) && (
+                    <p className="text-slate-400 text-[10px] font-bold mt-1">
+                      {entry.dueDate && <span>Vence/Cobro: {entry.dueDate}</span>}
+                      {entry.installments && <span className="ml-2">Cuotas: {entry.installments}</span>}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4 ml-4">
@@ -310,24 +368,72 @@ export function Treasury() {
                     value={formData.category}
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
                     className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
-                    placeholder="Ej. Proveedor Internet, Netflix, etc."
+                    placeholder="Ej. Sueldo, Internet, Netflix, etc."
                   />
                 </div>
                 
-                {formData.isExpense && (
+                <div className="flex flex-col gap-4">
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-600">
                       <input type="checkbox" checked={formData.isRecurring} onChange={e => setFormData({...formData, isRecurring: e.target.checked})} />
-                      Pago Recurrente (Tarjeta, Internet)
+                      {formData.isExpense ? 'Gasto Fijo/Recurrente' : 'Ingreso Fijo/Recurrente (Ej. Sueldo)'}
                     </label>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-600">
                       <input type="checkbox" checked={formData.isPending} onChange={e => setFormData({...formData, isPending: e.target.checked})} />
-                      Pendiente de Pago (CxP)
+                      Pendiente ({formData.isExpense ? 'CxP' : 'CxC'})
                     </label>
                   </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-4">
+                  {(formData.isRecurring || formData.isPending) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Fecha de Cobro/Pago</label>
+                        <input 
+                          required
+                          type="date"
+                          value={formData.dueDate}
+                          onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                          className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Cuotas/Veces (Opcial)</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          value={formData.installments}
+                          onChange={(e) => setFormData({...formData, installments: e.target.value})}
+                          className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.isExpense && (
+                    <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-slate-100 dark:border-slate-800/50">
+                      <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-600">
+                        <input type="checkbox" checked={formData.isCreditCardPayment} onChange={e => setFormData({...formData, isCreditCardPayment: e.target.checked})} />
+                        Es un pago a Tarjeta de Crédito (Liberar cupo)
+                      </label>
+                      {formData.isCreditCardPayment && (
+                        <div className="space-y-1.5 mt-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Tarjeta de Crédito a Pagar (Receptor)</label>
+                          <select 
+                            required={formData.isCreditCardPayment}
+                            value={formData.targetWalletId}
+                            onChange={(e) => setFormData({...formData, targetWalletId: e.target.value})}
+                            className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                          >
+                            <option value="">Seleccione Tarjeta...</option>
+                            {wallets.filter(w => w.type === 'digital_wallet').map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-6">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Monto ($)</label>
                     <input 
@@ -374,6 +480,111 @@ export function Treasury() {
                   Registrar Movimiento
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selectedWalletForDetail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedWalletForDetail(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className={cn("relative w-full max-w-2xl p-6 lg:p-8 rounded-3xl border shadow-2xl flex flex-col max-h-[85vh]", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
+            >
+              <div className="flex justify-between items-center mb-6 shrink-0">
+                <div>
+                  <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Movimientos - {selectedWalletForDetail.name}</h3>
+                  <p className="text-slate-500 font-mono font-bold mt-1">Saldo Actual: {formatCurrency(selectedWalletForDetail.balance)}</p>
+                </div>
+                <button onClick={() => setSelectedWalletForDetail(null)} className="text-slate-400 hover:text-slate-600 transition-colors self-start">
+                  <X />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 pr-2 min-h-[300px]">
+                <div className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
+                  {ledger.filter(l => l.walletId === selectedWalletForDetail.id).length === 0 ? (
+                    <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay movimientos registrados en esta billetera.</div>
+                  ) : ledger.filter(l => l.walletId === selectedWalletForDetail.id).map(entry => (
+                    <div key={entry.id} className="py-4 flex items-center justify-between group">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className={cn(
+                          "p-2.5 rounded-xl border shrink-0",
+                          entry.amount > 0 
+                            ? (isDark ? "bg-emerald-950/20 text-emerald-500 border-emerald-900/50" : "bg-emerald-50 text-emerald-500 border-emerald-100")
+                            : (isDark ? "bg-rose-950/20 text-rose-500 border-rose-900/50" : "bg-rose-50 text-rose-500 border-rose-100")
+                        )}>
+                          {entry.amount > 0 ? <ArrowUpCircle className="w-5 h-5" /> : <ArrowDownCircle className="w-5 h-5" />}
+                        </div>
+                        <div className="min-w-0">
+                          <h5 className={cn("font-bold tracking-tight text-sm truncate", isDark ? "text-slate-200" : "text-slate-800")}>{entry.category}</h5>
+                          <p className="text-slate-500 text-xs font-medium uppercase tracking-wider truncate">{entry.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 ml-4">
+                        <div className="text-right shrink-0">
+                          <p className={cn(
+                            "text-sm font-black tracking-tighter font-mono",
+                            entry.amount > 0 ? "text-emerald-500" : "text-rose-500"
+                          )}>
+                            {entry.amount > 0 ? '+' : ''}{formatCurrency(entry.amount)}
+                          </p>
+                          <p className="text-slate-500 font-mono text-[10px] font-bold uppercase">{entry.date}</p>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => {
+                              setEditingLedgerEntry(entry);
+                              setFormData({
+                                id: entry.id,
+                                category: entry.category,
+                                amount: Math.abs(entry.amount).toString(),
+                                description: entry.description || '',
+                                walletId: entry.walletId || '',
+                                isExpense: entry.amount < 0,
+                                isRecurring: entry.isRecurring || false,
+                                isPending: entry.isPending || false,
+                                dueDate: entry.dueDate || '',
+                                installments: String(entry.installments || 1),
+                                isCreditCardPayment: entry.isCreditCardPayment || false,
+                                targetWalletId: entry.targetWalletId || ''
+                              });
+                              setSelectedWalletForDetail(null);
+                              setIsModalOpen(true);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-indigo-500"
+                            title="Modificar/Mover"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (confirm("¿Eliminar registro? Esto revertirá el saldo de esta billetera.")) {
+                                await deleteDoc(doc(db, 'ledger', entry.id));
+                                if (!entry.isPending && entry.walletId) {
+                                   await updateDoc(doc(db, 'wallets', entry.walletId), { balance: increment(-entry.amount) });
+                                }
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-rose-500"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
