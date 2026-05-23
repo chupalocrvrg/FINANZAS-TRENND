@@ -27,11 +27,11 @@ async function startServer() {
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          { role: 'system', parts: [{ text: 'Eres un asistente experto para este sistema financiero llamado Control Financiero en español. Tu objetivo es ayudar al usuario a entender cómo registrar transacciones, manejar cuentas por cobrar, cuentas por pagar, productos digitales y ver sus balances de tesorería.' }] },
-          ...messages
-        ]
+        model: 'gemini-3.5-flash',
+        config: {
+          systemInstruction: 'Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es ayudar al usuario a entender cómo registrar transacciones, manejar cuentas por cobrar, cuentas por pagar, productos digitales y ver sus balances. Por favor, asegúrate de mantener tus respuestas bien estructuradas usando Markdown (usa listas, negritas para términos importantes y párrafos cortos para facilitar la lectura). Las respuestas deben tener mucho sentido, ser precisas y no saturar al usuario con bloques largos de texto.'
+        },
+        contents: messages
       });
 
       res.json({ text: response.text || "No obtuve una respuesta válida de Gemini." });

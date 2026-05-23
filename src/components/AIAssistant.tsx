@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Markdown from 'react-markdown';
 import { MessageSquare, X, Send, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -91,12 +92,21 @@ export function AIAssistant() {
               {messages.map((m, i) => (
                 <div key={i} className={cn("flex w-full", m.role === 'user' ? "justify-end" : "justify-start")}>
                   <div className={cn(
-                    "max-w-[80%] p-3 rounded-2xl text-sm font-medium",
+                    "max-w-[85%] p-3 rounded-2xl text-sm font-medium",
                     m.role === 'user' 
                       ? "bg-indigo-600 text-white rounded-tr-none" 
-                      : (isDark ? "bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700" : "bg-white text-slate-700 rounded-tl-none border border-slate-100 shadow-sm")
+                      : (isDark ? "bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700" : "bg-white text-slate-800 rounded-tl-none border border-slate-100 shadow-sm")
                   )}>
-                    {m.text}
+                    {m.role === 'model' ? (
+                      <div className={cn(
+                        "prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:text-slate-50",
+                        isDark ? "prose-invert prose-p:text-slate-300 prose-li:text-slate-300 prose-headings:text-slate-100 prose-strong:text-slate-200" : "prose-slate"
+                      )}>
+                        <Markdown>{m.text}</Markdown>
+                      </div>
+                    ) : (
+                      m.text
+                    )}
                   </div>
                 </div>
               ))}
