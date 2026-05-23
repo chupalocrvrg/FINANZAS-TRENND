@@ -347,9 +347,7 @@ export function DigitalServices() {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("¿Eliminar este servicio definitivamente?")) {
-      await deleteDoc(doc(db, 'digital_services', id));
-    }
+    await deleteDoc(doc(db, 'digital_services', id));
   };
 
   const categories = ['Streaming', 'Música', 'Gaming', 'Software', 'Otros'];

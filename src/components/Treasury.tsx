@@ -170,16 +170,16 @@ export function Treasury() {
   };
 
   const handleDelete = async (entry: LedgerEntry) => {
-    if (confirm("¿Eliminar registro? Esto revertirá el saldo en la billetera.")) {
-      try {
-        await deleteDoc(doc(db, 'ledger', entry.id));
+    try {
+      await deleteDoc(doc(db, 'ledger', entry.id));
+      if (!entry.isPending && entry.walletId) {
         await updateDoc(doc(db, 'wallets', entry.walletId), {
           balance: increment(-entry.amount)
         });
-      } catch (error) {
-        console.error(error);
-        alert("Error al eliminar.");
       }
+    } catch (error) {
+      console.error(error);
+      alert("Error al eliminar.");
     }
   };
 
@@ -568,11 +568,9 @@ export function Treasury() {
                           </button>
                           <button 
                             onClick={async () => {
-                              if (confirm("¿Eliminar registro? Esto revertirá el saldo de esta billetera.")) {
-                                await deleteDoc(doc(db, 'ledger', entry.id));
-                                if (!entry.isPending && entry.walletId) {
-                                   await updateDoc(doc(db, 'wallets', entry.walletId), { balance: increment(-entry.amount) });
-                                }
+                              await deleteDoc(doc(db, 'ledger', entry.id));
+                              if (!entry.isPending && entry.walletId) {
+                                 await updateDoc(doc(db, 'wallets', entry.walletId), { balance: increment(-entry.amount) });
                               }
                             }}
                             className="p-1.5 text-slate-400 hover:text-rose-500"

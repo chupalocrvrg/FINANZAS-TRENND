@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   TrendingUp, 
   Users, 
@@ -13,7 +13,8 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   Wallet,
-  MessageCircle
+  MessageCircle,
+  X
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -27,24 +28,28 @@ interface StatCardProps {
   trend?: string;
   trendUp?: boolean;
   variant?: 'default' | 'dark' | 'indigo';
+  onClick?: () => void;
 }
 
-function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default' }: StatCardProps) {
+function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default', onClick }: StatCardProps) {
   const { settings } = useAuth();
   const isDark = settings?.theme === 'dark';
 
   const themes = {
-    default: isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900 shadow-sm",
-    dark: "bg-slate-900 border-slate-800 text-white shadow-sm",
-    indigo: "bg-indigo-600 border-indigo-500 text-white shadow-sm"
+    default: isDark ? "bg-slate-900 border-slate-800 text-white hover:border-slate-700" : "bg-white border-slate-200 text-slate-900 shadow-sm hover:border-slate-300",
+    dark: "bg-slate-900 border-slate-800 text-white shadow-sm hover:border-slate-700",
+    indigo: "bg-indigo-600 border-indigo-500 text-white shadow-sm hover:bg-indigo-700"
   };
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -2 }}
+      onClick={onClick}
       className={cn(
         "p-5 rounded-xl border flex flex-col transition-all duration-300",
+        onClick && "cursor-pointer",
         themes[variant]
       )}
     >
@@ -75,6 +80,7 @@ export function Dashboard() {
   const [payables, setPayables] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
+  const [activeModal, setActiveModal] = useState<'wallets' | 'receivables' | 'payables' | 'entities' | null>(null);
   
   const isDark = settings?.theme === 'dark';
 
@@ -149,6 +155,7 @@ export function Dashboard() {
           icon={Wallet} 
           trend="Disponible" 
           trendUp={true} 
+          onClick={() => setActiveModal('wallets')}
         />
         <StatCard 
           label="Cuentas por Cobrar (AR)" 
@@ -156,6 +163,7 @@ export function Dashboard() {
           icon={TrendingUp} 
           trend={`${receivables.length} Pendientes`} 
           trendUp={true} 
+          onClick={() => setActiveModal('receivables')}
         />
         <StatCard 
           label="Cuentas por Pagar (AP)" 
@@ -163,6 +171,7 @@ export function Dashboard() {
           icon={Clock} 
           variant="dark"
           trend={`${payables.length} Obligaciones`} 
+          onClick={() => setActiveModal('payables')}
         />
         <StatCard 
           label="Cuentas Bancarias Active" 
@@ -170,6 +179,7 @@ export function Dashboard() {
           icon={DollarSign} 
           variant="indigo"
           trend="En sincronización" 
+          onClick={() => setActiveModal('wallets')}
         />
       </div>
 
@@ -235,6 +245,110 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {activeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveModal(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className={cn(
+                "relative w-full max-w-2xl p-6 lg:p-8 rounded-3xl border shadow-2xl flex flex-col max-h-[85vh]", 
+                isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"
+              )}
+            >
+              <div className="flex justify-between items-center mb-6 shrink-0">
+                <div>
+                  <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                    {activeModal === 'wallets' && "Caja General (Detalle)"}
+                    {activeModal === 'receivables' && "Cuentas por Cobrar (AR)"}
+                    {activeModal === 'payables' && "Cuentas por Pagar (AP)"}
+                  </h3>
+                  <p className="text-slate-500 font-mono font-bold mt-1">
+                    Total: {
+                      activeModal === 'wallets' ? formatCurrency(totalWallets) :
+                      activeModal === 'receivables' ? formatCurrency(totalReceivables) :
+                      formatCurrency(totalPayables)
+                    }
+                  </p>
+                </div>
+                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 transition-colors self-start">
+                  <X />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 pr-2 min-h-[300px]">
+                <div className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
+                  {activeModal === 'wallets' && (
+                    wallets.length === 0 ? (
+                      <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay cuentas bancarias activas.</div>
+                    ) : wallets.map(w => (
+                      <div key={w.id} className="py-4 flex justify-between items-center group">
+                        <div className="min-w-0 pr-4">
+                          <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{w.name}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">{w.type} • {w.currency || 'USD'}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className={cn("text-sm font-black font-mono", w.balance < 0 ? "text-rose-500" : "text-indigo-500")}>
+                            {formatCurrency(w.balance || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  {activeModal === 'receivables' && (
+                    receivables.length === 0 ? (
+                      <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay cuentas por cobrar.</div>
+                    ) : receivables.map(rx => (
+                      <div key={rx.id} className="py-4 flex justify-between items-center group">
+                        <div className="min-w-0 pr-4">
+                          <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{rx.intermediaryName}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">Cliente: {rx.finalClientName || '-'}</p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-sm font-black font-mono text-emerald-500">{formatCurrency(rx.chargedRate)}</span>
+                          <button 
+                            onClick={() => handleWhatsAppRedirect(rx)}
+                            title="Enviar recordatorio por WhatsApp al número registrado"
+                            className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  {activeModal === 'payables' && (
+                    payables.length === 0 ? (
+                      <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay cuentas por pagar.</div>
+                    ) : payables.map(px => (
+                      <div key={px.id} className="py-4 flex justify-between items-center group">
+                        <div className="min-w-0 pr-4">
+                          <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{px.category}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">{px.description || 'Sin detalles'}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-sm font-black font-mono text-rose-500">{formatCurrency(Math.abs(px.amount))}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

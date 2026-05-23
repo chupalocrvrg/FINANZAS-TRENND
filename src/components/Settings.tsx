@@ -81,13 +81,11 @@ export function Settings() {
 
   const handleDeleteWallet = async (id: string) => {
     if (!id) return;
-    if (window.confirm("¿Eliminar esta cuenta definitivamente?")) {
-      try {
-        await deleteDoc(doc(db, 'wallets', id));
-      } catch (err) {
-        console.error("Error al eliminar la cuenta:", err);
-        window.alert("No se pudo eliminar la cuenta bancaria.");
-      }
+    try {
+      await deleteDoc(doc(db, 'wallets', id));
+    } catch (err) {
+      console.error("Error al eliminar la cuenta:", err);
+      // alert blocked in iframe
     }
   };
 
@@ -95,12 +93,9 @@ export function Settings() {
     if (field === 'biometricEnabled' && value === true) {
       try {
         if (typeof navigator === 'undefined' || !navigator.credentials || !window.PublicKeyCredential) {
-          window.alert("Este dispositivo o navegador no admite claves biométricas (WebAuthn).");
+          console.error("Este dispositivo o navegador no admite claves biométricas (WebAuthn).");
           return;
         }
-
-        const confirmReg = window.confirm("Para habilitar el desbloqueo por biometría, registre su huella o rostro a continuación. Pulse Aceptar para iniciar:");
-        if (!confirmReg) return;
 
         const challenge = new Uint8Array(32);
         window.crypto.getRandomValues(challenge);

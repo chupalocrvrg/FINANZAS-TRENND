@@ -99,12 +99,10 @@ export function CRM() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("¿Está seguro de que desea eliminar este registro?")) {
-      try {
-        await deleteDoc(doc(db, 'entities', id));
-      } catch (error) {
-        console.error("Error al eliminar:", error);
-      }
+    try {
+      await deleteDoc(doc(db, 'entities', id));
+    } catch (error) {
+      console.error("Error al eliminar:", error);
     }
   };
 

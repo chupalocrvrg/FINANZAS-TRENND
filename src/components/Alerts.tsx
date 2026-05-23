@@ -156,13 +156,11 @@ export function Alerts() {
 
   // Acción: Eliminar servicio digital de forma definitiva por no renovación o fin de suscripción
   const handleCancelService = async (alertItem: RealAlertItem) => {
-    if (confirm(`¿Dar de baja / eliminar definitivamente la suscripción de "${alertItem.customer}" - ${alertItem.item} porque el cliente no renovó?`)) {
-      try {
-        await deleteDoc(doc(db, 'digital_services', alertItem.id));
-      } catch (err) {
-        console.error("Error al eliminar servicio:", err);
-        alert("No se pudo dar de baja.");
-      }
+    try {
+      await deleteDoc(doc(db, 'digital_services', alertItem.id));
+    } catch (err) {
+      console.error("Error al eliminar servicio:", err);
+      alert("No se pudo dar de baja.");
     }
   };
 

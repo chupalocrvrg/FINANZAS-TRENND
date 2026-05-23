@@ -128,9 +128,7 @@ export function NotificationsPopover({ onClose }: NotificationsPopoverProps) {
         const docRef = doc(db, 'transactions', alert.id);
         await updateDoc(docRef, { isPaid: true, updatedAt: new Date().toISOString() });
       } else {
-        if (confirm(`¿Dar de baja definitivamente el servicio de "${alert.customer}" porque el cliente no renovó?`)) {
-          await deleteDoc(doc(db, 'digital_services', alert.id));
-        }
+        await deleteDoc(doc(db, 'digital_services', alert.id));
       }
     } catch (err) {
       console.error(err);
