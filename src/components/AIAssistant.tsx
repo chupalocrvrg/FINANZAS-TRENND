@@ -17,13 +17,15 @@ import {
   Lock,
   Mail,
   User,
-  ExternalLink
+  ExternalLink,
+  Key
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
 import { Entity } from '../types';
+import { GoogleGenAI } from '@google/genai';
 
 interface AIMessage {
   role: 'user' | 'model';
@@ -755,6 +757,119 @@ function AntUpdateFormCard({ draft, intermediaries, onConfirm, isDark }: AntUpda
   );
 }
 
+async function callGeminiClientSide(
+  apiKey: string,
+  updatedMessages: any[],
+  currentImage: string | null,
+  currentImageType: string | null,
+  intermediaries: any[],
+  suppliers: any[],
+  catalogItems: any[]
+): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey });
+  
+  // Structure chat messages correctly for @google/genai
+  const contents: any[] = updatedMessages.map(m => ({
+    role: m.role,
+    parts: [{ text: m.text }]
+  }));
+
+  if (currentImage) {
+    const base64Data = currentImage.split(",")[1] || currentImage;
+    const imagePart = {
+      inlineData: {
+        mimeType: currentImageType || "image/png",
+        data: base64Data
+      }
+    };
+    const lastIndex = contents.length - 1;
+    if (lastIndex >= 0 && contents[lastIndex].role === 'user') {
+      contents[lastIndex].parts.push(imagePart);
+    } else {
+      contents.push({
+        role: 'user',
+        parts: [{ text: "Analiza y extrae la información de esta transacción." }, imagePart]
+      });
+    }
+  }
+
+  const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es ayudar al usuario a registrar transacciones, productos digitales y ver balances.
+
+REGLA CRÍTICA PRIMORDIAL DE NO-ASUNCIÓN (MUY IMPORTANTE):
+- Si en la imagen, captura o texto de chat compartida NO se muestra, menciona ni se hace referencia explícita al nombre o existencia de un proveedor, revendedor, distribuidor, intermediario o cliente final, el sistema NO DEBE asumir ningún nombre automáticamente.
+- No debes inventar, suponer, ni asumir nombres ni de ejemplo para 'finalClientName', 'warehouse', 'intermediaryId', 'supplierId' o 'supplierName'.
+- En caso de que no lo indique la captura, pon estrictamente una cadena de texto vacía ("") para esos campos.
+- NUNCA crees o asignes valores automáticamente a menos que estén claramente visibles o escritos en el archivo adjunto.
+
+¡TIENES DOS SÚPER PODERES INCREÍBLES!:
+1. PROCESAR IMÁGENES/CAPTURAS DE ACTUALIZACIONES ANT:
+   - Extraer: Cliente Final ("finalClientName"), Bodega/Establecimiento ("warehouse") y asociarlo con la lista de Distribuidores.
+2. PROCESAR IMÁGENES/CHAT CON PROVEEDORES DE CUENTAS DIGITALES (Netflix, Disney+, etc.):
+   - Puedes analizar capturas de chats, mensajes de WhatsApp o recibos con proveedores que te entregan cuentas activadas.
+   - Extraerás los datos claves:
+     * Nombre del Producto / Servicio (ej. Netflix 1 Pantalla, Disney+, Max)
+     * Correo electrónico de la cuenta ("email")
+     * Contraseña ("password")
+     * PIN o perfil registrado ("pin")
+     * Fecha de vencimiento ("expirationDate" en formato YYYY-MM-DD. Si se indica "30 días" o similar, calcúlala sumando 30 días a la fecha de hoy, que es 2026-05-23)
+     * Costo del proveedor ("cost")
+     * Precio sugerido o real de venta ("revenue" / precio de venta)
+     * Nombre e ID del Proveedor ("supplierId" y "supplierName")
+     * Número de teléfono, celular o contacto del cliente si se menciona o se ve en la captura ("clientContact")
+
+CONTEXTO DEL USUARIO:
+- Distribuidores/Intermediarios de ANT: ${JSON.stringify(intermediaries || [], null, 2)}
+- Proveedores de Cuentas Digitales: ${JSON.stringify(suppliers || [], null, 2)}
+- Catálogo de Servicios Digitales del usuario: ${JSON.stringify(catalogItems || [], null, 2)}
+
+INSTRUCCIÓN DE TRABAJO:
+Si es un caso de Actualización ANT:
+- Presenta qué datos lograste extraer (Socio Comercial, Bodega).
+- DEBES incluir al final un bloque \`\`\`json-action con el formato exacto. Si no se puede extraer con certeza, pon "":
+\`\`\`json-action
+{
+  "type": "add_transaction",
+  "finalClientName": "NOMBRE_CLIENTE_EXTRAIDO_O_VACIO",
+  "warehouse": "BODEGA_O_ESTABLECIMIENTO_EXTRAIDA_O_VACIO",
+  "intermediaryId": "ID_INTERMEDIARIO_EXTRAIDO_O_VACIO"
+}
+\`\`\`
+
+Si es un caso de Venta de Cuenta/Servicio Digital (de proveedor o chat de entrega):
+- Indica amablemente que has detectado una cuenta digital y enumera los campos extraídos: Producto, Correo, Clave, PIN, Fecha de Vencimiento, Costo, y Venta.
+- Intenta emparejar el producto con la lista del 'Catálogo' suministrado. Si coincide, usa ese nombre exacto de producto, su costo y su precio de venta sugerido.
+- Intenta emparejar el proveedor con la lista de 'Proveedores' (por nombre o aproximación).
+- DEBES incluir al final un bloque \`\`\`json-action con el siguiente formato EXACTO, calculando la fecha de vencimiento adecuadamente si es relativa (la fecha actual es 2026-05-23):
+\`\`\`json-action
+{
+  "type": "add_digital_service",
+  "name": "NOMBRE_DEL_PRODUCTO_SOCIADO_O_CONFIGURADO",
+  "email": "CORREO_EXTRAIDO_O_VACIO",
+  "password": "CONTRASEÑA_EXTRAIDA_O_VACIO",
+  "pin": "PIN_O_PERFIL_EXTRAIDO_O_VACIO",
+  "expirationDate": "YYYY-MM-DD_FECHA_EXTRAIDA_O_CALCULADA",
+  "cost": COSTO_NUMERICO_EXTRAIDO_O_POR_CATALOGO,
+  "revenue": INGRESO_VENTA_NUMERICO_O_POR_CATALOGO,
+  "supplierId": "ID_PROVEEDOR_COINCIDENTE_O_VACIO",
+  "supplierName": "NOMBRE_PROVEEDOR_COINCIDENTE_O_VACIO",
+  "clientContact": "NUMERO_TELEFONO_CLIENTE_O_VACIO"
+}
+\`\`\`
+
+IMPORTANTE: El bloque JSON-action debe estructurarse de forma impecable sin errores de formato para que no falle la integración. Saboriza tu respuesta con un tono profesional, claro, empático y estructurado en español fluido.`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3.5-flash',
+    config: {
+      systemInstruction: systemInstruction,
+      temperature: 0.1,
+    },
+    contents: contents
+  });
+
+  return response.text || "No obtuve una respuesta válida de Gemini.";
+}
+
 export function AIAssistant() {
   const { user, settings } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -773,6 +888,26 @@ export function AIAssistant() {
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
+
+  const [localApiKey, setLocalApiKey] = useState(() => localStorage.getItem('LOCAL_GEMINI_API_KEY') || '');
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [tempKey, setTempKey] = useState('');
+
+  const handleSaveLocalKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKey = tempKey.trim();
+    if (cleanKey) {
+      localStorage.setItem('LOCAL_GEMINI_API_KEY', cleanKey);
+      setLocalApiKey(cleanKey);
+      setShowKeyInput(false);
+      setTempKey('');
+    }
+  };
+
+  const handleClearLocalKey = () => {
+    localStorage.removeItem('LOCAL_GEMINI_API_KEY');
+    setLocalApiKey('');
+  };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -906,38 +1041,68 @@ export function AIAssistant() {
         apiUrl = '';
       }
 
-      const response = await fetch(`${apiUrl}/api/assistant`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: updatedMessages.map(m => ({ 
-            role: m.role, 
-            parts: [{ text: m.text }] 
-          })),
-          image: currentImage ? {
-            mimeType: currentImageType || 'image/png',
-            data: currentImage
-          } : null,
-          intermediaries: intermediaries.map(i => ({ id: i.id, name: i.name, rate: i.rate || 0 })),
-          suppliers: suppliers.map(s => ({ id: s.id, name: s.name })),
-          catalog: catalogItems.map(c => ({ 
-            id: c.id, 
-            name: c.name, 
-            category: c.category || 'Streaming',
-            pvp: c.pvp || 0,
-            providers: c.providers || []
-          }))
-        })
-      });
+      let responseText = '';
 
-      if (!response.ok) {
-        throw new Error('Network response error');
+      try {
+        const response = await fetch(`${apiUrl}/api/assistant`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: updatedMessages.map(m => ({ 
+              role: m.role, 
+              parts: [{ text: m.text }] 
+            })),
+            image: currentImage ? {
+              mimeType: currentImageType || 'image/png',
+              data: currentImage
+            } : null,
+            intermediaries: intermediaries.map(i => ({ id: i.id, name: i.name, rate: i.rate || 0 })),
+            suppliers: suppliers.map(s => ({ id: s.id, name: s.name })),
+            catalog: catalogItems.map(c => ({ 
+              id: c.id, 
+              name: c.name, 
+              category: c.category || 'Streaming',
+              pvp: c.pvp || 0,
+              providers: c.providers || []
+            }))
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Network response error');
+        }
+
+        const data = await response.json();
+        responseText = data.text || 'No recibí respuesta.';
+      } catch (backendErr) {
+        console.warn("Backend API failed, trying client-side Gemini fallback...", backendErr);
+        
+        // Try to get key either from localStorage or import.meta.env
+        const clientApiKey = localApiKey || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
+        
+        if (!clientApiKey) {
+          // If no key is found, explain clearly and request setup
+          setMessages(prev => [...prev, { 
+            role: 'model', 
+            text: '⚠️ **Modo Servidor Estático / Vercel Detectado**\n\nNo se pudo establecer conexión con el servidor backend (`/api/assistant`). Para utilizar el asistente directamente en tu navegador sin necesidad de servidor, configure una **Clave API de Gemini**.\n\nPuedes habilitarla haciendo click en el **icono de llave 🔑** en la parte superior derecha de esta ventana del chat, o ingresando la variable de entorno `VITE_GEMINI_API_KEY` en tu panel de Vercel.' 
+          }]);
+          setIsTyping(false);
+          return;
+        }
+
+        // Execute via global @google/genai SDK
+        responseText = await callGeminiClientSide(
+          clientApiKey,
+          updatedMessages,
+          currentImage,
+          currentImageType,
+          intermediaries,
+          suppliers,
+          catalogItems
+        );
       }
-
-      const data = await response.json();
-      const responseText = data.text || 'No recibí respuesta.';
 
       // Parse structured JSON matches inside backend markdown codeblock
       let actionMatch = responseText.match(/```json-action\s*([\s\S]*?)\s*```/);
@@ -1234,203 +1399,288 @@ export function AIAssistant() {
                   <span className="text-[9px] text-indigo-200 font-bold tracking-wider uppercase">Multimodal • Gemini AI</span>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Chat Messages list */}
-            <div className={cn("flex-1 p-4 overflow-y-auto space-y-4 class-message-scroller", isDark ? "bg-slate-950" : "bg-slate-50/50")}>
-              {messages.map((m, i) => (
-                <div key={i} className={cn("flex w-full mb-2", m.role === 'user' ? "justify-end" : "justify-start")}>
-                  <div className={cn(
-                    "max-w-[85%] p-3.5 rounded-2xl text-sm font-medium transition-all shadow-xs",
-                    m.role === 'user' 
-                      ? "bg-indigo-600 text-white rounded-tr-none" 
-                      : (isDark ? "bg-slate-900 text-slate-200 rounded-tl-none border border-slate-800" : "bg-white text-slate-800 rounded-tl-none border border-slate-100 shadow-sm")
-                  )}>
-                    {m.image && (
-                      <div className="mb-2 max-w-full overflow-hidden rounded-lg border border-indigo-500/20 shadow-sm">
-                        <img src={m.image} alt="Adjunto" className="w-full max-h-40 object-cover" />
-                      </div>
-                    )}
-                    
-                    {m.role === 'model' ? (
-                      <div className={cn(
-                        "prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-950 prose-pre:text-slate-50",
-                        isDark ? "prose-invert prose-p:text-slate-300 prose-li:text-slate-300 prose-headings:text-slate-100 prose-strong:text-slate-200" : "prose-slate"
-                      )}>
-                        <Markdown>{m.text}</Markdown>
-                      </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{m.text}</p>
-                    )}
-
-                    {/* Check which parsed action rendering layout to display */}
-                    {m.actionParsed && m.actionParsed.type === 'add_transaction' && (
-                      m.actionParsed.isSaved ? (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold leading-relaxed shadow-xs flex flex-col gap-1.5"
-                        >
-                          <div className="flex items-center gap-1.5 font-black uppercase tracking-wider text-[9px] text-emerald-500">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-bounce" />
-                            Sincronización de Actualización ANT Exitosa
-                          </div>
-                          <div className="grid grid-cols-2 gap-y-1 gap-x-2 pt-1 border-t border-emerald-500/10 font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                            <div>Socio Comercial:</div>
-                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.finalClientName}</div>
-                            <div>Bodega/Establec:</div>
-                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.warehouse}</div>
-                            <div>Intermediario:</div>
-                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.intermediaryName}</div>
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <AntUpdateFormCard
-                          draft={m.actionParsed}
-                          intermediaries={intermediaries}
-                          isDark={isDark}
-                          onConfirm={(data) => handleConfirmAntUpdate(i, data)}
-                        />
-                      )
-                    )}
-
-                    {m.actionParsed && m.actionParsed.type === 'add_digital_service' && (
-                      m.actionParsed.isSaved ? (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="mt-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-450 text-xs font-bold leading-relaxed shadow-xs flex flex-col gap-1.5"
-                        >
-                          <div className="text-[9px] font-black uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-bounce" />
-                            Venta Digital Registrada Exitosamente
-                          </div>
-                          <div className="grid grid-cols-2 gap-y-1 gap-x-2 pt-1 border-t border-emerald-500/10 font-mono text-[10px] text-slate-500 dark:text-slate-405">
-                            <div>Socio/Cliente:</div>
-                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.customClientName}</div>
-                            <div>Producto:</div>
-                            <div className="font-bold text-indigo-600 dark:text-indigo-400 truncate">{m.actionParsed.name}</div>
-                            <div>Correo:</div>
-                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate font-mono text-[9px]">{m.actionParsed.email}</div>
-                            {m.actionParsed.pin && (
-                              <>
-                                <div>PIN / Perfil:</div>
-                                <div className="font-bold text-slate-800 dark:text-slate-200">{m.actionParsed.pin}</div>
-                              </>
-                            )}
-                            <div>Finanzas:</div>
-                            <div className="font-bold text-emerald-600 dark:text-emerald-400">
-                              Costo: ${Number(m.actionParsed.cost).toFixed(2)} • Venta: ${Number(m.actionParsed.revenue).toFixed(2)}
-                            </div>
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <DigitalServiceFormCard 
-                          draft={m.actionParsed} 
-                          clients={clients} 
-                          catalogItems={catalogItems}
-                          wallets={wallets}
-                          isDark={isDark} 
-                          onConfirm={(data) => handleConfirmDigitalService(i, data)}
-                        />
-                      )
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              {isTyping && (
-                <div className="flex w-full justify-start">
-                  <div className={cn("p-4 rounded-2xl rounded-tl-none border flex items-center gap-2", isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-100 shadow-sm text-slate-500")}>
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                    <span className="text-xs font-bold tracking-wide uppercase text-[10px]">Analizando datos...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Attachment Preview Box */}
-            <AnimatePresence>
-              {image && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className={cn("p-2 border-t flex flex-col gap-1.5", isDark ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-100")}
-                >
-                  <div className="flex justify-between items-center px-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                      <ImageIcon className="w-3.5 h-3.5 text-indigo-500" /> Adjunto para análisis
-                    </span>
-                    <button 
-                      onClick={() => { setImage(null); setImageType(null); }}
-                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 max-h-32 shadow-sm w-fit max-w-full">
-                    <img src={image} alt="Upload preview" className="h-20 object-contain rounded-lg" />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Input Form Bar */}
-            <div className={cn("p-4 border-t", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
-              <form onSubmit={handleSend} className="flex gap-2 items-center">
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-                
-                {/* Image Attach Button */}
+              <div className="flex items-center gap-1.5">
                 <button 
-                  type="button" 
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Adjuntar Imagen o Captura"
+                  onClick={() => {
+                    setTempKey(localApiKey);
+                    setShowKeyInput(!showKeyInput);
+                  }}
+                  title="Configurar Clave API de Gemini"
                   className={cn(
-                    "p-2.5 rounded-xl border transition-colors cursor-pointer",
-                    isDark 
-                      ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-350" 
-                      : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500"
+                    "text-white/70 hover:text-white transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/10",
+                    showKeyInput && "text-white bg-white/15"
                   )}
                 >
-                  <Paperclip className="w-4 h-4" />
+                  <Key className="w-3.5 h-3.5" />
                 </button>
-
-                <input 
-                  type="text" 
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={image ? "Describir foto o enviar..." : "Pegar captura (Ctrl+V) o escribir..."}
-                  className={cn(
-                    "flex-1 px-4 py-2.5 rounded-xl text-sm outline-none border transition-all duration-300", 
-                    isDark 
-                      ? "bg-slate-800 border-slate-750 text-white focus:border-indigo-500" 
-                      : "bg-slate-50 border-slate-200 focus:border-indigo-500 text-slate-800"
-                  )}
-                />
-                
-                <button 
-                  type="submit" 
-                  disabled={(!input.trim() && !image) || isTyping}
-                  className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-40 transition-colors cursor-pointer shadow-md shadow-indigo-600/20"
-                >
-                  <Send className="w-4 h-4" />
+                <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10">
+                  <X className="w-5 h-5" />
                 </button>
-              </form>
-              <div className="text-[9px] text-center text-slate-450 mt-2 tracking-wide font-medium">
-                Tip: Toma una captura de pantalla y presiona <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">Ctrl</kbd> + <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">V</kbd> para pegarla al instante.
               </div>
             </div>
+
+            {showKeyInput ? (
+              <div className={cn("flex-1 p-6 flex flex-col justify-center space-y-4", isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-slate-50 border-slate-100 text-slate-850")}>
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-sm">Clave API de Gemini</h4>
+                  <p className="text-[10px] leading-relaxed text-slate-500 max-w-sm mx-auto">
+                    Si tu Control Financiero está hospedado en un ambiente estático (como GitHub Pages o Vercel), puedes configurar tu clave API aquí para que el asistente funcione directamente en tu navegador sin requerir servidor backend. Se guardará de forma segura en tu navegador.
+                  </p>
+                </div>
+                
+                <form onSubmit={handleSaveLocalKey} className="space-y-3">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Tu Gemini API Key</label>
+                    <input 
+                      type="password"
+                      value={tempKey}
+                      onChange={(e) => setTempKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className={cn(
+                        "w-full px-4 py-2 rounded-xl text-sm outline-none border transition-all duration-300", 
+                        isDark 
+                          ? "bg-slate-800 border-slate-700 text-white focus:border-indigo-500" 
+                          : "bg-white border-slate-200 focus:border-indigo-500 text-slate-800"
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="flex-1 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors cursor-pointer"
+                    >
+                      Guardar Clave
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowKeyInput(false);
+                      }}
+                      className={cn(
+                        "px-4 py-2 text-xs font-bold rounded-xl border transition-colors cursor-pointer",
+                        isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"
+                      )}
+                    >
+                      Volver
+                    </button>
+                  </div>
+                </form>
+                
+                {localApiKey && (
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-[10px]">
+                    <span className="text-emerald-500 flex items-center gap-1 font-bold uppercase">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Clave Guardada
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleClearLocalKey}
+                      className="text-rose-500 hover:underline hover:text-rose-600 transition-colors cursor-pointer"
+                    >
+                      Eliminar clave
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Chat Messages list */}
+                <div className={cn("flex-1 p-4 overflow-y-auto space-y-4 class-message-scroller", isDark ? "bg-slate-950" : "bg-slate-50/50")}>
+                  {messages.map((m, i) => (
+                    <div key={i} className={cn("flex w-full mb-2", m.role === 'user' ? "justify-end" : "justify-start")}>
+                      <div className={cn(
+                        "max-w-[85%] p-3.5 rounded-2xl text-sm font-medium transition-all shadow-xs",
+                        m.role === 'user' 
+                          ? "bg-indigo-600 text-white rounded-tr-none" 
+                          : (isDark ? "bg-slate-900 text-slate-200 rounded-tl-none border border-slate-800" : "bg-white text-slate-800 rounded-tl-none border border-slate-100 shadow-sm")
+                      )}>
+                        {m.image && (
+                          <div className="mb-2 max-w-full overflow-hidden rounded-lg border border-indigo-500/20 shadow-sm">
+                            <img src={m.image} alt="Adjunto" className="w-full max-h-40 object-cover" />
+                          </div>
+                        )}
+                        
+                        {m.role === 'model' ? (
+                          <div className={cn(
+                            "prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-950 prose-pre:text-slate-50",
+                            isDark ? "prose-invert prose-p:text-slate-300 prose-li:text-slate-300 prose-headings:text-slate-100 prose-strong:text-slate-200" : "prose-slate"
+                          )}>
+                            <Markdown>{m.text}</Markdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{m.text}</p>
+                        )}
+
+                        {/* Check which parsed action rendering layout to display */}
+                        {m.actionParsed && m.actionParsed.type === 'add_transaction' && (
+                          m.actionParsed.isSaved ? (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.98 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold leading-relaxed shadow-xs flex flex-col gap-1.5"
+                            >
+                              <div className="flex items-center gap-1.5 font-black uppercase tracking-wider text-[9px] text-emerald-500">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-bounce" />
+                                Sincronización de Actualización ANT Exitosa
+                              </div>
+                              <div className="grid grid-cols-2 gap-y-1 gap-x-2 pt-1 border-t border-emerald-500/10 font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                                <div>Socio Comercial:</div>
+                                <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.finalClientName}</div>
+                                <div>Bodega/Establec:</div>
+                                <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.warehouse}</div>
+                                <div>Intermediario:</div>
+                                <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.intermediaryName}</div>
+                              </div>
+                            </motion.div>
+                          ) : (
+                            <AntUpdateFormCard
+                              draft={m.actionParsed}
+                              intermediaries={intermediaries}
+                              isDark={isDark}
+                              onConfirm={(data) => handleConfirmAntUpdate(i, data)}
+                            />
+                          )
+                        )}
+
+                        {m.actionParsed && m.actionParsed.type === 'add_digital_service' && (
+                          m.actionParsed.isSaved ? (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.98 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="mt-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-450 text-xs font-bold leading-relaxed shadow-xs flex flex-col gap-1.5"
+                            >
+                              <div className="text-[9px] font-black uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-bounce" />
+                                Venta Digital Registrada Exitosamente
+                              </div>
+                              <div className="grid grid-cols-2 gap-y-1 gap-x-2 pt-1 border-t border-emerald-500/10 font-mono text-[10px] text-slate-500 dark:text-slate-405">
+                                <div>Socio/Cliente:</div>
+                                <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.customClientName}</div>
+                                <div>Producto:</div>
+                                <div className="font-bold text-indigo-600 dark:text-indigo-400 truncate">{m.actionParsed.name}</div>
+                                <div>Correo:</div>
+                                <div className="font-bold text-slate-800 dark:text-slate-200 truncate font-mono text-[9px]">{m.actionParsed.email}</div>
+                                {m.actionParsed.pin && (
+                                  <>
+                                    <div>PIN / Perfil:</div>
+                                    <div className="font-bold text-slate-800 dark:text-slate-200">{m.actionParsed.pin}</div>
+                                  </>
+                                )}
+                                <div>Finanzas:</div>
+                                <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                                  Costo: ${Number(m.actionParsed.cost).toFixed(2)} • Venta: ${Number(m.actionParsed.revenue).toFixed(2)}
+                                </div>
+                              </div>
+                            </motion.div>
+                          ) : (
+                            <DigitalServiceFormCard 
+                              draft={m.actionParsed} 
+                              clients={clients} 
+                              catalogItems={catalogItems}
+                              wallets={wallets}
+                              isDark={isDark} 
+                              onConfirm={(data) => handleConfirmDigitalService(i, data)}
+                            />
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {isTyping && (
+                    <div className="flex w-full justify-start">
+                      <div className={cn("p-4 rounded-2xl rounded-tl-none border flex items-center gap-2", isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-100 shadow-sm text-slate-500")}>
+                        <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                        <span className="text-xs font-bold tracking-wide uppercase text-[10px]">Analizando datos...</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Attachment Preview Box */}
+                <AnimatePresence>
+                  {image && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className={cn("p-2 border-t flex flex-col gap-1.5", isDark ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-100")}
+                    >
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                          <ImageIcon className="w-3.5 h-3.5 text-indigo-500" /> Adjunto para análisis
+                        </span>
+                        <button 
+                          onClick={() => { setImage(null); setImageType(null); }}
+                          className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 max-h-32 shadow-sm w-fit max-w-full">
+                        <img src={image} alt="Upload preview" className="h-20 object-contain rounded-lg" />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Input Form Bar */}
+                <div className={cn("p-4 border-t", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
+                  <form onSubmit={handleSend} className="flex gap-2 items-center">
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      accept="image/*" 
+                      className="hidden" 
+                    />
+                    
+                    {/* Image Attach Button */}
+                    <button 
+                      type="button" 
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Adjuntar Imagen o Captura"
+                      className={cn(
+                        "p-2.5 rounded-xl border transition-colors cursor-pointer",
+                        isDark 
+                          ? "bg-slate-800 hover:bg-slate-700 border-slate-705 text-slate-350" 
+                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500"
+                      )}
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+
+                    <input 
+                      type="text" 
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder={image ? "Describir foto o enviar..." : "Pegar captura (Ctrl+V) o escribir..."}
+                      className={cn(
+                        "flex-1 px-4 py-2.5 rounded-xl text-sm outline-none border transition-all duration-300", 
+                        isDark 
+                          ? "bg-slate-800 border-slate-750 text-white focus:border-indigo-505 focus:border-indigo-500" 
+                          : "bg-slate-50 border-slate-200 focus:border-indigo-500 text-slate-800"
+                      )}
+                    />
+                    
+                    <button 
+                      type="submit" 
+                      disabled={(!input.trim() && !image) || isTyping}
+                      className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-40 transition-colors cursor-pointer shadow-md shadow-indigo-600/20"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                  <div className="text-[9px] text-center text-slate-450 mt-2 tracking-wide font-medium">
+                    Tip: Toma una captura de pantalla y presiona <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">Ctrl</kbd> + <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">V</kbd> para pegarla al instante.
+                  </div>
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
