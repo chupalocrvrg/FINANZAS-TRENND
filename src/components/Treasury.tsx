@@ -123,10 +123,16 @@ export function Treasury() {
          // Revert old
          if (!editingLedgerEntry.isPending && editingLedgerEntry.walletId) {
              await updateDoc(doc(db, 'wallets', editingLedgerEntry.walletId), { balance: increment(-editingLedgerEntry.amount) });
+             if (editingLedgerEntry.isCreditCardPayment && editingLedgerEntry.targetWalletId) {
+                 await updateDoc(doc(db, 'wallets', editingLedgerEntry.targetWalletId), { balance: increment(-Math.abs(editingLedgerEntry.amount)) });
+             }
          }
          // Apply new
          if (!isPend && wallId) {
              await updateDoc(doc(db, 'wallets', wallId), { balance: increment(amount) });
+             if (isCcPaid && tWallId) {
+                 await updateDoc(doc(db, 'wallets', tWallId), { balance: increment(Math.abs(amount)) });
+             }
          }
          setEditingLedgerEntry(null);
       } else {
@@ -175,6 +181,11 @@ export function Treasury() {
       if (!entry.isPending && entry.walletId) {
         await updateDoc(doc(db, 'wallets', entry.walletId), {
           balance: increment(-entry.amount)
+        });
+      }
+      if (entry.isCreditCardPayment && entry.targetWalletId) {
+        await updateDoc(doc(db, 'wallets', entry.targetWalletId), {
+          balance: increment(-Math.abs(entry.amount))
         });
       }
     } catch (error) {
@@ -229,9 +240,14 @@ export function Treasury() {
               isDark ? "bg-slate-900/60 border-slate-800/80 hover:border-indigo-500/40" : "bg-white border-slate-200/80 shadow-xs hover:border-indigo-500/30 hover:shadow-sm"
             )}
           >
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block truncate">
-              {wallet.name}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block truncate">
+                {wallet.name}
+              </span>
+              <span className={cn("text-[8px] font-bold uppercase tracking-wider mt-0.5", wallet.type === 'credit_card' ? 'text-violet-400' : 'text-slate-500')}>
+                {wallet.type === 'credit_card' ? `Tarjeta (Cupo)` : wallet.type === 'bank' ? 'Banco' : wallet.type === 'cash' ? 'Efectivo' : 'Billetera Digital'}
+              </span>
+            </div>
             <div className={cn("text-base font-extrabold tracking-tight font-sans mt-0.5", isDark ? "text-white" : "text-slate-900")}>
               {formatCurrency(wallet.balance)}
             </div>
@@ -417,7 +433,7 @@ export function Treasury() {
                             className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
                           >
                             <option value="">Seleccione Tarjeta...</option>
-                            {wallets.filter(w => w.type === 'digital_wallet').map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            {wallets.filter(w => w.type === 'credit_card').map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                           </select>
                         </div>
                       )}
@@ -446,7 +462,11 @@ export function Treasury() {
                       className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
                     >
                       <option value="">Seleccione...</option>
-                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      {wallets.map(w => (
+                        <option key={w.id} value={w.id}>
+                          {w.name} ({w.type === 'credit_card' ? 'Cupo Disp.' : 'Saldo'}: {formatCurrency(w.balance)})
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

@@ -12,6 +12,11 @@
         "language": { "type": "string", "enum": ["es", "en"] },
         "theme": { "type": "string", "enum": ["light", "dark", "system"] },
         "securityPin": { "type": "string" },
+        "disabledFeatures": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of deactivated features/modules"
+        },
         "isOnboarded": { "type": "boolean" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

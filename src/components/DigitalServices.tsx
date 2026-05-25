@@ -39,6 +39,7 @@ export interface CatalogItem {
     supplierId: string;
     cost: number;
     pvp?: number; // optionally per provider instead? let's do both or just per provider. The prompt says "el PVP", I can add it to provider, or to CatalogItem. Let's add it to the provider.
+    pvpReseller?: number;
   }[];
   createdAt: string;
   ownerId: string;
@@ -73,6 +74,7 @@ export function DigitalServices() {
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [wallets, setWallets] = useState<WalletType[]>([]);
+  const [allEntities, setAllEntities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,7 +82,7 @@ export function DigitalServices() {
   const [showNewCatalogForm, setShowNewCatalogForm] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState('');
   const [activeSupplierCatalogId, setActiveSupplierCatalogId] = useState<string | null>(null);
-  const [newSupplierProv, setNewSupplierProv] = useState({ supplierId: '', cost: '', pvp: '' });
+  const [newSupplierProv, setNewSupplierProv] = useState({ supplierId: '', cost: '', pvp: '', pvpReseller: '' });
 
   // Payment processing state
   const [paymentService, setPaymentService] = useState<DigitalServiceItem | null>(null);
@@ -100,6 +102,7 @@ export function DigitalServices() {
     supplierId: '',
     clientName: '',
     clientContact: '',
+    clientType: 'client' as 'client' | 'reseller',
     expirationDate: '',
     email: '',
     password: '',
@@ -121,9 +124,11 @@ export function DigitalServices() {
       setLoading(false);
     });
 
-    const qSup = query(collection(db, 'entities'), where('ownerId', '==', user.uid), where('type', '==', 'supplier'));
-    const unsubSup = onSnapshot(qSup, (snapshot) => {
-      setSuppliers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entity)));
+    const qEnt = query(collection(db, 'entities'), where('ownerId', '==', user.uid));
+    const unsubEnt = onSnapshot(qEnt, (snapshot) => {
+      const allEnt = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setAllEntities(allEnt);
+      setSuppliers(allEnt.filter(e => e.type === 'supplier') as Entity[]);
     });
 
     const qCat = query(collection(db, 'digital_catalog'), where('ownerId', '==', user.uid));
@@ -136,7 +141,7 @@ export function DigitalServices() {
       setWallets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WalletType)));
     });
 
-    return () => { unsubSer(); unsubSup(); unsubCat(); unsubWallets(); };
+    return () => { unsubSer(); unsubEnt(); unsubCat(); unsubWallets(); };
   }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,6 +159,7 @@ export function DigitalServices() {
       supplierName: sup?.name || '',
       clientName: formData.clientName,
       clientContact: formData.clientContact,
+      clientType: formData.clientType,
       expirationDate: formData.expirationDate,
       email: formData.email,
       password: formData.password,
@@ -254,6 +260,7 @@ export function DigitalServices() {
       supplierId: '',
       clientName: '',
       clientContact: '',
+      clientType: 'client',
       expirationDate: '',
       email: '',
       password: '',
@@ -276,6 +283,7 @@ export function DigitalServices() {
       supplierId: service.supplierId || '',
       clientName: service.clientName || '',
       clientContact: service.clientContact || '',
+      clientType: (service as any).clientType || 'client',
       expirationDate: service.expirationDate || '',
       email: service.email || '',
       password: service.password || '',
@@ -411,7 +419,9 @@ export function DigitalServices() {
       const matchProv = matchedCatalogItem.providers.find(p => p.supplierId === supId);
       if (matchProv) {
          autoCost = matchProv.cost.toString();
-         if (matchProv.pvp) {
+         if (formData.clientType === 'reseller' && (matchProv as any).pvpReseller) {
+           autoRevenue = (matchProv as any).pvpReseller.toString();
+         } else if (matchProv.pvp) {
            autoRevenue = matchProv.pvp.toString();
          }
       }
@@ -747,7 +757,11 @@ export function DigitalServices() {
                                const p = cItem.providers[0];
                                updateData.supplierId = p.supplierId;
                                updateData.cost = p.cost.toString();
-                               if (p.pvp) updateData.revenue = p.pvp.toString();
+                               if (formData.clientType === 'reseller' && (p as any).pvpReseller) {
+                                  updateData.revenue = (p as any).pvpReseller.toString();
+                               } else if (p.pvp) {
+                                  updateData.revenue = p.pvp.toString();
+                                }
                             }
                          }
                          setFormData(prev => ({...prev, ...updateData}));
@@ -766,6 +780,92 @@ export function DigitalServices() {
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
                     >
                       {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Tipo de Cliente y Selección desde CRM */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-indigo-50/5 p-4 rounded-2xl border border-indigo-500/10 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1 block">Tipo de Cliente</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => {
+                            const updated = { ...prev, clientType: 'client' as const };
+                            if (prev.supplierId && prev.name) {
+                              const cItem = catalogItems.find(c => c.name === prev.name);
+                              if (cItem) {
+                                const matchProv = cItem.providers.find(p => p.supplierId === prev.supplierId);
+                                if (matchProv && matchProv.pvp) {
+                                  updated.revenue = matchProv.pvp.toString();
+                                }
+                              }
+                            }
+                            return updated;
+                          });
+                        }}
+                        className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer",
+                          formData.clientType === 'client'
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-250 text-slate-500")
+                        )}
+                      >
+                        Cliente Final
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => {
+                            const updated = { ...prev, clientType: 'reseller' as const };
+                            if (prev.supplierId && prev.name) {
+                              const cItem = catalogItems.find(c => c.name === prev.name);
+                              if (cItem) {
+                                const matchProv = cItem.providers.find(p => p.supplierId === prev.supplierId);
+                                if (matchProv && (matchProv as any).pvpReseller) {
+                                  updated.revenue = (matchProv as any).pvpReseller.toString();
+                                }
+                              }
+                            }
+                            return updated;
+                          });
+                        }}
+                        className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer",
+                          formData.clientType === 'reseller'
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-250 text-slate-500")
+                        )}
+                      >
+                        Revendedor
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1 block">Vincular con CRM</label>
+                    <select
+                      onChange={(e) => {
+                        const entityId = e.target.value;
+                        if (!entityId) return;
+                        const selected = allEntities.find(ent => ent.id === entityId);
+                        if (selected) {
+                          setFormData(prev => ({
+                            ...prev,
+                            clientName: selected.name,
+                            clientContact: selected.contact || ''
+                          }));
+                        }
+                      }}
+                      className={cn("w-full p-3 rounded-xl border text-[11px] font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
+                    >
+                      <option value="">-- Seleccionar registrado --</option>
+                      {allEntities
+                        .filter(e => e.type === formData.clientType)
+                        .map(ent => (
+                          <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
+                        ))
+                      }
                     </select>
                   </div>
                 </div>
@@ -1101,7 +1201,7 @@ export function DigitalServices() {
                            return (
                              <div key={idx} className="flex justify-between items-center bg-black/5 p-1 px-2 rounded">
                                <span className="text-[10px] font-bold">{supplierInfo?.name || 'Desconocido'}</span>
-                               <span className="text-[10px] font-mono text-emerald-600">C:${p.cost} | V:${p.pvp || 0}</span>
+                               <span className="text-[10px] font-mono text-emerald-600">C:${p.cost} | V:${p.pvp || 0}{p.pvpReseller ? ` | Rev: ${p.pvpReseller}` : ''}</span>
                              </div>
                            );
                          })
@@ -1124,20 +1224,27 @@ export function DigitalServices() {
                             <option value="">Proveedor...</option>
                             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
-                          <div className="flex gap-2">
+                          <div className="grid grid-cols-3 gap-1">
                             <input 
                               type="number"
                               placeholder="Costo ($)"
                               value={newSupplierProv.cost}
                               onChange={(e) => setNewSupplierProv({...newSupplierProv, cost: e.target.value})}
-                              className="w-full text-xs p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
+                              className="w-full text-[10px] p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
                             />
                             <input 
                               type="number"
                               placeholder="PVP ($)"
                               value={newSupplierProv.pvp}
                               onChange={(e) => setNewSupplierProv({...newSupplierProv, pvp: e.target.value})}
-                              className="w-full text-xs p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
+                              className="w-full text-[10px] p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
+                            />
+                            <input 
+                              type="number"
+                              placeholder="Revendedor ($)"
+                              value={newSupplierProv.pvpReseller || ''}
+                              onChange={(e) => setNewSupplierProv({...newSupplierProv, pvpReseller: e.target.value})}
+                              className="w-full text-[10px] p-1.5 rounded border outline-none bg-white dark:bg-slate-800"
                             />
                           </div>
                           <div className="flex gap-2">
@@ -1146,13 +1253,14 @@ export function DigitalServices() {
                                  if (newSupplierProv.supplierId && newSupplierProv.cost) {
                                     const pCost = parseFloat(newSupplierProv.cost);
                                     const pPvp = parseFloat(newSupplierProv.pvp || '0');
+                                    const pPvpReseller = parseFloat(newSupplierProv.pvpReseller || '0');
                                     const dbImport = import('firebase/firestore');
                                     dbImport.then(({ updateDoc, doc }) => {
-                                      const updatedProv = [...item.providers, { supplierId: newSupplierProv.supplierId, cost: pCost, pvp: pPvp }];
+                                      const updatedProv = [...item.providers, { supplierId: newSupplierProv.supplierId, cost: pCost, pvp: pPvp, pvpReseller: pPvpReseller }];
                                       updateDoc(doc(db, 'digital_catalog', item.id), { providers: updatedProv });
                                     });
                                     setActiveSupplierCatalogId(null);
-                                    setNewSupplierProv({supplierId: '', cost: '', pvp: ''});
+                                    setNewSupplierProv({supplierId: '', cost: '', pvp: '', pvpReseller: ''});
                                  }
                                }}
                                className="flex-1 bg-indigo-600 text-white text-[10px] font-bold uppercase py-1 rounded"

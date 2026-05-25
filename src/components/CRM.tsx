@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
   User, 
+  Users,
   Briefcase, 
   Truck, 
   Edit3, 
@@ -129,7 +130,7 @@ export function CRM() {
       </div>
 
       <div className={cn("flex flex-wrap gap-2 p-1 rounded-2xl w-fit", isDark ? "bg-slate-900 border border-slate-800" : "bg-slate-100")}>
-        {(['client', 'intermediary', 'supplier'] as EntityType[]).map((tab) => (
+        {(['client', 'reseller', 'intermediary', 'supplier'] as EntityType[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -140,7 +141,7 @@ export function CRM() {
                 : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
             )}
           >
-            {tab === 'client' ? 'Clientes' : tab === 'intermediary' ? 'Intermediarios' : 'Proveedores'}
+            {tab === 'client' ? 'Clientes' : tab === 'reseller' ? 'Revendedores' : tab === 'intermediary' ? 'Intermediarios' : 'Proveedores'}
           </button>
         ))}
       </div>
@@ -168,6 +169,7 @@ export function CRM() {
                 <div className="flex items-center gap-4 mb-6 text-left">
                   <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border", isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-100")}>
                     {entity.type === 'client' && <User className={isDark ? "text-indigo-400" : "text-slate-400"} />}
+                    {entity.type === 'reseller' && <Users className="text-amber-500" />}
                     {entity.type === 'intermediary' && <Briefcase className="text-indigo-500" />}
                     {entity.type === 'supplier' && <Truck className={isDark ? "text-slate-500" : "text-slate-400"} />}
                   </div>
@@ -239,7 +241,7 @@ export function CRM() {
             >
               <div className="flex justify-between items-center mb-6 text-left">
                 <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
-                  {editingEntity ? 'Editar' : 'Añadir'} {activeTab === 'client' ? 'Cliente' : activeTab === 'intermediary' ? 'Intermediario' : 'Proveedor'}
+                  {editingEntity ? 'Editar' : 'Añadir'} {activeTab === 'client' ? 'Cliente' : activeTab === 'reseller' ? 'Revendedor' : activeTab === 'intermediary' ? 'Intermediario' : 'Proveedor'}
                 </h3>
                 <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <X />

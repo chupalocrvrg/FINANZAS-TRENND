@@ -16,6 +16,7 @@ import { Login } from './components/Login';
 import { Onboarding } from './components/Onboarding';
 import { AIAssistant } from './components/AIAssistant';
 import { LockScreen } from './components/LockScreen';
+import { WelcomeUpdateModal } from './components/WelcomeUpdateModal';
 import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
@@ -46,6 +47,14 @@ export default function App() {
       setIsLoaded(true);
     }
   }, [loading]);
+
+  // Redirigir a dashboard si la pestaña actual fue deshabilitada en la configuración
+  useEffect(() => {
+    const disabledFeatures = settings?.disabledFeatures || [];
+    if (disabledFeatures.includes(activeTab)) {
+      setActiveTab('dashboard');
+    }
+  }, [settings?.disabledFeatures, activeTab]);
 
   useEffect(() => {
     if (user) {
@@ -271,7 +280,8 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </div>
-        <AIAssistant />
+        {!settings?.disabledFeatures?.includes('ai_assistant') && <AIAssistant />}
+        <WelcomeUpdateModal theme={settings?.theme} />
       </main>
     </div>
   );

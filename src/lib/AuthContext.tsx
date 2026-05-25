@@ -11,6 +11,7 @@ interface UserSettings {
   language: 'es' | 'en';
   theme: 'light' | 'dark' | 'system';
   securityPin: string;
+  disabledFeatures?: string[];
   ruc: string;
   phone: string;
   referral: string;
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               language: 'es',
               theme: 'system',
               securityPin: '',
+              disabledFeatures: [],
               ruc: '',
               phone: '',
               referral: 'redes',

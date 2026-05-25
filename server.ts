@@ -6,12 +6,65 @@ import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
 
+// Simple, high-performance IP-based rate limiter to protect against resource abuse/DoS
+const rateLimits: Record<string, { count: number; resetTime: number }> = {};
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 30; // 30 requests per minute
+
+function rateLimiter(req: express.Request, res: express.Response, next: express.NextFunction) {
+  // Extract clients actual IP under potential reversed proxies
+  const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown_ip";
+  const ipStr = Array.isArray(ip) ? ip[0] : String(ip);
+  const now = Date.now();
+
+  const record = rateLimits[ipStr];
+  if (!record || now > record.resetTime) {
+    rateLimits[ipStr] = {
+      count: 1,
+      resetTime: now + RATE_LIMIT_WINDOW_MS
+    };
+    
+    // Memory leak protection - clean up older, reset IP records
+    if (Object.keys(rateLimits).length > 2000) {
+      for (const key of Object.keys(rateLimits)) {
+        if (rateLimits[key].resetTime < now) {
+          delete rateLimits[key];
+        }
+      }
+    }
+    return next();
+  }
+
+  record.count++;
+  if (record.count > MAX_REQUESTS_PER_WINDOW) {
+    res.setHeader("Retry-After", Math.ceil((record.resetTime - now) / 1000));
+    return res.status(429).json({
+      error: "Demasiadas solicitudes. Por favor intente de nuevo en un minuto (Protección anti-denegación de servicio)."
+    });
+  }
+
+  next();
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Security Headers to prevent frame-overlay, cross-site leaks & MIME sniffing
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  });
+
+  // Safe request payload limits to prevent OOM / Memory Starvation (DDoS)
+  app.use(express.json({ limit: "8mb" }));
+  app.use(express.urlencoded({ limit: "8mb", extended: true }));
+
+  // Apply Rate limiting specifically to API routes
+  app.use("/api/", rateLimiter);
 
   // API Routes (Placeholders as most logic is client-side with Firestore, 
   // but fulfilling the requested FastAPI-style endpoints)

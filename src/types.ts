@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type EntityType = 'client' | 'intermediary' | 'supplier';
+export type EntityType = 'client' | 'reseller' | 'intermediary' | 'supplier';
 export type ServiceStatus = 'active' | 'expired' | 'pending';
 export type LedgerType = 'personal' | 'business';
-export type WalletType = 'cash' | 'bank' | 'digital_wallet';
+export type WalletType = 'cash' | 'bank' | 'digital_wallet' | 'credit_card';
 
 export interface Entity {
   id: string;
@@ -60,6 +60,7 @@ export interface Wallet {
   name: string;
   type: WalletType;
   balance: number;
+  totalLimit?: number;
 }
 
 export interface LedgerEntry {

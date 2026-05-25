@@ -48,16 +48,20 @@ interface SidebarProps {
 
 export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const { settings, user } = useAuth();
+  const disabledFeatures = settings?.disabledFeatures || [];
   
-  const menuItems = [
+  const mainGroup = [
     { id: 'dashboard', label: 'Panel Principal', icon: LayoutDashboard },
-    { id: 'crm', label: 'CRM Relaciones', icon: Users },
-    { id: 'services', label: 'Servicios Digitales', icon: SettingsIcon },
-    { id: 'updates', label: 'Actualizaciones ANT', icon: Activity },
-    { id: 'treasury', label: 'Tesorería', icon: Wallet },
-    { id: 'alerts', label: 'Alertas y Cobro', icon: AlertCircle },
+    { id: 'crm', label: 'CRM Relaciones', icon: Users, featureKey: 'crm' },
+    { id: 'services', label: 'Servicios Digitales', icon: SettingsIcon, featureKey: 'services' },
+    { id: 'updates', label: 'Actualizaciones ANT', icon: Activity, featureKey: 'updates' },
+  ].filter(item => !item.featureKey || !disabledFeatures.includes(item.featureKey));
+
+  const configGroup = [
+    { id: 'treasury', label: 'Tesorería', icon: Wallet, featureKey: 'treasury' },
+    { id: 'alerts', label: 'Alertas y Cobro', icon: AlertCircle, featureKey: 'alerts' },
     { id: 'settings', label: 'Configuración', icon: SettingsIcon },
-  ];
+  ].filter(item => !item.featureKey || !disabledFeatures.includes(item.featureKey));
 
   return (
     <aside className="w-72 bg-slate-950/90 lg:bg-slate-900 flex flex-col h-[calc(100vh-2rem)] lg:h-screen lg:rounded-none rounded-2xl my-4 ml-4 lg:my-0 lg:ml-0 sticky top-4 lg:top-0 border border-slate-800/80 lg:border-none lg:border-r text-slate-300 overflow-y-auto scrollbar-hide text-left shadow-2xl lg:shadow-none z-50">
@@ -78,7 +82,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
           <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mb-3.5">Módulos Administrativos</div>
           <nav className="space-y-1">
-            {menuItems.slice(0, 4).map((item) => (
+            {mainGroup.map((item) => (
               <NavItem
                 key={item.id}
                 icon={item.icon}
@@ -91,7 +95,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
           <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mt-8 mb-3.5">Configuración y Alertas</div>
           <nav className="space-y-1">
-            {menuItems.slice(4).map((item) => (
+            {configGroup.map((item) => (
               <NavItem
                 key={item.id}
                 icon={item.icon}

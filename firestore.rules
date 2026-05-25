@@ -1,7 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ---- HELPERS ----
+    // ---- GLOBALS & SECURITY PRIMITIVES ----
+    
     function isSignedIn() {
       return request.auth != null;
     }
@@ -11,7 +12,7 @@ service cloud.firestore {
     }
     
     function isValidId(id) {
-      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
     
     function incoming() {
@@ -22,95 +23,178 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // ---- VALIDATION HELPERS ----
+    // ---- ATTRIBUTE-BASED VALIDATION HELPERS ----
+    
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email']) &&
+             data.keys().size() <= 16 &&
              data.uid == request.auth.uid &&
-             data.email is string &&
+             data.email is string && data.email.size() <= 150 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 150)) &&
+             (!('companyName' in data) || (data.companyName is string && data.companyName.size() <= 150)) &&
              (!('language' in data) || data.language in ['es', 'en']) &&
              (!('theme' in data) || data.theme in ['light', 'dark', 'system']) &&
-             (!('securityPin' in data) || (data.securityPin is string && data.securityPin.size() <= 6));
+             (!('securityPin' in data) || (data.securityPin is string && data.securityPin.size() <= 6)) &&
+             (!('isOnboarded' in data) || data.isOnboarded is bool) &&
+             (!('disabledFeatures' in data) || (data.disabledFeatures is list && data.disabledFeatures.size() <= 15));
     }
     
     function isValidEntity(data) {
       return data.keys().hasAll(['name', 'type', 'ownerId']) &&
+             data.keys().size() <= 8 &&
+             data.ownerId == request.auth.uid &&
              data.name is string && data.name.size() <= 100 &&
              data.type in ['client', 'intermediary', 'supplier'] &&
-             data.ownerId == request.auth.uid;
+             (!('contact' in data) || (data.contact is string && data.contact.size() <= 150)) &&
+             (!('rate' in data) || data.rate is number);
     }
     
     function isValidTransaction(data) {
       return data.keys().hasAll(['intermediaryId', 'ownerId', 'chargedRate', 'isPaid']) &&
+             data.keys().size() <= 12 &&
              data.ownerId == request.auth.uid &&
-             data.chargedRate is number &&
-             data.isPaid is bool;
+             data.intermediaryId is string && data.intermediaryId.size() <= 128 &&
+             data.chargedRate is number && data.chargedRate >= 0 &&
+             data.isPaid is bool &&
+             (!('intermediaryName' in data) || (data.intermediaryName is string && data.intermediaryName.size() <= 100)) &&
+             (!('finalClientName' in data) || (data.finalClientName is string && data.finalClientName.size() <= 100)) &&
+             (!('warehouse' in data) || (data.warehouse is string && data.warehouse.size() <= 100)) &&
+             (!('billingDate' in data) || (data.billingDate is string && data.billingDate.size() <= 50));
     }
     
     function isValidWallet(data) {
       return data.keys().hasAll(['name', 'type', 'ownerId', 'balance']) &&
+             data.keys().size() <= 6 &&
              data.ownerId == request.auth.uid &&
-             data.type in ['cash', 'bank', 'digital_wallet'] &&
+             data.name is string && data.name.size() <= 100 &&
+             data.type in ['cash', 'bank', 'digital_wallet', 'credit_card'] &&
              data.balance is number;
     }
     
     function isValidLedger(data) {
       return data.keys().hasAll(['amount', 'walletId', 'ownerId']) &&
+             data.keys().size() <= 16 &&
              data.ownerId == request.auth.uid &&
              data.amount is number &&
-             (!('type' in data) || data.type in ['personal', 'business']);
+             data.walletId is string && data.walletId.size() <= 128 &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             (!('date' in data) || (data.date is string && data.date.size() <= 50)) &&
+             (!('type' in data) || data.type in ['personal', 'business']) &&
+             (!('isExpense' in data) || data.isExpense is bool) &&
+             (!('isRecurring' in data) || data.isRecurring is bool) &&
+             (!('isPending' in data) || data.isPending is bool) &&
+             (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 50)) &&
+             (!('installments' in data) || (data.installments is string && data.installments.size() <= 10)) &&
+             (!('isCreditCardPayment' in data) || data.isCreditCardPayment is bool) &&
+             (!('targetWalletId' in data) || (data.targetWalletId is string && data.targetWalletId.size() <= 128));
     }
 
-    // ---- RULES ----
+    function isValidDigitalCatalog(data) {
+      return data.keys().hasAll(['name', 'category', 'ownerId']) &&
+             data.keys().size() <= 8 &&
+             data.ownerId == request.auth.uid &&
+             data.name is string && data.name.size() <= 100 &&
+             data.category is string && data.category.size() <= 100 &&
+             (!('pvp' in data) || data.pvp is number) &&
+             (!('pvpReseller' in data) || data.pvpReseller is number);
+    }
+
+    function isValidDigitalService(data) {
+      return data.keys().hasAll(['name', 'category', 'revenue', 'cost', 'ownerId']) &&
+             data.keys().size() <= 24 &&
+             data.ownerId == request.auth.uid &&
+             data.name is string && data.name.size() <= 100 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.revenue is number &&
+             data.cost is number &&
+             (!('supplierId' in data) || (data.supplierId is string && data.supplierId.size() <= 128)) &&
+             (!('supplierName' in data) || (data.supplierName is string && data.supplierName.size() <= 100)) &&
+             (!('clientName' in data) || (data.clientName is string && data.clientName.size() <= 100)) &&
+             (!('clientContact' in data) || (data.clientContact is string && data.clientContact.size() <= 100)) &&
+             (!('clientType' in data) || (data.clientType is string && data.clientType.size() <= 100)) &&
+             (!('expirationDate' in data) || (data.expirationDate is string && data.expirationDate.size() <= 50)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 150)) &&
+             (!('password' in data) || (data.password is string && data.password.size() <= 150)) &&
+             (!('pin' in data) || (data.pin is string && data.pin.size() <= 50)) &&
+             (!('status' in data) || data.status in ['active', 'expired']) &&
+             (!('isPaid' in data) || data.isPaid is bool) &&
+             (!('isCostPaid' in data) || data.isCostPaid is bool) &&
+             (!('revenueWalletId' in data) || (data.revenueWalletId is string && data.revenueWalletId.size() <= 128)) &&
+             (!('costWalletId' in data) || (data.costWalletId is string && data.costWalletId.size() <= 128));
+    }
+
+    function isValidServiceHistory(data) {
+      return data.keys().hasAll(['action', 'userId']) &&
+             data.keys().size() <= 6 &&
+             data.userId == request.auth.uid &&
+             data.action is string && data.action.size() <= 100 &&
+             (!('userId' in data) || data.userId == request.auth.uid) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+    }
+
+    // ---- ACCESS RULES ----
     
-    // Default Deny
+    // Global Safety Net (Default Deny)
     match /{document=**} {
       allow read, write: if false;
     }
     
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) && isValidUser(incoming());
-      allow delete: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && incoming().uid == existing().uid;
+      allow delete: if isOwner(userId) && isValidId(userId);
     }
     
     match /entities/{entityId} {
-      allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid && isValidEntity(incoming());
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidEntity(incoming());
+      allow get, delete: if isValidId(entityId) && isOwner(resource.data.ownerId);
+      allow list: if isOwner(resource.data.ownerId);
+      allow create: if isValidId(entityId) && incoming().ownerId == request.auth.uid && isValidEntity(incoming());
+      allow update: if isValidId(entityId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidEntity(incoming());
     }
     
     match /transactions/{txId} {
-      allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid && isValidTransaction(incoming());
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidTransaction(incoming());
+      allow get, delete: if isValidId(txId) && isOwner(resource.data.ownerId);
+      allow list: if isOwner(resource.data.ownerId);
+      allow create: if isValidId(txId) && incoming().ownerId == request.auth.uid && isValidTransaction(incoming());
+      allow update: if isValidId(txId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidTransaction(incoming());
     }
     
     match /wallets/{walletId} {
-      allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid && isValidWallet(incoming());
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidWallet(incoming());
+      allow get, delete: if isValidId(walletId) && isOwner(resource.data.ownerId);
+      allow list: if isOwner(resource.data.ownerId);
+      allow create: if isValidId(walletId) && incoming().ownerId == request.auth.uid && isValidWallet(incoming());
+      allow update: if isValidId(walletId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidWallet(incoming());
     }
     
     match /ledger/{entryId} {
-      allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid && isValidLedger(incoming());
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid && isValidLedger(incoming());
+      allow get, delete: if isValidId(entryId) && isOwner(resource.data.ownerId);
+      allow list: if isOwner(resource.data.ownerId);
+      allow create: if isValidId(entryId) && incoming().ownerId == request.auth.uid && isValidLedger(incoming());
+      allow update: if isValidId(entryId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidLedger(incoming());
     }
 
     match /digital_services/{serviceId} {
-      allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid;
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid;
+      allow get, delete: if isValidId(serviceId) && isOwner(resource.data.ownerId);
+      allow list: if isOwner(resource.data.ownerId);
+      allow create: if isValidId(serviceId) && incoming().ownerId == request.auth.uid && isValidDigitalService(incoming());
+      allow update: if isValidId(serviceId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidDigitalService(incoming());
 
       match /service_history/{historyId} {
-        allow read, write: if isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId);
+        allow get, delete: if isValidId(historyId) && isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId);
+        allow list: if isOwner(resource.data.userId);
+        allow create: if isValidId(historyId) && isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId) && isValidServiceHistory(incoming());
+        allow update: if isValidId(historyId) && isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId) && isValidServiceHistory(incoming()) && incoming().userId == existing().userId;
       }
     }
     
     match /digital_catalog/{catalogId} {
-      allow read, delete: if isOwner(resource.data.ownerId);
-      allow create: if incoming().ownerId == request.auth.uid;
-      allow update: if isOwner(resource.data.ownerId) && incoming().ownerId == request.auth.uid;
+      allow get, delete: if isValidId(catalogId) && isOwner(resource.data.ownerId);
+      allow list: if isOwner(resource.data.ownerId);
+      allow create: if isValidId(catalogId) && incoming().ownerId == request.auth.uid && isValidDigitalCatalog(incoming());
+      allow update: if isValidId(catalogId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidDigitalCatalog(incoming());
     }
   }
 }
