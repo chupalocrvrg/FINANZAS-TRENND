@@ -55,7 +55,7 @@ service cloud.firestore {
     
     function isValidTransaction(data) {
       return data.keys().hasAll(['intermediaryId', 'ownerId', 'chargedRate', 'isPaid']) &&
-             data.keys().size() <= 12 &&
+             data.keys().size() <= 18 &&
              data.ownerId == request.auth.uid &&
              data.intermediaryId is string && data.intermediaryId.size() <= 128 &&
              data.chargedRate is number && data.chargedRate >= 0 &&
@@ -63,7 +63,15 @@ service cloud.firestore {
              (!('intermediaryName' in data) || (data.intermediaryName is string && data.intermediaryName.size() <= 100)) &&
              (!('finalClientName' in data) || (data.finalClientName is string && data.finalClientName.size() <= 100)) &&
              (!('warehouse' in data) || (data.warehouse is string && data.warehouse.size() <= 100)) &&
-             (!('billingDate' in data) || (data.billingDate is string && data.billingDate.size() <= 50));
+             (!('billingDate' in data) || (data.billingDate is string && data.billingDate.size() <= 50)) &&
+             (!('baseCost' in data) || data.baseCost is number) &&
+             (!('status' in data) || data.status is string) &&
+             (!('createdAt' in data) || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is string) &&
+             (!('isCostPaid' in data) || data.isCostPaid is bool) &&
+             (!('amountPaid' in data) || data.amountPaid is number) &&
+             (!('costPaid' in data) || data.costPaid is number) &&
+             (!('liquidationId' in data) || (data.liquidationId is string && data.liquidationId.size() <= 128));
     }
     
     function isValidWallet(data) {
@@ -106,7 +114,7 @@ service cloud.firestore {
 
     function isValidDigitalService(data) {
       return data.keys().hasAll(['name', 'category', 'revenue', 'cost', 'ownerId']) &&
-             data.keys().size() <= 24 &&
+             data.keys().size() <= 28 &&
              data.ownerId == request.auth.uid &&
              data.name is string && data.name.size() <= 100 &&
              data.category is string && data.category.size() <= 100 &&
@@ -125,7 +133,11 @@ service cloud.firestore {
              (!('isPaid' in data) || data.isPaid is bool) &&
              (!('isCostPaid' in data) || data.isCostPaid is bool) &&
              (!('revenueWalletId' in data) || (data.revenueWalletId is string && data.revenueWalletId.size() <= 128)) &&
-             (!('costWalletId' in data) || (data.costWalletId is string && data.costWalletId.size() <= 128));
+             (!('costWalletId' in data) || (data.costWalletId is string && data.costWalletId.size() <= 128)) &&
+             (!('amountPaid' in data) || data.amountPaid is number) &&
+             (!('costPaid' in data) || data.costPaid is number) &&
+             (!('createdAt' in data) || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is string);
     }
 
     function isValidServiceHistory(data) {

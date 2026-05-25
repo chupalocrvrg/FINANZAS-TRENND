@@ -38,6 +38,14 @@ export interface DigitalService {
   expirationDate: string;
   status: ServiceStatus;
   history: ServiceLog[];
+  isPaid?: boolean;
+  isCostPaid?: boolean;
+  revenueWalletId?: string;
+  costWalletId?: string;
+  amountPaid?: number; // Total amount paid by the customer/reseller of retailPrice
+  costPaid?: number; // Total cost paid to the supplier of cost
+  supplierId?: string;
+  supplierName?: string;
 }
 
 export interface Transaction {
@@ -53,6 +61,9 @@ export interface Transaction {
   status: 'pending' | 'realized';
   liquidationId?: string;
   createdAt: string;
+  isCostPaid?: boolean; // Whether we have paid the $5 cost to the provider
+  amountPaid?: number; // Total amount paid by intermediary of chargedRate
+  costPaid?: number; // Total cost paid by us to the provider of baseCost (default 5.0)
 }
 
 export interface Wallet {

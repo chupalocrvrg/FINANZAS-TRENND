@@ -66,6 +66,8 @@ export interface DigitalServiceItem {
   revenueWalletId?: string;
   costWalletId?: string;
   createdAt?: string;
+  amountPaid?: number;
+  costPaid?: number;
 }
 
 export function DigitalServices() {
@@ -89,6 +91,7 @@ export function DigitalServices() {
   const [paymentType, setPaymentType] = useState<'revenue' | 'cost'>('revenue');
   const [targetWalletId, setTargetWalletId] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   // Success Message
   const [successMsg, setSuccessMsg] = useState({show: false, phone: '', text: ''});
@@ -326,18 +329,40 @@ export function DigitalServices() {
 
   const processPayment = async () => {
     if (!paymentService || !targetWalletId) return;
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Por favor, ingresa un monto válido mayor a 0.");
+      return;
+    }
+    const currentPending = paymentType === 'revenue' 
+      ? (paymentService.revenue - (paymentService.amountPaid || 0))
+      : ((paymentService.cost || 0) - (paymentService.costPaid || 0));
+
+    if (amount > currentPending + 0.005) {
+      alert(`El monto ingresado ($${amount}) supera el saldo pendiente de $${currentPending}`);
+      return;
+    }
+
     setIsProcessingPayment(true);
     try {
       const { updateDoc, doc, addDoc, collection, increment } = await import('firebase/firestore');
       
       if (paymentType === 'revenue') {
-        await updateDoc(doc(db, 'digital_services', paymentService.id), { isPaid: true, revenueWalletId: targetWalletId, updatedAt: new Date().toISOString() });
-        await logServiceHistory(paymentService.id, 'payment_processed', { amount: paymentService.revenue, targetWalletId });
+        const newAmountPaid = (paymentService.amountPaid || 0) + amount;
+        const fullyPaid = newAmountPaid >= paymentService.revenue - 0.005;
+        
+        await updateDoc(doc(db, 'digital_services', paymentService.id), { 
+          amountPaid: newAmountPaid,
+          isPaid: fullyPaid, 
+          revenueWalletId: targetWalletId, 
+          updatedAt: new Date().toISOString() 
+        });
+        await logServiceHistory(paymentService.id, 'payment_processed', { amount, targetWalletId });
         
         await addDoc(collection(db, 'ledger'), {
-          amount: paymentService.revenue,
+          amount: amount,
           category: 'Venta de Servicio Digital',
-          description: `Cobro de ${paymentService.name} a ${paymentService.clientName || 'Cliente'}`,
+          description: `Cobro parcial de ${formatCurrency(amount)} por ${paymentService.name} a ${paymentService.clientName || 'Cliente'}`,
           date: new Date().toISOString().split('T')[0],
           walletId: targetWalletId,
           isExpense: false,
@@ -346,18 +371,26 @@ export function DigitalServices() {
         });
 
         await updateDoc(doc(db, 'wallets', targetWalletId), {
-          balance: increment(paymentService.revenue)
+          balance: increment(amount)
         });
         
-        await sendLocalPushNotification('Pago Registrado ✅', `El servicio ${paymentService.name} cambió su estado a PAGADO.`);
+        await sendLocalPushNotification('Pago Registrado ✅', `Se registró un abono de ${formatCurrency(amount)} para ${paymentService.name}.`);
       } else {
-        await updateDoc(doc(db, 'digital_services', paymentService.id), { isCostPaid: true, costWalletId: targetWalletId, updatedAt: new Date().toISOString() });
-        await logServiceHistory(paymentService.id, 'cost_payment_processed', { amount: paymentService.cost || 0, targetWalletId });
+        const newCostPaid = (paymentService.costPaid || 0) + amount;
+        const fullyPaid = newCostPaid >= (paymentService.cost || 0) - 0.005;
+
+        await updateDoc(doc(db, 'digital_services', paymentService.id), { 
+          costPaid: newCostPaid,
+          isCostPaid: fullyPaid, 
+          costWalletId: targetWalletId, 
+          updatedAt: new Date().toISOString() 
+        });
+        await logServiceHistory(paymentService.id, 'cost_payment_processed', { amount, targetWalletId });
         
         await addDoc(collection(db, 'ledger'), {
-          amount: -(paymentService.cost || 0),
+          amount: -amount,
           category: 'Costo de Servicio Digital',
-          description: `Pago de costo por ${paymentService.name} a proveedor`,
+          description: `Pago parcial de costo por ${formatCurrency(amount)}: de ${paymentService.name} a proveedor`,
           date: new Date().toISOString().split('T')[0],
           walletId: targetWalletId,
           isExpense: true,
@@ -366,14 +399,15 @@ export function DigitalServices() {
         });
 
         await updateDoc(doc(db, 'wallets', targetWalletId), {
-          balance: increment(-(paymentService.cost || 0))
+          balance: increment(-amount)
         });
         
-        await sendLocalPushNotification('Costo Pagado ✅', `Se registró el pago de costo de ${paymentService.name} al proveedor.`);
+        await sendLocalPushNotification('Costo Pagado ✅', `Se registró el pago parcial de costo ${formatCurrency(amount)} de ${paymentService.name} al proveedor.`);
       }
       
       setPaymentService(null);
       setTargetWalletId('');
+      setPaymentAmount('');
     } catch (e) {
       console.error("Error validando pago", e);
     } finally {
@@ -569,6 +603,7 @@ export function DigitalServices() {
                                  if (!service.isPaid) {
                                    setPaymentType('revenue');
                                    setPaymentService(service);
+                                   setPaymentAmount((service.revenue - (service.amountPaid || 0)).toString());
                                  }
                               }}
                               disabled={service.isPaid}
@@ -586,6 +621,7 @@ export function DigitalServices() {
                                  if (service.isCostPaid === false) {
                                    setPaymentType('cost');
                                    setPaymentService(service);
+                                   setPaymentAmount(((service.cost || 0) - (service.costPaid || 0)).toString());
                                  }
                               }}
                               disabled={service.isCostPaid !== false}
@@ -1310,12 +1346,36 @@ export function DigitalServices() {
               <div className="space-y-4">
                  <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl">
                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">
-                     {paymentType === 'revenue' ? 'Valor a Cobrar (PVP)' : 'Valor de Costo a Pagar'}
+                     {paymentType === 'revenue' ? 'Valor Total (PVP)' : 'Costo Total'}
                    </p>
                    <p className="text-2xl font-black font-mono text-indigo-700 dark:text-indigo-400">
                      {formatCurrency(paymentType === 'revenue' ? paymentService.revenue : (paymentService.cost || 0))}
                    </p>
+                   {((paymentType === 'revenue' && (paymentService.amountPaid || 0) > 0) || (paymentType === 'cost' && (paymentService.costPaid || 0) > 0)) && (
+                     <p className="text-[10px] font-bold text-slate-400 mt-1">
+                       Total Abonado/Saldado: {formatCurrency(paymentType === 'revenue' ? (paymentService.amountPaid || 0) : (paymentService.costPaid || 0))}
+                     </p>
+                   )}
                  </div>
+
+                 {/* Input de Monto Parcial / Abono */}
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 flex justify-between">
+                     <span>Monto a Registrar ({paymentType === 'revenue' ? 'Saldo pendiente' : 'Costo pendiente'})</span>
+                     <span className="font-mono font-bold text-indigo-550 dark:text-indigo-400">
+                       {formatCurrency(paymentType === 'revenue' ? (paymentService.revenue - (paymentService.amountPaid || 0)) : ((paymentService.cost || 0) - (paymentService.costPaid || 0)))}
+                     </span>
+                   </label>
+                   <input
+                     type="number"
+                     step="0.01"
+                     className={cn("w-full p-3.5 rounded-xl border text-sm font-black font-mono outline-none", isDark ? "bg-slate-950 border-slate-800 text-white focus:border-indigo-505" : "bg-white border-slate-200 focus:border-indigo-505 shadow-sm")}
+                     value={paymentAmount}
+                     onChange={e => setPaymentAmount(e.target.value)}
+                     max={paymentType === 'revenue' ? (paymentService.revenue - (paymentService.amountPaid || 0)) : ((paymentService.cost || 0) - (paymentService.costPaid || 0))}
+                   />
+                 </div>
+
                  <div className="space-y-1.5">
                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
                      {paymentType === 'revenue' ? 'Billetera de Destino (Ingreso)' : 'Billetera de Origen (Egreso)'}

@@ -84,10 +84,11 @@ function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default
 
 export function Dashboard() {
   const { user, settings } = useAuth();
-  const [receivables, setReceivables] = useState<any[]>([]);
-  const [payables, setPayables] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [digitalServices, setDigitalServices] = useState<any[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [activeModal, setActiveModal] = useState<'wallets' | 'receivables' | 'payables' | 'entities' | null>(null);
   
   // Custom Filters and Categorization state
@@ -95,12 +96,18 @@ export function Dashboard() {
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
+  // Payment/Collection flow state
+  const [paymentTarget, setPaymentTarget] = useState<{ item: any; type: 'receivables' | 'payables' } | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('');
+
   const isDark = settings?.theme === 'dark';
 
   useEffect(() => {
     setFilterType('all');
     setViewMode('list');
     setExpandedGroups({});
+    setPaymentTarget(null);
   }, [activeModal]);
 
   useEffect(() => {
@@ -111,24 +118,19 @@ export function Dashboard() {
       setWallets(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
-    // Cuentas por Cobrar (Transactions + DigitalServices matches isPaid == false)
-    const unsubReceivablesTx = onSnapshot(query(collection(db, 'transactions'), where('ownerId', '==', user.uid), where('isPaid', '==', false)), (snap) => {
-      setReceivables(prev => {
-        const others = prev.filter(p => !p.isTx);
-        return [...others, ...snap.docs.map(d => ({ id: d.id, isTx: true, ...(d.data() as any) }))];
-      });
+    // Transactions
+    const unsubTx = onSnapshot(query(collection(db, 'transactions'), where('ownerId', '==', user.uid)), (snap) => {
+      setTransactions(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
-    const unsubReceivablesDs = onSnapshot(query(collection(db, 'digital_services'), where('ownerId', '==', user.uid), where('isPaid', '==', false)), (snap) => {
-      setReceivables(prev => {
-        const others = prev.filter(p => p.isTx);
-        return [...others, ...snap.docs.map(d => ({ id: d.id, isTx: false, chargedRate: d.data().revenue, finalClientName: d.data().clientName, warehouse: d.data().name, ...(d.data() as any) }))];
-      });
+    // Digital Services
+    const unsubDs = onSnapshot(query(collection(db, 'digital_services'), where('ownerId', '==', user.uid)), (snap) => {
+      setDigitalServices(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
-    // Cuentas por Pagar (Ledger where isPending == true and amount < 0)
-    const unsubPayables = onSnapshot(query(collection(db, 'ledger'), where('ownerId', '==', user.uid), where('isPending', '==', true)), (snap) => {
-      setPayables(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter((e: any) => e.amount < 0));
+    // Ledger (pending payables)
+    const unsubLedger = onSnapshot(query(collection(db, 'ledger'), where('ownerId', '==', user.uid), where('isPending', '==', true)), (snap) => {
+      setLedgerEntries(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
     // CRM Entities
@@ -136,11 +138,62 @@ export function Dashboard() {
       setEntities(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
-    return () => { unsubWallets(); unsubReceivablesTx(); unsubReceivablesDs(); unsubPayables(); unsubEntities(); };
+    return () => { 
+      unsubWallets(); 
+      unsubTx(); 
+      unsubDs(); 
+      unsubLedger(); 
+      unsubEntities(); 
+    };
   }, [user]);
 
-  const totalReceivables = receivables.reduce((sum, tx) => sum + (tx.chargedRate || 0), 0);
-  const totalPayables = Math.abs(payables.reduce((sum, entry) => sum + (entry.amount || 0), 0));
+  // Derived receivables
+  const receivables = [
+    ...transactions.filter(tx => !tx.isPaid).map(tx => ({
+      ...tx,
+      isTx: true,
+      pendingAmount: (tx.chargedRate || 0) - (tx.amountPaid || 0)
+    })),
+    ...digitalServices.filter(ds => !ds.isPaid).map(ds => ({
+      ...ds,
+      isTx: false,
+      chargedRate: ds.revenue,
+      pendingAmount: (ds.revenue || 0) - (ds.amountPaid || 0),
+      finalClientName: ds.clientName,
+      warehouse: ds.name
+    }))
+  ];
+
+  // Derived payables
+  const payables = [
+    ...ledgerEntries.filter(e => e.amount < 0).map(e => ({
+      ...e,
+      isLedger: true,
+      category: e.category || 'Gasto General',
+      description: e.description || 'Gasto',
+      pendingAmount: Math.abs(e.amount)
+    })),
+    ...transactions.filter(tx => !tx.isCostPaid).map(tx => {
+      const costVal = tx.baseCost !== undefined ? tx.baseCost : 5.0;
+      return {
+        ...tx,
+        isTxCost: true,
+        category: 'Proveedor ANT (Actualizaciones)',
+        description: `Costo actualización de ${tx.finalClientName || 'Cliente'} (${tx.warehouse})`,
+        pendingAmount: costVal - (tx.costPaid || 0)
+      };
+    }),
+    ...digitalServices.filter(ds => !ds.isCostPaid).map(ds => ({
+      ...ds,
+      isDsCost: true,
+      category: ds.supplierName || ds.supplier || 'Proveedor Digital',
+      description: `Costo servicio digital: ${ds.name} - ${ds.clientName || 'Cliente'}`,
+      pendingAmount: (ds.cost || 0) - (ds.costPaid || 0)
+    }))
+  ];
+
+  const totalReceivables = receivables.reduce((sum, rx) => sum + (rx.pendingAmount || 0), 0);
+  const totalPayables = payables.reduce((sum, px) => sum + (px.pendingAmount || 0), 0);
   const totalWallets = wallets.filter(w => w.type !== 'credit_card').reduce((sum, w) => sum + (w.balance || 0), 0);
   const totalCreditAvailable = wallets.filter(w => w.type === 'credit_card').reduce((sum, w) => sum + (w.balance || 0), 0);
 
@@ -161,6 +214,7 @@ export function Dashboard() {
   };
 
   const resolvePayableCategory = (item: any) => {
+    if (item.isTxCost || item.isDsCost) return 'supplier';
     const found = entities.find(e => e.name?.toLowerCase() === item.category?.toLowerCase() || e.name?.toLowerCase() === item.description?.toLowerCase());
     if (found) return found.type;
     return 'supplier';
@@ -176,8 +230,8 @@ export function Dashboard() {
     return resolvePayableCategory(px) === filterType;
   });
 
-  const filteredReceivablesTotal = filteredReceivables.reduce((sum, rx) => sum + (rx.chargedRate || 0), 0);
-  const filteredPayablesTotal = Math.abs(filteredPayables.reduce((sum, entry) => sum + (entry.amount || 0), 0));
+  const filteredReceivablesTotal = filteredReceivables.reduce((sum, rx) => sum + (rx.pendingAmount || 0), 0);
+  const filteredPayablesTotal = filteredPayables.reduce((sum, px) => sum + (px.pendingAmount || 0), 0);
 
   const exportToPDF = (type: 'receivables' | 'payables') => {
     const doc = new jsPDF();
@@ -214,7 +268,7 @@ export function Dashboard() {
         ? `${item.finalClientName ? `Cliente: ${item.finalClientName}` : ''} (${item.warehouse || item.name || 'Suscripción'})`
         : (item.description || 'Gasto General');
         
-      const amount = formatCurrency(type === 'receivables' ? (item.chargedRate || 0) : Math.abs(item.amount || 0));
+      const amount = formatCurrency(item.pendingAmount || 0);
       return [index + 1, catLabel, name, detail, amount];
     });
 
@@ -222,7 +276,7 @@ export function Dashboard() {
 
     (doc as any).autoTable({
       startY: 42,
-      head: [['#', 'Relación CRM', 'Entidad / Referencia', 'Detalles / Conceptos', 'Monto']],
+      head: [['#', 'Relación CRM', 'Entidad / Referencia', 'Detalles / Conceptos', 'Monto Pendiente']],
       body: bodyRows,
       theme: 'grid',
       headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -247,7 +301,7 @@ export function Dashboard() {
         groups[name] = { total: 0, items: [] };
       }
       
-      const val = type === 'receivables' ? (item.chargedRate || 0) : Math.abs(item.amount || 0);
+      const val = item.pendingAmount || 0;
       groups[name].total += val;
       groups[name].items.push(item);
     });
@@ -269,9 +323,243 @@ export function Dashboard() {
       alert(`No se encontró número de contacto registrado para "${rx.intermediaryName || rx.finalClientName || 'el cliente'}". Por favor ingrese su número en la sección de CRM.`);
       return;
     }
-    const text = `Hola *${contactEntity?.name}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nTe recordamos amablemente un valor pendiente de pago en nuestro sistema por *${formatCurrency(rx.chargedRate)}* por concepto de servicio de actualizaciones ANT para el cliente *${rx.finalClientName}* (${rx.warehouse}).\n\nPor favor, confirmanos cuando realices la transferencia. ¡Muchas gracias!`;
+    const amountVal = rx.pendingAmount || rx.chargedRate || 0;
+    const text = `Hola *${contactEntity?.name}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nTe recordamos amablemente un valor pendiente de pago en nuestro sistema por *${formatCurrency(amountVal)}* por concepto de servicio de actualizaciones ANT para el cliente *${rx.finalClientName || rx.clientName || 'Cliente'}* (${rx.warehouse || rx.name || 'Suscripción'}).\n\nPor favor, confirmamos cuando realices la transferencia. ¡Muchas gracias!`;
     const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
+  };
+
+  const handleWhatsAppGroupRedirect = (group: { entityName: string; total: number; rawItems: any[] }) => {
+    const sampleItem = group.rawItems[0];
+    let contactEntity = entities.find(e => e.name?.toLowerCase() === group.entityName.toLowerCase() || e.id === sampleItem?.intermediaryId);
+    
+    const phone = contactEntity?.contact || '';
+    if (!phone) {
+      alert(`No se encontró número de contacto registrado para "${group.entityName}". Por favor ingrese su número en la sección de CRM.`);
+      return;
+    }
+
+    let text = `Hola *${group.entityName}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\n`;
+    text += `Mi estimado, te recordamos que tenemos pendiente de cobro un total de *${formatCurrency(group.total)}* correspondiente a:\n\n`;
+    
+    group.rawItems.forEach((item, index) => {
+      const typeLabel = item.isTx ? 'Actualización ANT' : 'Servicio Digital';
+      const detail = item.isTx 
+        ? `${item.finalClientName || 'Cliente'} (${item.warehouse || 'S/D'})` 
+        : `${item.name}`;
+      const amountPending = item.pendingAmount;
+      text += `${index + 1}. *${typeLabel}*: ${detail} - Saldo: *${formatCurrency(amountPending)}*\n`;
+    });
+    
+    text += `\n*TOTAL PENDIENTE: ${formatCurrency(group.total)}*\n\nPor favor, confírmanos cuando realices la transferencia. ¡Muchas gracias! 🙏🏼`;
+    
+    const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!user) return;
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Por favor, ingresa un monto válido mayor a 0.");
+      return;
+    }
+    if (!selectedWalletId) {
+      alert("Por favor, selecciona una billetera.");
+      return;
+    }
+
+    const { item, type } = paymentTarget!;
+    const remaining = item.pendingAmount;
+    if (amount > remaining + 0.001) {
+      alert(`El monto ingresado ($${amount}) supera el saldo pendiente de $${remaining}`);
+      return;
+    }
+
+    const { doc, updateDoc, addDoc, collection, increment } = await import('firebase/firestore');
+
+    try {
+      const walletRef = doc(db, 'wallets', selectedWalletId);
+      const isCollection = type === 'receivables';
+
+      if (item.isMass) {
+        let remainingPayment = amount;
+        // Sort items so that we pay oldest first
+        const sortedItems = [...item.items].sort((a, b) => {
+          const dateA = a.createdAt || a.date || '';
+          const dateB = b.createdAt || b.date || '';
+          return dateA.localeCompare(dateB);
+        });
+
+        for (const singleItem of sortedItems) {
+          if (remainingPayment <= 0.005) break;
+
+          const itemPending = singleItem.pendingAmount || 0;
+          if (itemPending <= 0) continue;
+
+          const amountToPay = Math.min(remainingPayment, itemPending);
+          remainingPayment -= amountToPay;
+
+          if (singleItem.isTx) {
+            const txRef = doc(db, 'transactions', singleItem.id);
+            const newAmountPaid = (singleItem.amountPaid || 0) + amountToPay;
+            const fullyPaid = newAmountPaid >= (singleItem.chargedRate || 0) - 0.005;
+            await updateDoc(txRef, {
+              amountPaid: newAmountPaid,
+              isPaid: fullyPaid,
+              updatedAt: new Date().toISOString()
+            });
+          } else if (singleItem.isTxCost) {
+            const txRef = doc(db, 'transactions', singleItem.id);
+            const newCostPaid = (singleItem.costPaid || 0) + amountToPay;
+            const totalCost = singleItem.baseCost !== undefined ? singleItem.baseCost : 5;
+            const fullyPaid = newCostPaid >= totalCost - 0.005;
+            await updateDoc(txRef, {
+              costPaid: newCostPaid,
+              isCostPaid: fullyPaid,
+              updatedAt: new Date().toISOString()
+            });
+          } else if (singleItem.isDsCost) {
+            const serviceRef = doc(db, 'digital_services', singleItem.id);
+            const newCostPaid = (singleItem.costPaid || 0) + amountToPay;
+            const fullyPaid = newCostPaid >= (singleItem.cost || 0) - 0.005;
+            await updateDoc(serviceRef, {
+              costPaid: newCostPaid,
+              isCostPaid: fullyPaid,
+              updatedAt: new Date().toISOString()
+            });
+          } else if (singleItem.isLedger) {
+            const ledgerRef = doc(db, 'ledger', singleItem.id);
+            if (amountToPay >= itemPending - 0.005) {
+              await updateDoc(ledgerRef, {
+                isPending: false,
+                walletId: selectedWalletId,
+                description: `${singleItem.description || ''} (Saldado)`,
+                updatedAt: new Date().toISOString()
+              });
+            } else {
+              await updateDoc(ledgerRef, {
+                amount: -(itemPending - amountToPay),
+                updatedAt: new Date().toISOString()
+              });
+            }
+          } else {
+            const serviceRef = doc(db, 'digital_services', singleItem.id);
+            const newAmountPaid = (singleItem.amountPaid || 0) + amountToPay;
+            const fullyPaid = newAmountPaid >= (singleItem.revenue || singleItem.chargedRate || 0) - 0.005;
+            await updateDoc(serviceRef, {
+              amountPaid: newAmountPaid,
+              isPaid: fullyPaid,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+
+        const ledgerAmount = isCollection ? amount : -amount;
+        const categoryLabel = isCollection ? 'Abono Masivo de Cartera' : 'Pago Masivo de Costos';
+        const descriptionLabel = isCollection 
+          ? `Registro de abono general de ${formatCurrency(amount)} de ${item.entityName} aplicado a saldos pendientes.`
+          : `Registro de pago general de ${formatCurrency(amount)} de costo a ${item.entityName} aplicado a saldos pendientes.`;
+
+        await addDoc(collection(db, 'ledger'), {
+          amount: ledgerAmount,
+          category: categoryLabel,
+          description: descriptionLabel,
+          date: new Date().toISOString().split('T')[0],
+          walletId: selectedWalletId,
+          isExpense: !isCollection,
+          ownerId: user.uid,
+          createdAt: new Date().toISOString()
+        });
+
+        await updateDoc(walletRef, {
+          balance: increment(ledgerAmount)
+        });
+
+      } else {
+        if (item.isTx) {
+          const txRef = doc(db, 'transactions', item.id);
+          const newAmountPaid = (item.amountPaid || 0) + amount;
+          const fullyPaid = newAmountPaid >= (item.chargedRate || 0) - 0.005;
+          await updateDoc(txRef, {
+            amountPaid: newAmountPaid,
+            isPaid: fullyPaid,
+            updatedAt: new Date().toISOString()
+          });
+        } else if (item.isTxCost) {
+          const txRef = doc(db, 'transactions', item.id);
+          const newCostPaid = (item.costPaid || 0) + amount;
+          const totalCost = item.baseCost !== undefined ? item.baseCost : 5;
+          const fullyPaid = newCostPaid >= totalCost - 0.005;
+          await updateDoc(txRef, {
+            costPaid: newCostPaid,
+            isCostPaid: fullyPaid,
+            updatedAt: new Date().toISOString()
+          });
+        } else if (item.isDsCost) {
+          const serviceRef = doc(db, 'digital_services', item.id);
+          const newCostPaid = (item.costPaid || 0) + amount;
+          const fullyPaid = newCostPaid >= (item.cost || 0) - 0.005;
+          await updateDoc(serviceRef, {
+            costPaid: newCostPaid,
+            isCostPaid: fullyPaid,
+            updatedAt: new Date().toISOString()
+          });
+        } else if (item.isLedger) {
+          const ledgerRef = doc(db, 'ledger', item.id);
+          await updateDoc(ledgerRef, {
+            isPending: false,
+            walletId: selectedWalletId,
+            description: `${item.description || ''} (Saldado)`,
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          const serviceRef = doc(db, 'digital_services', item.id);
+          const newAmountPaid = (item.amountPaid || 0) + amount;
+          const fullyPaid = newAmountPaid >= (item.revenue || item.chargedRate || 0) - 0.005;
+          await updateDoc(serviceRef, {
+            amountPaid: newAmountPaid,
+            isPaid: fullyPaid,
+            updatedAt: new Date().toISOString()
+          });
+        }
+
+        if (item.isLedger) {
+          await updateDoc(walletRef, {
+            balance: increment(item.amount) 
+          });
+        } else {
+          const ledgerAmount = isCollection ? amount : -amount;
+          const categoryLabel = isCollection 
+            ? (item.isTx ? 'Abono Actualización ANT' : 'Abono Servicio Digital')
+            : (item.isTxCost ? 'Costo Actualización ANT' : 'Costo Servicio Digital');
+          const descriptionLabel = isCollection
+            ? `Cobro parcial de ${formatCurrency(amount)}: de ${item.intermediaryName || item.clientName || 'Cliente'} (${item.warehouse || item.name || 'S/N'})`
+            : `Pago parcial de ${formatCurrency(amount)}: a ${item.supplierName || item.supplier || 'Proveedor'} por ${item.name || 'S/N'}`;
+
+          await addDoc(collection(db, 'ledger'), {
+            amount: ledgerAmount,
+            category: categoryLabel,
+            description: descriptionLabel,
+            date: new Date().toISOString().split('T')[0],
+            walletId: selectedWalletId,
+            isExpense: !isCollection,
+            ownerId: user.uid,
+            createdAt: new Date().toISOString()
+          });
+
+          await updateDoc(walletRef, {
+            balance: increment(ledgerAmount)
+          });
+        }
+      }
+
+      alert("¡Transacción registrada y caja general actualizada con éxito! 🟢");
+      setPaymentTarget(null);
+    } catch (err) {
+      console.error(err);
+      alert("Error al procesar la transacción en Firebase.");
+    }
   };
 
   return (
@@ -342,15 +630,32 @@ export function Dashboard() {
             {receivables.map(rx => (
               <div key={rx.id} className="py-3 flex justify-between items-center group">
                 <div className="min-w-0 pr-4">
-                  <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{rx.intermediaryName}</p>
+                  <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{rx.intermediaryName || rx.clientName || 'S/N'}</p>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">Cliente: {rx.finalClientName || '-'}</p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-black font-mono text-emerald-500">{formatCurrency(rx.chargedRate)}</span>
+                  <div className="text-right">
+                    <span className="text-sm font-black font-mono text-emerald-500 block">{formatCurrency(rx.pendingAmount)}</span>
+                    {rx.amountPaid > 0 && (
+                      <span className="text-[9px] text-slate-400 font-bold block">Abonado: {formatCurrency(rx.amountPaid)}</span>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setActiveModal('receivables');
+                      setPaymentTarget({ item: rx, type: 'receivables' });
+                      setPaymentAmount((rx.pendingAmount || 0).toString());
+                      setSelectedWalletId(wallets[0]?.id || '');
+                    }}
+                    title="Registrar Abono en Billetera / Efectivo"
+                    className="p-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
+                  >
+                    <Wallet className="w-4 h-4" />
+                  </button>
                   <button 
                     onClick={() => handleWhatsAppRedirect(rx)}
                     title="Enviar recordatorio por WhatsApp al número registrado"
-                    className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm"
+                    className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
                   >
                     <MessageCircle className="w-4 h-4" />
                   </button>
@@ -379,8 +684,25 @@ export function Dashboard() {
                   <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{px.category}</p>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">{px.description || 'Sin detalles'}</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="text-sm font-black font-mono text-rose-500">{formatCurrency(Math.abs(px.amount))}</span>
+                <div className="flex items-center gap-3 shrink-0 font-bold">
+                  <div className="text-right">
+                    <span className="text-sm font-black font-mono text-rose-500 block">{formatCurrency(px.pendingAmount)}</span>
+                    {px.costPaid > 0 && (
+                      <span className="text-[9px] text-slate-400 font-bold block">Pagado: {formatCurrency(px.costPaid)}</span>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setActiveModal('payables');
+                      setPaymentTarget({ item: px, type: 'payables' });
+                      setPaymentAmount((px.pendingAmount || 0).toString());
+                      setSelectedWalletId(wallets[0]?.id || '');
+                    }}
+                    title="Registrar Pago a Proveedor / Gasto"
+                    className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
+                  >
+                    <Wallet className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -450,7 +772,7 @@ export function Dashboard() {
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                           filterType === 'client'
                             ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
                         )}
                       >
                         Clientes Finales
@@ -460,7 +782,7 @@ export function Dashboard() {
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                           filterType === 'reseller'
                             ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
                         )}
                       >
                         Revendedores
@@ -470,7 +792,7 @@ export function Dashboard() {
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                           filterType === 'intermediary'
                             ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
                         )}
                       >
                         Intermediarios
@@ -481,7 +803,7 @@ export function Dashboard() {
                           className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                             filterType === 'supplier'
                               ? "bg-indigo-600 text-white shadow-sm"
-                              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                              : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
                           )}
                         >
                           Proveedores
@@ -499,7 +821,7 @@ export function Dashboard() {
                         title="Vista plana de movimientos"
                         className={cn("p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[10px] font-black uppercase cursor-pointer",
                           viewMode === 'list'
-                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-indigo-400"
+                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-850/60 dark:border-slate-800 dark:text-indigo-400"
                             : "border-transparent text-slate-400 hover:text-slate-600"
                         )}
                       >
@@ -511,12 +833,12 @@ export function Dashboard() {
                         title="Vista agrupada por Entidad"
                         className={cn("p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[10px] font-black uppercase cursor-pointer",
                           viewMode === 'grouped'
-                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-indigo-400"
+                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-850/60 dark:border-slate-800 dark:text-indigo-400"
                             : "border-transparent text-slate-400 hover:text-slate-600"
                         )}
                       >
                         <LayoutGrid className="w-3.5 h-3.5" />
-                        Por Entidad (Detalle)
+                        Por Entidad (Masivo)
                       </button>
                     </div>
 
@@ -532,10 +854,81 @@ export function Dashboard() {
                   {/* Resumen Total del Filtro */}
                   <div className="p-3.5 rounded-xl border border-dashed flex justify-between items-center text-xs font-bold leading-none bg-slate-50/50 dark:bg-slate-950/20 dark:border-slate-800 border-slate-200">
                     <span className="text-slate-400 uppercase tracking-widest text-[9px] font-black">Total en Selección Activa:</span>
-                    <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 font-black">
+                    <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
                       {activeModal === 'receivables' ? formatCurrency(filteredReceivablesTotal) : formatCurrency(filteredPayablesTotal)}
                     </span>
                   </div>
+                </div>
+              )}
+
+              {/* SECTION: Interactive Payment/Collection panel */}
+              {paymentTarget && (
+                <div className="shrink-0 mb-6 p-4 rounded-2xl border border-dashed border-indigo-200 dark:border-slate-800 bg-indigo-50/25 dark:bg-slate-950/30 text-left">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-[10.5px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                      <Wallet className="w-4 h-4" />
+                      {paymentTarget.item.isMass
+                        ? (paymentTarget.type === 'receivables' ? 'Registrar Cobro General/Masivo (CRM)' : 'Registrar Pago General/Masivo (AP)')
+                        : (paymentTarget.type === 'receivables' ? 'Registrar Abono del Cliente' : 'Registrar Pago al Proveedor')}
+                    </h4>
+                    <button 
+                      onClick={() => setPaymentTarget(null)}
+                      className="text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white uppercase cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 mt-1 mb-3.5 leading-tight text-left font-bold">
+                    Movimiento: <strong className={isDark ? "text-slate-300" : "text-slate-700"}>
+                      {paymentTarget.item.isMass 
+                        ? 'ABONO/PAGO GENERAL MULTIPLE (Por Entidad)' 
+                        : (paymentTarget.item.isTx ? 'Actualización ANT' : paymentTarget.item.isTxCost ? 'Costo Actualización Proveedor' : paymentTarget.item.isDsCost ? 'Costo de Servicio Digital (Proveedor)' : 'Servicio Digital')}
+                    </strong> • {paymentTarget.item.isMass ? paymentTarget.item.entityName : (paymentTarget.item.intermediaryName || paymentTarget.item.supplierName || paymentTarget.item.category || 'S/N')} 
+                    {!paymentTarget.item.isMass && paymentTarget.item.finalClientName ? ` por ${paymentTarget.item.finalClientName}` : ''} 
+                    {!paymentTarget.item.isMass ? ` (${paymentTarget.item.warehouse || paymentTarget.item.name || paymentTarget.item.description})` : ` (${paymentTarget.item.items?.length || 0} movimientos pendientes)`}
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                        Monto a Abonar (Saldo: {formatCurrency(paymentTarget.item.pendingAmount)})
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        max={paymentTarget.item.pendingAmount}
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        className="w-full text-xs font-black p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                        Seleccionar Caja o Billetera
+                      </label>
+                      <select
+                        value={selectedWalletId}
+                        onChange={(e) => setSelectedWalletId(e.target.value)}
+                        className="w-full text-xs font-black p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">-- Elige una billetera --</option>
+                        {wallets.map(w => (
+                          <option key={w.id} value={w.id}>
+                            {w.name} (Saldo: {formatCurrency(w.balance)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleConfirmPayment}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all shadow-md shadow-indigo-500/10 cursor-pointer"
+                  >
+                    Confirmar Transacción y Sincronizar Caja
+                  </button>
                 </div>
               )}
 
@@ -571,7 +964,7 @@ export function Dashboard() {
                           Tarjetas de Crédito (No sumado a efectivo)
                         </div>
                         {wallets.filter(w => w.type === 'credit_card').length === 0 ? (
-                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-250 dark:border-slate-800 rounded-xl">No hay tarjetas de crédito registradas.</div>
+                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">No hay tarjetas de crédito registradas.</div>
                         ) : wallets.filter(w => w.type === 'credit_card').map(w => (
                           <div key={w.id} className="py-2.5 flex justify-between items-center border-b border-slate-100 dark:border-slate-800/40 last:border-0">
                             <div className="min-w-0 pr-4 text-left font-bold">
@@ -600,20 +993,36 @@ export function Dashboard() {
                       const relativeLabel = calculatedCat === 'client' ? 'Cliente Final' : calculatedCat === 'reseller' ? 'Revendedor' : calculatedCat === 'intermediary' ? 'Intermediario' : 'Proveedor';
                       return (
                         <div key={rx.id} className="py-4 flex justify-between items-center group text-left">
-                          <div className="min-w-0 pr-4">
-                            <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>
+                          <div className="min-w-0 pr-4 font-bold">
+                            <p className={cn("text-sm truncate", isDark ? "text-slate-200" : "text-slate-800")}>
                               {rx.intermediaryName || rx.clientName || rx.finalClientName || 'S/N'}
                             </p>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">
                               {relativeLabel} • {rx.finalClientName ? `Cliente: ${rx.finalClientName}` : 'S/N'} ({rx.warehouse || rx.name || 'Suscripción'})
                             </p>
+                            {rx.amountPaid > 0 && (
+                              <p className="text-[10px] text-indigo-500 font-mono font-bold mt-1">Saldo Abonado: {formatCurrency(rx.amountPaid)} / Total: {formatCurrency(rx.chargedRate)}</p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-sm font-black font-mono text-emerald-500">{formatCurrency(rx.chargedRate)}</span>
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className="text-sm font-black font-mono text-emerald-500 mr-1">{formatCurrency(rx.pendingAmount)}</span>
+                            
+                            <button
+                              onClick={() => {
+                                setPaymentTarget({ item: rx, type: 'receivables' });
+                                setPaymentAmount((rx.pendingAmount || 0).toString());
+                                setSelectedWalletId(wallets[0]?.id || '');
+                              }}
+                              title="Registrar Abono en Efectivo / Banco"
+                              className="p-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
+                            >
+                              <Wallet className="w-4 h-4" />
+                            </button>
+
                             <button 
                               onClick={() => handleWhatsAppRedirect(rx)}
                               title="Enviar recordatorio por WhatsApp al número registrado"
-                              className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm"
+                              className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
                             >
                               <MessageCircle className="w-4 h-4" />
                             </button>
@@ -637,6 +1046,40 @@ export function Dashboard() {
                             <div className="flex items-center gap-2">
                               {isExpanded ? <ChevronUp className="w-4 h-4 text-indigo-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                               <p className={cn("text-sm font-black", isDark ? "text-slate-200" : "text-slate-800")}>{entityName}</p>
+                              
+                              {/* Unified Mass Reminder button for this reseller/intermediary */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleWhatsAppGroupRedirect({ entityName, total, rawItems });
+                                }}
+                                title="Enviar reporte masivo unificado por WhatsApp"
+                                className="p-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-colors flex items-center justify-center cursor-pointer ml-2"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* General mass payment registering/collecting button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPaymentTarget({
+                                    item: {
+                                      isMass: true,
+                                      entityName,
+                                      items: rawItems,
+                                      pendingAmount: total
+                                    },
+                                    type: 'receivables'
+                                  });
+                                  setPaymentAmount(total.toString());
+                                  setSelectedWalletId(wallets[0]?.id || '');
+                                }}
+                                title="Registrar Cobro/Abono General de esta Entidad"
+                                className="p-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors flex items-center justify-center cursor-pointer ml-1.5 animate-pulse"
+                              >
+                                <Wallet className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                             <span className="text-sm font-mono font-black text-indigo-600 dark:text-indigo-400 leading-none">{formatCurrency(total)}</span>
                           </div>
@@ -648,20 +1091,36 @@ export function Dashboard() {
                                 const relativeLabel = calculatedCat === 'client' ? 'Cliente Final' : calculatedCat === 'reseller' ? 'Revendedor' : calculatedCat === 'intermediary' ? 'Intermediario' : 'Proveedor';
                                 return (
                                   <div key={item.id} className="py-2.5 flex justify-between items-center text-xs text-left group border-b border-slate-100/5 last:border-0">
-                                    <div>
-                                      <p className={cn("font-bold", isDark ? "text-slate-300" : "text-slate-700")}>
+                                    <div className="font-bold">
+                                      <p className={cn(isDark ? "text-slate-300" : "text-slate-700")}>
                                         {item.name || item.warehouse || 'Suscripción / Renovación'}
                                       </p>
-                                      <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">
+                                      <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">
                                         Relación: {relativeLabel} {item.finalClientName ? `| Cliente final: ${item.finalClientName}` : ''}
                                       </p>
+                                      {item.amountPaid > 0 && (
+                                        <p className="text-[9px] text-indigo-500 font-mono mt-0.5 font-bold">Abonado del total: {formatCurrency(item.amountPaid)}</p>
+                                      )}
                                     </div>
-                                    <div className="flex items-center gap-2.5">
-                                      <span className="font-mono font-bold text-emerald-500">{formatCurrency(item.chargedRate || 0)}</span>
+                                    <div className="flex items-center gap-2.5 shrink-0">
+                                      <span className="font-mono font-bold text-emerald-500">{formatCurrency(item.pendingAmount || 0)}</span>
+                                      
+                                      <button
+                                        onClick={() => {
+                                          setPaymentTarget({ item, type: 'receivables' });
+                                          setPaymentAmount((item.pendingAmount || 0).toString());
+                                          setSelectedWalletId(wallets[0]?.id || '');
+                                        }}
+                                        title="Registrar Abono"
+                                        className="p-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors flex items-center justify-center cursor-pointer"
+                                      >
+                                        <Wallet className="w-3.5 h-3.5" />
+                                      </button>
+
                                       <button 
                                         onClick={() => handleWhatsAppRedirect(item)}
                                         title="Enviar recordatorio WhatsApp"
-                                        className="p-1 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors flex items-center justify-center p-1 cursor-pointer"
+                                        className="p-1 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors flex items-center justify-center cursor-pointer"
                                       >
                                         <MessageCircle className="w-3.5 h-3.5" />
                                       </button>
@@ -684,12 +1143,27 @@ export function Dashboard() {
                       const relativeLabel = calculatedCat === 'supplier' ? 'Proveedor' : calculatedCat === 'intermediary' ? 'Intermediario' : calculatedCat === 'client' ? 'Cliente Final' : 'Revendedor';
                       return (
                         <div key={px.id} className="py-4 flex justify-between items-center group text-left">
-                          <div className="min-w-0 pr-4">
-                            <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{px.category}</p>
+                          <div className="min-w-0 pr-4 font-bold">
+                            <p className={cn("text-sm truncate", isDark ? "text-slate-200" : "text-slate-800")}>{px.category}</p>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate mt-0.5">{relativeLabel} • {px.description || 'Sin detalles'}</p>
+                            {px.costPaid > 0 && (
+                              <p className="text-[10px] text-rose-500 font-mono font-bold mt-1">Saldado parcial de costos: {formatCurrency(px.costPaid)}</p>
+                            )}
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-sm font-black font-mono text-rose-500">{formatCurrency(Math.abs(px.amount))}</span>
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className="text-sm font-black font-mono text-rose-500 mr-2">{formatCurrency(px.pendingAmount)}</span>
+                            
+                            <button
+                              onClick={() => {
+                                setPaymentTarget({ item: px, type: 'payables' });
+                                setPaymentAmount((px.pendingAmount || 0).toString());
+                                setSelectedWalletId(wallets[0]?.id || '');
+                              }}
+                              title="Registrar Pago a Proveedor"
+                              className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
+                            >
+                              <Wallet className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       );
@@ -710,6 +1184,28 @@ export function Dashboard() {
                             <div className="flex items-center gap-2">
                               {isExpanded ? <ChevronUp className="w-4 h-4 text-indigo-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                               <p className={cn("text-sm font-black", isDark ? "text-slate-200" : "text-slate-800")}>{entityName}</p>
+
+                              {/* General mass cost payment registering button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPaymentTarget({
+                                    item: {
+                                      isMass: true,
+                                      entityName,
+                                      items: rawItems,
+                                      pendingAmount: total
+                                    },
+                                    type: 'payables'
+                                  });
+                                  setPaymentAmount(total.toString());
+                                  setSelectedWalletId(wallets[0]?.id || '');
+                                }}
+                                title="Registrar Pago General / Masivo a este Proveedor"
+                                className="p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md transition-colors flex items-center justify-center cursor-pointer ml-1.5 animate-pulse"
+                              >
+                                <Wallet className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                             <span className="text-sm font-mono font-black text-rose-500 leading-none">{formatCurrency(total)}</span>
                           </div>
@@ -721,15 +1217,32 @@ export function Dashboard() {
                                 const relativeLabel = calculatedCat === 'supplier' ? 'Proveedor' : calculatedCat === 'intermediary' ? 'Intermediario' : calculatedCat === 'client' ? 'Cliente Final' : 'Revendedor';
                                 return (
                                   <div key={item.id} className="py-2.5 flex justify-between items-center text-xs text-left border-b border-slate-100/5 last:border-0">
-                                    <div>
-                                      <p className={cn("font-bold", isDark ? "text-slate-300" : "text-slate-700")}>
+                                    <div className="font-bold">
+                                      <p className={cn(isDark ? "text-slate-300" : "text-slate-700")}>
                                         {item.description || 'Gasto General'}
                                       </p>
                                       <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">
                                         Relación: {relativeLabel} {item.createdAt ? `| Reg: ${new Date(item.createdAt).toLocaleDateString()}` : ''}
                                       </p>
+                                      {item.costPaid > 0 && (
+                                        <p className="text-[9px] text-rose-500 font-mono mt-0.5">Saldado parcial de costos: {formatCurrency(item.costPaid)}</p>
+                                      )}
                                     </div>
-                                    <span className="font-mono font-bold text-rose-500">{formatCurrency(Math.abs(item.amount || 0))}</span>
+                                    <div className="flex items-center gap-2.5 shrink-0">
+                                      <span className="font-mono font-bold text-rose-500 mr-1">{formatCurrency(item.pendingAmount || 0)}</span>
+                                      
+                                      <button
+                                        onClick={() => {
+                                          setPaymentTarget({ item, type: 'payables' });
+                                          setPaymentAmount((item.pendingAmount || 0).toString());
+                                          setSelectedWalletId(wallets[0]?.id || '');
+                                        }}
+                                        title="Registrar Pago"
+                                        className="p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md transition-colors flex items-center justify-center cursor-pointer"
+                                      >
+                                        <Wallet className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}
