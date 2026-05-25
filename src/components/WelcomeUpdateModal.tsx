@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, X, ChevronRight, CheckCircle2, ShieldAlert, Sparkle, LayoutDashboard } from 'lucide-react';
+import { Sparkles, X, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
+import { SYSTEM_UPDATES } from '../data/updates';
 
 interface WelcomeUpdateModalProps {
   theme?: 'light' | 'dark' | 'system';
@@ -14,8 +15,8 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // Determinamos el ID de versión actual y la fecha de hoy para guardarlo en localStorage
-  // Formato de Versión: 25.5.26 (Año 2026, mes 5, día 25)
-  const CURRENT_VERSION_ID = 'v_25_5_26_welcome';
+  // Obtenido dinámicamente de la última actualización listada
+  const CURRENT_VERSION_ID = SYSTEM_UPDATES[0]?.id || 'v_welcome_default';
 
   useEffect(() => {
     if (!settings) return;
@@ -27,13 +28,13 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
     const alreadyNotifiedToday = localStorage.getItem(storageKey);
 
     if (!alreadyNotifiedToday) {
-      // Mostrar popup con retraso elegante de 1.5s
+      // Mostrar popup con retraso elegante de 1.2s
       const timer = setTimeout(() => {
         setIsOpen(true);
       }, 1200);
       return () => clearTimeout(timer);
     }
-  }, [settings]);
+  }, [settings, CURRENT_VERSION_ID]);
 
   const handleClose = () => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -78,7 +79,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
               <button
                 onClick={handleClose}
                 className={cn(
-                  "p-2 rounded-full transition-all border shrink-0",
+                  "p-2 rounded-full transition-all border shrink-0 cursor-pointer",
                   isDark ? "text-slate-400 border-slate-800 hover:bg-slate-800" : "text-slate-500 border-slate-100 hover:bg-slate-50"
                 )}
               >
@@ -91,66 +92,44 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-400">
                 ¡Actualizaciones del Sistema Listas!
               </span>
-              <h2 className={cn("text-2xl font-black tracking-tight mt-1", isDark ? "text-white" : "text-slate-950")}>
-                Versión 25.5.26 Aplicada 🎉
+              <h2 className={cn("text-xl font-black tracking-tight mt-1", isDark ? "text-white" : "text-slate-950")}>
+                {SYSTEM_UPDATES[0]?.version || "Versión Reciente"} Aplicada 🎉
               </h2>
-              <p className="text-xs text-slate-450 dark:text-slate-400 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5">
                 Compilación Segura del {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
 
             {/* List of changes */}
             <div className="space-y-4 my-2 overflow-y-auto max-h-[40vh] pr-1 scrollbar-hide flex-1">
-              {/* Highlight 1 */}
-              <div className="flex gap-3 items-start">
-                <div className="h-6 w-6 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <h4 className={cn("text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200")}>
-                    Módulos Adaptativos (Habilitar/Deshabilitar)
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-medium">
-                    Ahora puede encender o apagar de forma instantánea cualquier vista o funcionalidad del sistema. Si solo vende streaming, desactive la sección ANT de trámites en el apartado de **Configuración &gt; Información** para optimizar visualmente su panel de navegación.
-                  </p>
-                </div>
-              </div>
+              {SYSTEM_UPDATES.slice(0, 4).map((item) => {
+                let badgeClass = "bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400";
+                if (item.type === 'security') badgeClass = "bg-rose-500/15 dark:bg-rose-500/20 text-rose-600 dark:text-rose-450";
+                if (item.type === 'feature') badgeClass = "bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400";
+                if (item.type === 'interface') badgeClass = "bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400";
 
-              {/* Highlight 2 */}
-              <div className="flex gap-3 items-start">
-                <div className="h-6 w-6 rounded-lg bg-indigo-500/15 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0">
-                  <Sparkle className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <h4 className={cn("text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200")}>
-                    Asistente IA Todo Terreno 🧠
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-semibold">
-                    El Asistente Virtual ahora también es tu manual interactivo. Además de registrar transacciones escribiendo por chat, puedes consultarle acerca del funcionamiento, navegación y flujos del sistema si alguna vez te sientes perdido.
-                  </p>
-                </div>
-              </div>
-
-              {/* Highlight 3 */}
-              <div className="flex gap-3 items-start">
-                <div className="h-6 w-6 rounded-lg bg-pink-500/15 dark:bg-pink-500/20 flex items-center justify-center text-pink-600 dark:text-pink-400 mt-0.5 shrink-0">
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <h4 className={cn("text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200")}>
-                    Inmunidad contra Inyecciones (SQLi)
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed font-medium">
-                    Hemos reforzado el protocolo de base de datos con reglas estrictas de Google Firebase Firestore. El procesamiento de tus ventas está totalmente a salvo de hackeos por inyección de código ordinaria.
-                  </p>
-                </div>
-              </div>
+                return (
+                  <div key={item.id} className="flex gap-3 items-start">
+                    <div className={cn("h-6 w-6 rounded-lg flex items-center justify-center mt-0.5 shrink-0 text-xs font-black", badgeClass)}>
+                      ✓
+                    </div>
+                    <div>
+                      <h4 className={cn("text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200")}>
+                        {item.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed font-semibold">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Quick Action Button */}
             <div className="mt-6 border-t border-slate-100 dark:border-slate-800/60 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest sm:block hidden">
-                ¡Gracias por usar nuestro sistema!
+                ¡Gracias por su confianza!
               </span>
               <button
                 onClick={handleClose}

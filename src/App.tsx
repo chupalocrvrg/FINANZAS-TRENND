@@ -17,6 +17,7 @@ import { Onboarding } from './components/Onboarding';
 import { AIAssistant } from './components/AIAssistant';
 import { LockScreen } from './components/LockScreen';
 import { WelcomeUpdateModal } from './components/WelcomeUpdateModal';
+import { TutorialModal } from './components/TutorialModal';
 import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
@@ -366,6 +367,7 @@ export default function App() {
         </div>
         {!settings?.disabledFeatures?.includes('ai_assistant') && <AIAssistant />}
         <WelcomeUpdateModal theme={settings?.theme} />
+        <TutorialModal />
       </main>
     </div>
   );

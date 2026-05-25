@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Wallet } from '../types';
+import { SYSTEM_UPDATES } from '../data/updates';
 
 // Helper to convert raw credentials to string database storage
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -1099,13 +1100,15 @@ export function Settings() {
                     <div className={cn("p-5 rounded-2xl border flex items-center justify-between gap-4", isDark ? "bg-indigo-950/20 border-indigo-500/20" : "bg-indigo-50/50 border-indigo-100")}>
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-500">Versión del Sistema</span>
-                        <h4 className="text-xl font-black text-indigo-600 dark:text-indigo-400">Versión 25.5.26 / 26.5.25</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Formato: Día.Mes.Año (Local) • Año.Mes.Día (Estándar)</p>
+                        <h4 className="text-xl font-black text-indigo-600 dark:text-indigo-400">
+                          {SYSTEM_UPDATES[0]?.version || "Versión Reciente"} • Estable
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Formato: Día.Mes.Año (Local) • Código de Compilación</p>
                       </div>
                       <div className="text-right">
                         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block">Compilado Exacto</span>
                         <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 block bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-500/10 mt-1">
-                          25-Mayo-2026 18:05:12
+                          {SYSTEM_UPDATES[0]?.date || "Reciente"}
                         </span>
                       </div>
                     </div>
@@ -1126,41 +1129,25 @@ export function Settings() {
                       <h5 className="text-xs font-black uppercase tracking-widest text-slate-400 pb-1 border-b border-slate-100 dark:border-slate-800/60">Historial de Actualizaciones Aplicadas</h5>
                       
                       <div className="border-l-2 border-indigo-500/30 pl-4 ml-2 space-y-6">
-                        {/* Update Item 1 */}
-                        <div className="relative">
-                          <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900" />
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Versión 25.5.26 • Core Adaptativo</span>
-                            <span className="text-[10px] font-mono text-slate-400 font-bold font-extrabold">Hoy, 18:05:12</span>
+                        {SYSTEM_UPDATES.map((item, idx) => (
+                          <div key={item.id} className="relative">
+                            <div className={cn(
+                              "absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900",
+                              idx === 0 ? "bg-indigo-500" : "bg-slate-400"
+                            )} />
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                              <span className="text-xs font-black text-slate-850 dark:text-slate-200">
+                                {item.version} • {item.title}
+                              </span>
+                              <span className="text-[9px] font-mono text-slate-400 font-bold">
+                                {item.date}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold leading-relaxed">
+                              {item.description}
+                            </p>
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-450 mt-1 font-medium">
-                            Añadido el panel flotante de Información y Control de Características. Implementados switches interactivos en la base de datos de configuraciones del usuario para habilitar o deshabilitar dinámicamente servicios y módulos del navegador (CRM, ANT, Streaming, Asistente AI), reduciendo el peso de renderizado y adaptando el sistema a las necesidades del cliente final. Se robustecieron las protecciones de guardafuegos en la base de datos Firestore.
-                          </p>
-                        </div>
-
-                        {/* Update Item 2 */}
-                        <div className="relative">
-                          <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 bg-slate-400 rounded-full border-2 border-white dark:border-slate-900" />
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Versión 23.5.26 • Soporte de Crédito</span>
-                            <span className="text-[10px] font-mono text-slate-400">23-Mayo-2026, 12:40:15</span>
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-450 mt-1 font-medium">
-                            Integración del módulo de Tarjetas de Crédito, control de cupo total disponible y saldo por vencer de servicios de streaming. Configuración del temporizador por inactividad automático (auto-lock) ajustable.
-                          </p>
-                        </div>
-
-                        {/* Update Item 3 */}
-                        <div className="relative">
-                          <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 bg-slate-400 rounded-full border-2 border-white dark:border-slate-900" />
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Versión 21.5.26 • Inteligencia Artificial</span>
-                            <span className="text-[10px] font-mono text-slate-400">21-Mayo-2026, 10:15:00</span>
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-450 mt-1 font-medium">
-                            Mejoras en el Asistente AI conversacional, permitiendo realizar consultas dinámicas del saldo actual e historia clínica de transacciones locales por comandos de voz o texto sintetizado.
-                          </p>
-                        </div>
+                        ))}
                       </div>
                     </div>
                   </div>

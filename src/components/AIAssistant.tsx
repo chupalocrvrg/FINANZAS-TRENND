@@ -770,7 +770,7 @@ async function callGeminiClientSide(
   
   // Structure chat messages correctly for @google/genai
   const contents: any[] = updatedMessages.map(m => ({
-    role: m.role,
+    role: m.role === 'assistant' ? 'model' : m.role,
     parts: [{ text: m.text }]
   }));
 
@@ -791,6 +791,33 @@ async function callGeminiClientSide(
         parts: [{ text: "Analiza y extrae la información de esta transacción." }, imagePart]
       });
     }
+  }
+
+  // Ensure turn order correctness (skip leading 'model' nodes, merge adjacent same-role messages)
+  let normalizedContents: any[] = [];
+  let foundUser = false;
+  for (const m of contents) {
+    if (m.role === 'user') {
+      foundUser = true;
+    }
+    if (foundUser) {
+      if (normalizedContents.length > 0 && normalizedContents[normalizedContents.length - 1].role === m.role) {
+        normalizedContents[normalizedContents.length - 1].parts = [
+          ...normalizedContents[normalizedContents.length - 1].parts,
+          ...m.parts
+        ];
+      } else {
+        normalizedContents.push({
+          role: m.role,
+          parts: m.parts
+        });
+      }
+    }
+  }
+
+  // Fallback if empty after filtering
+  if (normalizedContents.length === 0) {
+    normalizedContents = [{ role: 'user', parts: [{ text: "Hola" }] }];
   }
 
   const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es doble:
@@ -875,7 +902,7 @@ IMPORTANTE: El bloque JSON-action debe estructurarse de forma impecable sin erro
       systemInstruction: systemInstruction,
       temperature: 0.1,
     },
-    contents: contents
+    contents: normalizedContents
   });
 
   return response.text || "No obtuve una respuesta válida de Gemini.";

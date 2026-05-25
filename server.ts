@@ -85,7 +85,7 @@ async function startServer() {
       let contents: any[] = [];
       if (messages && messages.length > 0) {
         contents = messages.map((m: any) => ({
-          role: m.role,
+          role: m.role === 'assistant' ? 'model' : m.role,
           parts: m.parts || [{ text: m.text }]
         }));
       }
@@ -108,6 +108,33 @@ async function startServer() {
             parts: [{ text: "Analiza y extrae la información de esta transacción." }, imagePart]
           });
         }
+      }
+
+      // Ensure turn order correctness (skip leading 'model' nodes, merge adjacent same-role messages)
+      let normalizedContents: any[] = [];
+      let foundUser = false;
+      for (const m of contents) {
+        if (m.role === 'user') {
+          foundUser = true;
+        }
+        if (foundUser) {
+          if (normalizedContents.length > 0 && normalizedContents[normalizedContents.length - 1].role === m.role) {
+            normalizedContents[normalizedContents.length - 1].parts = [
+              ...normalizedContents[normalizedContents.length - 1].parts,
+              ...m.parts
+            ];
+          } else {
+            normalizedContents.push({
+              role: m.role,
+              parts: m.parts
+            });
+          }
+        }
+      }
+
+      // Fallback if empty after filtering
+      if (normalizedContents.length === 0) {
+        normalizedContents = [{ role: 'user', parts: [{ text: "Hola" }] }];
       }
 
       const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es ayudar al usuario a registrar transacciones, productos digitales y ver balances.
@@ -181,7 +208,7 @@ IMPORTANTE: El bloque JSON-action debe estructurarse de forma impecable sin erro
           systemInstruction: systemInstruction,
           temperature: 0.1, // low temperature to ensure highly deterministic format extraction
         },
-        contents: contents
+        contents: normalizedContents
       });
 
       res.json({ text: response.text || "No obtuve una respuesta válida de Gemini." });
