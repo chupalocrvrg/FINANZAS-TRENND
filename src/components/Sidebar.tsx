@@ -109,8 +109,16 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
         <div className="mt-8">
           <div className="bg-slate-900 border border-slate-800/60 rounded-xl p-3 flex items-center space-x-3">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-700 shrink-0 capitalize">
-              {settings?.displayName?.charAt(0) || user?.email?.charAt(0)}
+            <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shrink-0 border border-slate-700">
+              {settings?.useGoogleAvatar && user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : settings?.customProfilePic ? (
+                <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 shrink-0 capitalize text-sm">
+                  {settings?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                </div>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-white truncate break-all">{settings?.displayName || 'User'}</div>

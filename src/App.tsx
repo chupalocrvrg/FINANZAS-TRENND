@@ -162,8 +162,84 @@ export default function App() {
   if (onboarding) return <Onboarding />;
   if (isLocked) return <LockScreen settings={settings} onUnlock={() => setIsLocked(false)} />;
 
+  const fontClass = settings?.fontFamily === 'outfit' ? 'font-outfit' :
+                    settings?.fontFamily === 'mono' ? 'font-mono' :
+                    settings?.fontFamily === 'space' ? 'font-space' :
+                    settings?.fontFamily === 'playfair' ? 'font-playfair' : 'font-sans';
+
+  const accent = settings?.accentColor || 'indigo';
+  let accentStyles = '';
+  if (accent === 'emerald') {
+    accentStyles = `
+      :root {
+        --color-indigo-50: #ecfdf5 !important;
+        --color-indigo-100: #d1fae5 !important;
+        --color-indigo-500: #10b981 !important;
+        --color-indigo-600: #059669 !important;
+        --color-indigo-700: #047857 !important;
+        --color-indigo-950: #022c22 !important;
+      }
+    `;
+  } else if (accent === 'rose') {
+    accentStyles = `
+      :root {
+        --color-indigo-50: #fff1f2 !important;
+        --color-indigo-100: #ffe4e6 !important;
+        --color-indigo-500: #f43f5e !important;
+        --color-indigo-600: #e11d48 !important;
+        --color-indigo-700: #be123c !important;
+        --color-indigo-950: #4c0519 !important;
+      }
+    `;
+  } else if (accent === 'amber') {
+    accentStyles = `
+      :root {
+        --color-indigo-50: #fdfbeb !important;
+        --color-indigo-100: #fef3c7 !important;
+        --color-indigo-500: #f59e0b !important;
+        --color-indigo-600: #d97706 !important;
+        --color-indigo-700: #b45309 !important;
+        --color-indigo-950: #451a03 !important;
+      }
+    `;
+  } else if (accent === 'violet') {
+    accentStyles = `
+      :root {
+        --color-indigo-50: #f5f3ff !important;
+        --color-indigo-100: #ede9fe !important;
+        --color-indigo-500: #8b5cf6 !important;
+        --color-indigo-600: #7c3aed !important;
+        --color-indigo-700: #6d28d9 !important;
+        --color-indigo-950: #2e1065 !important;
+      }
+    `;
+  } else if (accent === 'sky') {
+    accentStyles = `
+      :root {
+        --color-indigo-50: #f0f9ff !important;
+        --color-indigo-100: #e0f2fe !important;
+        --color-indigo-500: #0ea5e9 !important;
+        --color-indigo-600: #0284c7 !important;
+        --color-indigo-700: #0369a1 !important;
+        --color-indigo-950: #0c4a6e !important;
+      }
+    `;
+  } else if (accent === 'slate') {
+    accentStyles = `
+      :root {
+        --color-indigo-50: #f8fafc !important;
+        --color-indigo-100: #f1f5f9 !important;
+        --color-indigo-500: #64748b !important;
+        --color-indigo-600: #475569 !important;
+        --color-indigo-700: #334155 !important;
+        --color-indigo-950: #0f172a !important;
+      }
+    `;
+  }
+
   return (
-    <div className={`flex min-h-screen ${settings?.theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} font-sans overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-900`}>
+    <div className={`flex min-h-screen ${settings?.theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} ${fontClass} overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-900`}>
+      {accentStyles && <style dangerouslySetInnerHTML={{ __html: accentStyles }} />}
       {/* Mobile Backdrop */}
       <AnimatePresence>
         {isMobileMenuOpen && (
@@ -249,10 +325,18 @@ export default function App() {
               </div>
               <div 
                 onClick={() => setActiveTab('settings')}
-                className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-700 font-bold border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-colors"
+                className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 dark:border-slate-800 hover:opacity-80 transition-opacity"
                 title="Settings"
               >
-                {settings?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                {settings?.useGoogleAvatar && user?.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : settings?.customProfilePic ? (
+                  <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-700 font-bold border border-indigo-100 uppercase text-xs">
+                    {settings?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                )}
               </div>
             </div>
           </div>

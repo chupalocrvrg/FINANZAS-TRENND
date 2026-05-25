@@ -12,6 +12,10 @@ interface UserSettings {
   theme: 'light' | 'dark' | 'system';
   securityPin: string;
   disabledFeatures?: string[];
+  customProfilePic?: string;
+  useGoogleAvatar?: boolean;
+  fontFamily?: string;
+  accentColor?: string;
   ruc: string;
   phone: string;
   referral: string;
@@ -60,6 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               theme: 'system',
               securityPin: '',
               disabledFeatures: [],
+              customProfilePic: '',
+              useGoogleAvatar: true,
+              fontFamily: 'inter',
+              accentColor: 'indigo',
               ruc: '',
               phone: '',
               referral: 'redes',

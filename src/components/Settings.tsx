@@ -3,7 +3,7 @@ import { useAuth } from '../lib/AuthContext';
 import { logout, db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Wallet } from '../types';
 
@@ -453,6 +453,243 @@ export function Settings() {
             </div>
           </motion.section>
         ))}
+
+        {/* MÓDULO DE PERSONALIZACIÓN */}
+        <motion.section
+          key="personalization"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
+            <Palette className="w-4 h-4 text-slate-400" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-extrabold">Módulo de Personalización Global</h2>
+          </div>
+
+          <div className={cn("p-6 sm:p-8 rounded-3xl border space-y-8 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+            
+            {/* GRID 1: AVATAR Y IDIOMA */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              
+              {/* Columna Foto de Perfil */}
+              <div className="space-y-4 flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-slate-500/5">
+                <div className="relative group shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-indigo-500/25 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  {settings?.useGoogleAvatar && user?.photoURL ? (
+                    <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : settings?.customProfilePic ? (
+                    <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full bg-indigo-100 text-indigo-700 font-black text-3xl flex items-center justify-center uppercase">
+                      {settings?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
+                    </div>
+                  )}
+                  
+                  {/* Hover uploader label */}
+                  {!settings?.useGoogleAvatar && (
+                    <label className="absolute inset-0 bg-slate-950/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[10px] font-bold uppercase tracking-widest gap-1 text-center">
+                      <Upload className="w-4 h-4" />
+                      <span>Subir Foto</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          if (file.size > 400 * 1024) {
+                            window.alert("La imagen debe pesar menos de 400 KB.");
+                            return;
+                          }
+
+                          const reader = new FileReader();
+                          reader.onloadend = async () => {
+                            const base64String = reader.result as string;
+                            try {
+                              await updateSettings({ customProfilePic: base64String });
+                            } catch (err) {
+                              console.error("Error al cargar la foto:", err);
+                              window.alert("Error al cargar la foto");
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }} 
+                        className="hidden" 
+                      />
+                    </label>
+                  )}
+                </div>
+
+                <div className="space-y-3 flex-1 text-left">
+                  <h3 className="text-sm font-bold tracking-tight">Preferencias del Avatar</h3>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateSettings({ useGoogleAvatar: true })}
+                      className={cn(
+                        "w-full px-4 py-2 border rounded-xl text-[10px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                        settings?.useGoogleAvatar 
+                          ? "bg-indigo-600 text-white border-indigo-600" 
+                          : isDark 
+                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
+                          : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <span>Usar foto de Google</span>
+                      {settings?.useGoogleAvatar && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => updateSettings({ useGoogleAvatar: false })}
+                      className={cn(
+                        "w-full px-4 py-2 border rounded-xl text-[10px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                        !settings?.useGoogleAvatar 
+                          ? "bg-indigo-600 text-white border-indigo-600" 
+                          : isDark 
+                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
+                          : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <span>Usar foto personalizada</span>
+                      {!settings?.useGoogleAvatar && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  {!settings?.useGoogleAvatar && (
+                    <div className="text-[9px] text-slate-500 leading-normal font-semibold mt-1">
+                      Pasa el cursor / presiona sobre el círculo arriba para cargar tu archivo de imagen (Recomendado cuadrada, max 400KB).
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Columna Idioma */}
+              <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-center text-left">
+                <div className="flex items-center gap-2">
+                  <Languages className="w-4 h-4 text-slate-450" />
+                  <h3 className="text-sm font-bold tracking-tight">Idioma de Preferencia / Localization</h3>
+                </div>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">Cambia instantáneamente la traducción de textos fijos y botones en la navegación de todo el aplicativo.</p>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => updateSettings({ language: 'es' })}
+                    className={cn(
+                      "py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                      settings?.language === 'es' 
+                        ? "bg-indigo-600 text-white border-indigo-600" 
+                        : isDark 
+                        ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
+                        : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100"
+                    )}
+                  >
+                    <span>🇪🇸 Español</span>
+                    {settings?.language === 'es' && <Check className="w-3 h-3" />}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => updateSettings({ language: 'en' })}
+                    className={cn(
+                      "py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                      settings?.language === 'en' 
+                        ? "bg-indigo-600 text-white border-indigo-600" 
+                        : isDark 
+                        ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
+                        : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100"
+                    )}
+                  >
+                    <span>🇺🇸 English</span>
+                    {settings?.language === 'en' && <Check className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* SEPARADOR */}
+            <hr className="border-slate-100 dark:border-slate-800/80" />
+
+            {/* GRID 2: ACCENT PALETTE Y FONTS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start text-left">
+              
+              {/* Paleta de Colores de Acento */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-slate-450" />
+                  <h3 className="text-sm font-bold tracking-tight">Paleta Cromática de Acento</h3>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed font-semibold">Seleccione su color primario favorito. Todas las tarjetas, botones interactivos y alertas se acoplarán con esta vibración visual.</p>
+                
+                <div className="flex flex-wrap gap-2.5 pt-2">
+                  {[
+                    { id: 'indigo', name: 'Índigo', hex: '#4f46e5' },
+                    { id: 'emerald', name: 'Esmeralda', hex: '#059669' },
+                    { id: 'rose', name: 'Rosa Calm', hex: '#e11d48' },
+                    { id: 'amber', name: 'Ámbar', hex: '#d97706' },
+                    { id: 'violet', name: 'Violeta', hex: '#7c3aed' },
+                    { id: 'sky', name: 'Celeste', hex: '#0284c7' },
+                    { id: 'slate', name: 'Mineral', hex: '#475569' },
+                  ].map((col) => (
+                    <button
+                      key={col.id}
+                      type="button"
+                      onClick={() => updateSettings({ accentColor: col.id })}
+                      className={cn(
+                        "w-9 h-9 rounded-full transition-all flex items-center justify-center border border-black/10 relative cursor-pointer ring-4 ring-transparent hover:scale-105",
+                        (settings?.accentColor || 'indigo') === col.id ? "scale-110 ring-indigo-500/30 dark:ring-indigo-500/40" : "hover:ring-slate-300 dark:hover:ring-slate-700"
+                      )}
+                      style={{ backgroundColor: col.hex }}
+                      title={col.name}
+                    >
+                      {(settings?.accentColor || 'indigo') === col.id && (
+                        <Check className="w-4 h-4 text-white drop-shadow-sm font-bold" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selector de Fuente */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Type className="w-4 h-4 text-slate-450" />
+                  <h3 className="text-sm font-bold tracking-tight">Tipo de Letra del Sistema</h3>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed font-semibold">Modifique la arquitectura tipográfica para acoplar el grosor de letras y números a su agrado visual.</p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1.5">
+                  {[
+                    { id: 'inter', label: 'Inter (Sans)', style: 'font-sans' },
+                    { id: 'space', label: 'Space Grotesk', style: 'font-space font-space' },
+                    { id: 'outfit', label: 'Outfit (Sleek)', style: 'font-outfit font-outfit' },
+                    { id: 'mono', label: 'JetBrains (Mono)', style: 'font-mono' },
+                    { id: 'playfair', label: 'Playfair (Serif)', style: 'font-playfair font-playfair' },
+                  ].map((fontSpec) => (
+                    <button
+                      key={fontSpec.id}
+                      type="button"
+                      onClick={() => updateSettings({ fontFamily: fontSpec.id })}
+                      className={cn(
+                        "p-2 rounded-xl border text-[11px] font-bold text-left transition-all flex items-center justify-between cursor-pointer",
+                        fontSpec.style,
+                        (settings?.fontFamily || 'inter') === fontSpec.id 
+                          ? "bg-indigo-600 text-white border-indigo-600" 
+                          : isDark 
+                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
+                          : "bg-slate-50 text-slate-650 border-slate-200 hover:bg-slate-100"
+                      )}
+                    >
+                      <span>{fontSpec.label}</span>
+                      {(settings?.fontFamily || 'inter') === fontSpec.id && <Check className="w-3 h-3 inline shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </motion.section>
 
         {/* SECCIÓN INFORMACIÓN Y CONTROL */}
         <motion.section 

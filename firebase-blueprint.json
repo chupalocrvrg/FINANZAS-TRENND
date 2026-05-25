@@ -17,6 +17,22 @@
           "items": { "type": "string" },
           "description": "List of deactivated features/modules"
         },
+        "customProfilePic": {
+          "type": "string",
+          "description": "Base64 image or custom profile picture URL"
+        },
+        "useGoogleAvatar": {
+          "type": "boolean",
+          "description": "Show Google profile picture directly"
+        },
+        "fontFamily": {
+          "type": "string",
+          "description": "Design font selection"
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "Accent visual color palette selection"
+        },
         "isOnboarded": { "type": "boolean" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
