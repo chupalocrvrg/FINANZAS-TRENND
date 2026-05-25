@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { logout, db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
@@ -28,6 +28,70 @@ export function Settings() {
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [infoTab, setInfoTab] = useState<'history' | 'features'>('history');
   const isDark = settings?.theme === 'dark';
+
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+  const [purgePinInput, setPurgePinInput] = useState('');
+  const [purgeError, setPurgeError] = useState('');
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeSuccess, setPurgeSuccess] = useState(false);
+
+  const handleOpenPurgeModal = () => {
+    if (!settings?.securityPin || settings.securityPin.trim().length !== 4) {
+      window.alert("Por favor, configure primero su PIN de seguridad de 4 dígitos en la sección 'Núcleo de Seguridad y Bloqueo' para poder habilitar el borrado de datos.");
+      return;
+    }
+    setPurgePinInput('');
+    setPurgeError('');
+    setPurgeSuccess(false);
+    setIsPurgeModalOpen(true);
+  };
+
+  const executeDataPurge = async () => {
+    if (purgePinInput !== settings?.securityPin) {
+      setPurgeError('El PIN de seguridad de confirmación ingresado es incorrecto.');
+      return;
+    }
+
+    if (!user) return;
+
+    setIsPurging(true);
+    setPurgeError('');
+
+    try {
+      const batchDeleter = async (collectionName: string) => {
+        const qSnap = await getDocs(query(collection(db, collectionName), where('ownerId', '==', user.uid)));
+        const deletePromises = qSnap.docs.map(async (docRef) => {
+          if (collectionName === 'digital_services') {
+            const histSnap = await getDocs(collection(db, 'digital_services', docRef.id, 'service_history'));
+            const subPromises = histSnap.docs.map(hDoc => deleteDoc(doc(db, 'digital_services', docRef.id, 'service_history', hDoc.id)));
+            await Promise.all(subPromises);
+          }
+          await deleteDoc(doc(db, collectionName, docRef.id));
+        });
+        await Promise.all(deletePromises);
+      };
+
+      await batchDeleter('wallets');
+      await batchDeleter('entities');
+      await batchDeleter('transactions');
+      await batchDeleter('ledger');
+      await batchDeleter('digital_catalog');
+      await batchDeleter('digital_services');
+
+      setPurgeSuccess(true);
+      setTimeout(() => {
+        setIsPurgeModalOpen(false);
+        setPurgeSuccess(false);
+        setPurgePinInput('');
+      }, 3500);
+
+    } catch (err: any) {
+      console.error("Error al purgar los datos:", err);
+      setPurgeError("Ocurrió un error al purgar la información: " + (err.message || err));
+    } finally {
+      setIsPurging(false);
+    }
+  };
 
   const toggleFeature = async (featureId: string) => {
     const currentDisabled = settings?.disabledFeatures || [];
@@ -194,24 +258,6 @@ export function Settings() {
         { label: 'Nombre Completo del Propietario', field: 'displayName', type: 'text', value: settings?.displayName },
         { label: 'Cédula o RUC', field: 'ruc', type: 'text', value: settings?.ruc },
         { label: 'Número de Celular', field: 'phone', type: 'text', value: settings?.phone || '' },
-      ]
-    },
-    {
-      id: 'visual',
-      title: 'Motor de Interfaz',
-      icon: Palette,
-      items: [
-        { 
-          label: 'Modo de Tema', 
-          field: 'theme', 
-          type: 'select', 
-          options: [
-            { id: 'light', label: 'Protocolo Claro' }, 
-            { id: 'dark', label: 'Protocolo Oscuro' }, 
-            { id: 'system', label: 'Predeterminado' }
-          ],
-          value: settings?.theme 
-        },
       ]
     },
     {
@@ -423,7 +469,7 @@ export function Settings() {
                   {item.type === 'text' || item.type === 'password' ? (
                     <input 
                       type={item.type}
-                      value={item.value || ''}
+                      value={String(item.value ?? '')}
                       onChange={(e) => updateSettings({ [item.field]: e.target.value })}
                       className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm", isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800")}
                     />
@@ -468,12 +514,12 @@ export function Settings() {
 
           <div className={cn("p-6 sm:p-8 rounded-3xl border space-y-8 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
             
-            {/* GRID 1: AVATAR Y IDIOMA */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            {/* GRID 1: AVATAR, TEMA E IDIOMA */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
               
               {/* Columna Foto de Perfil */}
-              <div className="space-y-4 flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-slate-500/5">
-                <div className="relative group shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-indigo-500/25 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <div className="space-y-4 flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-500/5 text-center">
+                <div className="relative group shrink-0 w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-500/25 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                   {settings?.useGoogleAvatar && user?.photoURL ? (
                     <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   ) : settings?.customProfilePic ? (
@@ -519,14 +565,14 @@ export function Settings() {
                   )}
                 </div>
 
-                <div className="space-y-3 flex-1 text-left">
-                  <h3 className="text-sm font-bold tracking-tight">Preferencias del Avatar</h3>
-                  <div className="flex flex-col gap-2">
+                <div className="space-y-3 flex-1 text-center w-full">
+                  <h3 className="text-xs font-bold tracking-tight">Preferencias del Avatar</h3>
+                  <div className="flex flex-col gap-1.5 w-full">
                     <button
                       type="button"
                       onClick={() => updateSettings({ useGoogleAvatar: true })}
                       className={cn(
-                        "w-full px-4 py-2 border rounded-xl text-[10px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                        "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
                         settings?.useGoogleAvatar 
                           ? "bg-indigo-600 text-white border-indigo-600" 
                           : isDark 
@@ -535,14 +581,14 @@ export function Settings() {
                       )}
                     >
                       <span>Usar foto de Google</span>
-                      {settings?.useGoogleAvatar && <Check className="w-3.5 h-3.5" />}
+                      {settings?.useGoogleAvatar && <Check className="w-3 h-3" />}
                     </button>
                     
                     <button
                       type="button"
                       onClick={() => updateSettings({ useGoogleAvatar: false })}
                       className={cn(
-                        "w-full px-4 py-2 border rounded-xl text-[10px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                        "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
                         !settings?.useGoogleAvatar 
                           ? "bg-indigo-600 text-white border-indigo-600" 
                           : isDark 
@@ -550,31 +596,63 @@ export function Settings() {
                           : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
                       )}
                     >
-                      <span>Usar foto personalizada</span>
-                      {!settings?.useGoogleAvatar && <Check className="w-3.5 h-3.5" />}
+                      <span>Foto personalizada</span>
+                      {!settings?.useGoogleAvatar && <Check className="w-3 h-3" />}
                     </button>
                   </div>
-                  {!settings?.useGoogleAvatar && (
-                    <div className="text-[9px] text-slate-500 leading-normal font-semibold mt-1">
-                      Pasa el cursor / presiona sobre el círculo arriba para cargar tu archivo de imagen (Recomendado cuadrada, max 400KB).
-                    </div>
-                  )}
+                </div>
+              </div>
+
+              {/* Columna Modo de Tema */}
+              <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-between text-left">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-indigo-500" />
+                    <h3 className="text-sm font-bold tracking-tight">Motor de Interfaz / Tema</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">Defina el protocolo cromático global de la aplicación.</p>
+                </div>
+                <div className="flex flex-col gap-1.5 mt-2">
+                  {[
+                    { id: 'light', label: '☀️ Protocolo Claro' },
+                    { id: 'dark', label: '🌙 Protocolo Oscuro' },
+                    { id: 'system', label: '💻 Predeterminado' }
+                  ].map((themeOpt) => (
+                    <button
+                      key={themeOpt.id}
+                      type="button"
+                      onClick={() => handleSettingClick('theme', themeOpt.id)}
+                      className={cn(
+                        "w-full px-3 py-2 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                        settings?.theme === themeOpt.id 
+                          ? "bg-indigo-600 text-white border-indigo-600" 
+                          : isDark 
+                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
+                          : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <span>{themeOpt.label}</span>
+                      {settings?.theme === themeOpt.id && <Check className="w-3 h-3" />}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Columna Idioma */}
-              <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-center text-left">
-                <div className="flex items-center gap-2">
-                  <Languages className="w-4 h-4 text-slate-450" />
-                  <h3 className="text-sm font-bold tracking-tight">Idioma de Preferencia / Localization</h3>
+              <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-between text-left">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Languages className="w-4 h-4 text-slate-450" />
+                    <h3 className="text-sm font-bold tracking-tight">Idioma de Preferencia / Localization</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">Cambia instantáneamente la traducción de textos fijos en la navegación.</p>
                 </div>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">Cambia instantáneamente la traducción de textos fijos y botones en la navegación de todo el aplicativo.</p>
-                <div className="grid grid-cols-2 gap-2 mt-1">
+                <div className="flex flex-col gap-1.5 mt-2">
                   <button
                     type="button"
                     onClick={() => updateSettings({ language: 'es' })}
                     className={cn(
-                      "py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                      "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
                       settings?.language === 'es' 
                         ? "bg-indigo-600 text-white border-indigo-600" 
                         : isDark 
@@ -590,7 +668,7 @@ export function Settings() {
                     type="button"
                     onClick={() => updateSettings({ language: 'en' })}
                     className={cn(
-                      "py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                      "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
                       settings?.language === 'en' 
                         ? "bg-indigo-600 text-white border-indigo-600" 
                         : isDark 
@@ -717,6 +795,37 @@ export function Settings() {
           </div>
         </motion.section>
 
+        {/* SECCIÓN PRIVACIDAD Y SEGURIDAD (BORRADO DE DATOS) */}
+        <motion.section
+          key="privacyZone"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2 border-b border-rose-100/20 pb-2">
+            <Shield className="w-4 h-4 text-rose-500" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 font-extrabold">Zona de Privacidad y Eliminación Segura</h2>
+          </div>
+
+          <div className={cn("p-6 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+            <div className="space-y-1 text-left">
+              <h3 className="text-base font-bold text-rose-600 dark:text-rose-450 flex items-center gap-2">
+                <Trash2 className="w-4 h-4" /> Borrado Autónomo de Datos del Sistema
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                Adquiera control absoluto. Purgue y elimine de forma permanente el 100% de su base de datos local y en la nube (cuentas, transacciones, libros diarios, CRM y catálogos creados). Esta acción requiere de su PIN de seguridad y es completamente irreversible.
+              </p>
+            </div>
+            <button 
+              type="button"
+              onClick={handleOpenPurgeModal}
+              className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 border border-rose-500/25"
+            >
+              <Trash2 className="w-4 h-4" /> Ejecutar Purga Total
+            </button>
+          </div>
+        </motion.section>
+
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -741,6 +850,125 @@ export function Settings() {
       </div>
 
       <AnimatePresence>
+        {isPurgeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { if (!isPurging) setIsPurgeModalOpen(false); }} 
+              className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm" 
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={cn(
+                "relative w-full max-w-md p-8 rounded-3xl border shadow-2xl z-10 flex flex-col text-left", 
+                isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+              )}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-450">
+                  <Shield className="w-5 h-5 shrink-0" />
+                  <h3 className="text-sm font-extrabold uppercase tracking-widest font-black">
+                    Confirmación de Seguridad
+                  </h3>
+                </div>
+                {!isPurging && (
+                  <button 
+                    onClick={() => setIsPurgeModalOpen(false)} 
+                    className={cn("p-1 rounded-full transition-colors", isDark ? "text-slate-400 hover:bg-slate-800" : "text-slate-500 hover:bg-slate-100")}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {purgeSuccess ? (
+                <div className="py-6 text-center space-y-4">
+                  <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                    <Check className="w-8 h-8 animate-pulse" />
+                  </div>
+                  <h4 className="text-lg font-bold text-emerald-600 dark:text-emerald-400">¡Purga Completada!</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto font-medium">
+                    Todos los datos del cliente se han eliminado de forma definitiva. El sistema se refrescará para reflejar la limpieza.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-450 font-semibold leading-relaxed">
+                    ⚠️ ALERTA EXTREMA: Esta acción purgará de manera irreversible todas sus cuentas bancarias, transacciones, registros de CRM, libros diarios de caja y servicios de streaming guardados.
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-600")}>
+                      Ingrese su PIN de Seguridad de Acceso (4 dígitos):
+                    </label>
+                    <input 
+                      type="password"
+                      maxLength={4}
+                      pattern="[0-9]*"
+                      value={purgePinInput}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setPurgePinInput(val);
+                        setPurgeError('');
+                      }}
+                      placeholder="****"
+                      disabled={isPurging}
+                      className={cn(
+                        "w-full border p-3 rounded-xl text-center text-xl tracking-[0.5em] font-mono outline-none focus:border-rose-500 transition-colors shadow-sm", 
+                        isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800"
+                      )}
+                    />
+                  </div>
+
+                  {purgeError && (
+                    <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 text-center animate-shake">
+                      {purgeError}
+                    </p>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      disabled={isPurging}
+                      onClick={() => setIsPurgeModalOpen(false)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all text-center shrink-0 cursor-pointer",
+                        isDark ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850" : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100"
+                      )}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isPurging || purgePinInput.length !== 4}
+                      onClick={executeDataPurge}
+                      className="flex-1 py-3 px-4 rounded-xl text-[10px] bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider text-center shrink-0 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed"
+                    >
+                      {isPurging ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Purgando...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Confirmar Purga
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+
         {isWalletModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div onClick={() => { setIsWalletModalOpen(false); resetWalletForm(); }} className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" />
