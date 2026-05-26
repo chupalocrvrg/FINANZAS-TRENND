@@ -14,8 +14,10 @@ import {
   Search,
   MessageCircle,
   CheckCircle2,
-  Wallet
+  Wallet,
+  Receipt
 } from 'lucide-react';
+import { VoucherModal, VoucherData } from './VoucherModal';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
@@ -94,6 +96,33 @@ export function DigitalServices() {
   // Editing a specific provider's pricing state
   const [editingProviderKey, setEditingProviderKey] = useState<{catalogId: string, supplierId: string} | null>(null);
   const [editingProviderForm, setEditingProviderForm] = useState({ cost: '', pvp: '', pvpReseller: '' });
+
+  // Voucher Modal States
+  const [activeVoucher, setActiveVoucher] = useState<VoucherData | null>(null);
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+
+  const handleOpenVoucher = (service: DigitalServiceItem) => {
+    const voucherData: VoucherData = {
+      title: `Venta: ${service.name}`,
+      subtitle: `Suscripción ${service.category || 'Digital'}`,
+      id: service.id,
+      date: service.createdAt ? new Date(service.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+      clientName: service.clientName || 'Cliente Final',
+      clientContact: service.clientContact,
+      amount: service.revenue || 0,
+      status: service.isPaid ? 'paid' : 'pending',
+      details: [
+        { label: 'E-mail Acceso', value: service.email || '-' },
+        { label: 'Clave / Password', value: service.password || '-' },
+        { label: 'PIN / Pantalla', value: service.pin || 'General' },
+        { label: 'Fecha Vence', value: service.expirationDate || '-' },
+        { label: 'Proveedor', value: service.supplierName || 'Varios/Directo' }
+      ],
+      paymentMethod: service.revenueWalletId ? 'Billetera Digital' : 'Efectivo/Directo'
+    };
+    setActiveVoucher(voucherData);
+    setIsVoucherModalOpen(true);
+  };
 
   // Confirmation state
   const [confirmModalState, setConfirmModalState] = useState<{
@@ -768,6 +797,13 @@ export function DigitalServices() {
                           <MessageCircle className="w-4 h-4" />
                         </button>
                       )}
+                      <button 
+                        onClick={() => handleOpenVoucher(service)}
+                        title="Emitir Comprobante"
+                        className="p-2 border border-indigo-200 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl transition-all cursor-pointer"
+                      >
+                        <Receipt className="w-4 h-4" />
+                      </button>
                       <button 
                         onClick={(e) => handleDelete(service.id, e)}
                         title="Eliminar registro"
@@ -1649,6 +1685,12 @@ export function DigitalServices() {
         title={confirmModalState.title}
         message={confirmModalState.message}
         isDark={isDark}
+      />
+
+      <VoucherModal 
+        isOpen={isVoucherModalOpen} 
+        onClose={() => setIsVoucherModalOpen(false)} 
+        voucher={activeVoucher} 
       />
     </div>
   );

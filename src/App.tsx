@@ -12,6 +12,7 @@ import { Treasury } from './components/Treasury';
 import { Alerts } from './components/Alerts';
 import { Settings } from './components/Settings';
 import { DigitalServices } from './components/DigitalServices';
+import { Reports } from './components/Reports';
 import { Login } from './components/Login';
 import { Onboarding } from './components/Onboarding';
 import { AIAssistant } from './components/AIAssistant';
@@ -359,6 +360,7 @@ export default function App() {
               {activeTab === 'transactions' && <Transactions />} 
               {activeTab === 'updates' && <Transactions />}
               {activeTab === 'services' && <DigitalServices />}
+              {activeTab === 'reports' && <Reports />}
               {activeTab === 'treasury' && <Treasury />}
               {activeTab === 'alerts' && <Alerts />}
               {activeTab === 'settings' && <Settings />}

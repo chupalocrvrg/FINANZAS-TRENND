@@ -11,8 +11,10 @@ import {
   Loader2,
   Trash2,
   Wallet,
-  Edit2
+  Edit2,
+  Receipt
 } from 'lucide-react';
+import { VoucherModal, VoucherData } from './VoucherModal';
 import { Transaction, Entity, Wallet as WalletType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -69,6 +71,29 @@ export function Transactions() {
   });
 
   const isDark = settings?.theme === 'dark';
+
+  // Voucher Modal States
+  const [activeVoucher, setActiveVoucher] = useState<VoucherData | null>(null);
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+
+  const handleOpenVoucher = (tx: Transaction) => {
+    const voucherData: VoucherData = {
+      title: 'Actualización ANT - Matrícula/Licencia',
+      subtitle: `Punto de Emisión: ${tx.warehouse || 'Oficina Comercial'}`,
+      id: tx.id,
+      date: tx.billingDate || new Date().toLocaleDateString(),
+      clientName: tx.finalClientName,
+      amount: tx.chargedRate || 5.00,
+      status: tx.isPaid ? 'paid' : 'pending',
+      details: [
+        { label: 'Intermediario', value: tx.intermediaryName || 'Directo / Varios' },
+        { label: 'Almacén Origen', value: tx.warehouse || '-' },
+        { label: 'Soporte Trámite', value: 'Sincronizado vía Sistemas ANT' }
+      ]
+    };
+    setActiveVoucher(voucherData);
+    setIsVoucherModalOpen(true);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -404,6 +429,13 @@ export function Transactions() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button 
+                        onClick={() => handleOpenVoucher(tx)}
+                        className="p-2 text-indigo-500 hover:text-indigo-600 transition-colors"
+                        title="Emitir Comprobante"
+                      >
+                        <Receipt className="w-4 h-4" />
+                      </button>
+                      <button 
                         onClick={() => handleDelete(tx.id)}
                         className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
                         title="Eliminar"
@@ -595,6 +627,12 @@ export function Transactions() {
         title={confirmModalState.title}
         message={confirmModalState.message}
         isDark={isDark}
+      />
+
+      <VoucherModal 
+        isOpen={isVoucherModalOpen} 
+        onClose={() => setIsVoucherModalOpen(false)} 
+        voucher={activeVoucher} 
       />
     </div>
   );

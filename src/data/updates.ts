@@ -9,12 +9,12 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
-    id: "v_3_0_3_edit_pricing",
-    version: "V3.0.3",
-    title: "Edición de Precios Sencilla y Ventana Flotante de Confirmaciones",
-    date: "26-Mayo-2026, 13:10:00",
-    description: "Habilitación de un sistema interactivo para ajustar los precios de costo, PVP y PVP distribuidor de servicios de catálogo sin eliminarlos. Integración del componente de ventana flotante de confirmaciones en cascada en todos los módulos críticos del sistema para evitar borrados accidentales de ingresos, cuentas o clientes.",
-    type: "interface"
+    id: "v_3_0_4_reporting_billing_and_pricing",
+    version: "V3.0.4",
+    title: "Reportes Avanzados, Copias de Seguridad, Comprobantes y Depuración del Protocolo",
+    date: "26-Mayo-2026, 16:35:00",
+    description: "Inauguración de Reportes avanzados con generación dinámica PDF/Excel. Adición de importación/exportación JSON nativa en configuración. Diseño de comprobantes y recibos de transacciones descargables en PDF/PNG listos para compartir en WhatsApp. Depuración de la interfaz eliminando la etiqueta de versión redundante fuera de los módulos de configuración.",
+    type: "feature"
   },
   {
     id: "v_25_5_28_camera_dup",

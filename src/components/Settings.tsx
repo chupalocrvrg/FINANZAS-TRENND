@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { logout, db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check, Database, Download } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Wallet } from '../types';
 import { SYSTEM_UPDATES } from '../data/updates';
@@ -36,6 +36,12 @@ export function Settings() {
   const [purgeError, setPurgeError] = useState('');
   const [isPurging, setIsPurging] = useState(false);
   const [purgeSuccess, setPurgeSuccess] = useState(false);
+
+  // Backup / Restore states
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState('');
+  const [importFeedback, setImportFeedback] = useState({ success: false, text: '' });
 
   // Confirmation state
   const [confirmModalState, setConfirmModalState] = useState<{
@@ -115,6 +121,109 @@ export function Settings() {
     } finally {
       setIsPurging(false);
     }
+  };
+
+  // Export backup file handler
+  const handleExportData = async () => {
+    if (!user) return;
+    setIsExporting(true);
+    try {
+      const collectionsToExport = ['wallets', 'entities', 'transactions', 'ledger', 'digital_catalog', 'digital_services'];
+      const exportedData: Record<string, any[]> = {};
+
+      for (const colName of collectionsToExport) {
+        const qSnap = await getDocs(query(collection(db, colName), where('ownerId', '==', user.uid)));
+        exportedData[colName] = qSnap.docs.map(docRef => ({
+          id: docRef.id,
+          ...docRef.data()
+        }));
+      }
+
+      const backupObj = {
+        version: "v3.0.4_full",
+        exportedAt: new Date().toISOString(),
+        ownerId: user.uid,
+        data: exportedData
+      };
+
+      const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Copia_Seguridad_ControlFinanciero_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Error exporting backup:", err);
+      alert("Error al exportar la copia de seguridad: " + err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Import backup file handler
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsImporting(true);
+    setImportStatus('Leyendo archivo de copia de seguridad...');
+    setImportFeedback({ success: false, text: '' });
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (!parsed.data || typeof parsed.data !== 'object') {
+          throw new Error("El formato del archivo no contiene la estructura de datos obligatorios.");
+        }
+
+        const dataObj = parsed.data;
+        const collectionsToImport = ['wallets', 'entities', 'transactions', 'ledger', 'digital_catalog', 'digital_services'];
+        let importedTotal = 0;
+
+        for (const colName of collectionsToImport) {
+          const items = dataObj[colName];
+          if (Array.isArray(items)) {
+            setImportStatus(`Importando '${colName}' (${items.length} registros)...`);
+            for (const item of items) {
+              const { id, ...itemData } = item;
+              if (id) {
+                // Ensure ownerId is forced to current user for privacy and safety rules
+                itemData.ownerId = user.uid;
+                await setDoc(doc(db, colName, id), itemData);
+                importedTotal++;
+              }
+            }
+          }
+        }
+
+        setImportFeedback({
+          success: true,
+          text: `¡Restauración Completada Exitosamente! Se cargaron ${importedTotal} registros correctamente en su base de datos comercial.`
+        });
+        setImportStatus('');
+      } catch (err: any) {
+        console.error("Error importing backup file:", err);
+        setImportFeedback({
+          success: false,
+          text: "Fallo de restauración: " + (err.message || "Estructura corrupta o incompatible.")
+        });
+        setImportStatus('');
+      } finally {
+        setIsImporting(false);
+        // Reset file input target value
+        e.target.value = '';
+      }
+    };
+
+    reader.onerror = () => {
+      setImportFeedback({ success: false, text: "No se pudo leer el archivo seleccionado." });
+      setIsImporting(false);
+      setImportStatus('');
+    };
+
+    reader.readAsText(file);
   };
 
   const toggleFeature = async (featureId: string) => {
@@ -825,6 +934,81 @@ export function Settings() {
           </div>
         </motion.section>
 
+        {/* SECCIÓN COPIAS DE SEGURIDAD Y RESPALDOS */}
+        <motion.section
+          key="backupRestoreZone"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
+            <Database className="w-4 h-4 text-indigo-500" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">Copias de Seguridad y Migración</h2>
+          </div>
+
+          <div className={cn("p-6 rounded-2xl border flex flex-col md:flex-row gap-6 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-205 shadow-sm")}>
+            {/* Export block */}
+            <div className="flex-1 space-y-3 border-b md:border-b-0 md:border-r border-slate-100/10 pb-6 md:pb-0 md:pr-6 text-left">
+              <h3 className="text-sm font-bold flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                <Download className="w-4 h-4" /> Respaldar Todo el Sistema
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                Descargue una copia de seguridad local que incluye la totalidad de sus cuentas bancarias, transacciones registradas de ANT, catálogo de proveedores, servicios activos, CRM e historial en un solo archivo JSON seguro de recuperar.
+              </p>
+              <button
+                type="button"
+                onClick={handleExportData}
+                disabled={isExporting}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-500/20"
+              >
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {isExporting ? 'Procesando...' : 'Descargar Copia JSON'}
+              </button>
+            </div>
+
+            {/* Import block */}
+            <div className="flex-1 space-y-3 text-left">
+              <h3 className="text-sm font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                <Upload className="w-4 h-4" /> Restaurar Copia de Seguridad
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                ¿Cambió de navegador o dispositivo? Seleccione su archivo de respaldo previo para restablecer por completo la información de sus bases de datos en la nube de forma segura.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <label className="w-full sm:w-auto relative cursor-pointer px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-indigo-505/20">
+                  <Upload className="w-4 h-4" />
+                  {isImporting ? 'Cargando...' : 'Seleccionar Archivo'}
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportData}
+                    disabled={isImporting}
+                    className="hidden"
+                  />
+                </label>
+                {importStatus && (
+                  <span className="text-[10px] font-bold text-indigo-500 animate-pulse">
+                    {importStatus}
+                  </span>
+                )}
+              </div>
+
+              {/* Feedback Alert */}
+              {importFeedback.text && (
+                <div className={cn(
+                  "p-3 rounded-xl border text-xs font-bold transition-all",
+                  importFeedback.success 
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" 
+                    : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                )}>
+                  {importFeedback.text}
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.section>
+
         {/* SECCIÓN PRIVACIDAD Y SEGURIDAD (BORRADO DE DATOS) */}
         <motion.section
           key="privacyZone"
@@ -864,9 +1048,6 @@ export function Settings() {
           <div className="flex flex-col text-left">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
               Última Sincronización: {settings?.updatedAt ? new Date(settings.updatedAt).toLocaleString() : 'Nunca'}
-            </span>
-            <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase mt-1">
-              Control Financiero • Versión 2.3.8
             </span>
           </div>
           <button 

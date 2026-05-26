@@ -11,7 +11,8 @@ import {
   Activity, 
   Wallet, 
   AlertCircle,
-  LayoutDashboard
+  LayoutDashboard,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -61,6 +62,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
   const configGroup = [
     { id: 'treasury', label: t('nav.treasury', 'Tesorería'), icon: Wallet, featureKey: 'treasury' },
+    { id: 'reports', label: t('nav.reports' as any, 'Reportes y Balances'), icon: BarChart3, featureKey: 'reports' },
     { id: 'alerts', label: t('nav.alerts', 'Alertas y Cobro'), icon: AlertCircle, featureKey: 'alerts' },
     { id: 'settings', label: t('nav.settings', 'Configuración'), icon: SettingsIcon },
   ].filter(item => !item.featureKey || !disabledFeatures.includes(item.featureKey));
