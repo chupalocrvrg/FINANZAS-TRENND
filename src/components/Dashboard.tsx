@@ -28,6 +28,7 @@ import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useTranslation } from '../lib/translations';
 
 interface StatCardProps {
   label: string;
@@ -84,6 +85,7 @@ function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default
 
 export function Dashboard() {
   const { user, settings } = useAuth();
+  const { t } = useTranslation();
   const [wallets, setWallets] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -566,50 +568,50 @@ export function Dashboard() {
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
       <div className="flex flex-col gap-1 lg:gap-2">
         <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
-          Resumen Financiero
+          {t('dash.title', 'Resumen Financiero')}
         </h2>
-        <p className="text-slate-500 text-sm lg:text-base font-medium">Métricas de rendimiento en tiempo real.</p>
+        <p className="text-slate-500 text-sm lg:text-base font-medium">{t('dash.subtitle', 'Métricas de rendimiento en tiempo real.')}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6">
         <StatCard 
-          label="Caja General" 
+          label={t('dash.cash_balance', 'Caja General')} 
           value={formatCurrency(totalWallets)} 
           icon={Wallet} 
-          trend="Disponible (Líquido)" 
+          trend={t('dash.available_liquid', 'Disponible (Líquido)')} 
           trendUp={true} 
           onClick={() => setActiveModal('wallets')}
         />
         <StatCard 
-          label="Cupo Disponible TC" 
+          label={t('dash.available_cc', 'Cupo Disponible TC')} 
           value={formatCurrency(totalCreditAvailable)} 
           icon={CreditCard} 
-          trend="Cupo Tarjetas Crédito" 
+          trend={t('dash.cc_details', 'Cupo Tarjetas Crédito')} 
           trendUp={true} 
           onClick={() => setActiveModal('wallets')}
         />
         <StatCard 
-          label="Cuentas por Cobrar (AR)" 
+          label={t('dash.receivables', 'Cuentas por Cobrar (AR)')} 
           value={formatCurrency(totalReceivables)} 
           icon={TrendingUp} 
-          trend={`${receivables.length} Pendientes`} 
+          trend={`${receivables.length} ${t('dash.pending', 'Pendientes')}`} 
           trendUp={true} 
           onClick={() => setActiveModal('receivables')}
         />
         <StatCard 
-          label="Cuentas por Pagar (AP)" 
+          label={t('dash.payables', 'Cuentas por Pagar (AP)')} 
           value={formatCurrency(totalPayables)} 
           icon={Clock} 
-          variant="dark"
-          trend={`${payables.length} Obligaciones`} 
+          variant="dark" 
+          trend={`${payables.length} ${t('dash.obligations', 'Obligaciones')}`} 
           onClick={() => setActiveModal('payables')}
         />
         <StatCard 
-          label="Cuentas Registradas" 
+          label={t('dash.registered_wallets', 'Cuentas Registradas')} 
           value={wallets.length} 
           icon={DollarSign} 
-          variant="indigo"
-          trend="En sincronización" 
+          variant="indigo" 
+          trend={t('dash.syncing', 'En sincronización')} 
           onClick={() => setActiveModal('wallets')}
         />
       </div>

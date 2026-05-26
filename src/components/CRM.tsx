@@ -18,9 +18,11 @@ import { formatCurrency, generateWhatsAppUrl, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { useTranslation } from '../lib/translations';
 
 export function CRM() {
   const { user, settings } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<EntityType>('client');
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,9 +114,9 @@ export function CRM() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div className="space-y-1">
           <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
-            CRM de Relaciones
+            {t('crm.title', 'CRM de Relaciones')}
           </h2>
-          <p className="text-slate-500 font-medium">Gestione su ecosistema de clientes, intermediarios y proveedores.</p>
+          <p className="text-slate-500 font-medium">{t('crm.subtitle', 'Gestione su ecosistema de clientes, intermediarios y proveedores.')}</p>
         </div>
         <button 
           onClick={() => {
@@ -125,7 +127,7 @@ export function CRM() {
           className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95"
         >
           <Plus className="w-5 h-5" />
-          Añadir Entidad
+          {t('crm.add_client', 'Añadir Entidad')}
         </button>
       </div>
 
@@ -135,13 +137,19 @@ export function CRM() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              "px-4 lg:px-8 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-widest",
+               "px-4 lg:px-8 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-widest",
               activeTab === tab 
                 ? 'bg-white text-indigo-600 shadow-sm' 
                 : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
             )}
           >
-            {tab === 'client' ? 'Clientes' : tab === 'reseller' ? 'Revendedores' : tab === 'intermediary' ? 'Intermediarios' : 'Proveedores'}
+            {tab === 'client' 
+              ? t('crm.tab_clients', 'Clientes') 
+              : tab === 'reseller' 
+              ? t('crm.tab_resellers', 'Revendedores') 
+              : tab === 'intermediary' 
+              ? t('crm.tab_intermediaries', 'Intermediarios') 
+              : t('crm.tab_suppliers', 'Proveedores')}
           </button>
         ))}
       </div>

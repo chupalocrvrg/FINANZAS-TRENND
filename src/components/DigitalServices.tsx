@@ -152,6 +152,22 @@ export function DigitalServices() {
     if (!user) return;
     setIsSubmitting(true);
     
+    // Check duplicates if not editing
+    if (!formData.id) {
+      const isDuplicate = services.some(s => 
+        s.email?.trim().toLowerCase() === formData.email.trim().toLowerCase() &&
+        s.password === formData.password &&
+        s.pin === formData.pin &&
+        s.name?.trim().toLowerCase() === formData.name.trim().toLowerCase()
+      );
+
+      if (isDuplicate) {
+        alert("¡Error de duplicado! Ya existe una venta de servicio digital registrada exactamente con la misma cuenta, correo, clave y pin.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    
     const sup = suppliers.find(s => s.id === formData.supplierId);
     const serviceData = {
       name: formData.name,

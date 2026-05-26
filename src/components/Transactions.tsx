@@ -109,6 +109,21 @@ export function Transactions() {
 
     const inter = intermediaries.find(i => i.id === formData.intermediaryId);
     
+    // Check duplicates if not editing
+    if (!formData.id) {
+      const isDuplicate = transactions.some(tx => 
+        tx.intermediaryId === formData.intermediaryId &&
+        tx.finalClientName?.trim().toLowerCase() === formData.finalClientName.trim().toLowerCase() &&
+        tx.warehouse?.trim().toLowerCase() === formData.warehouse.trim().toLowerCase()
+      );
+
+      if (isDuplicate) {
+        alert("¡Error de duplicado! Ya existe una actualización ANT registrada con el mismo distribuidor, de la misma persona y bodega.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    
     const intermediaryId = formData.intermediaryId;
     const intermediaryName = inter?.name || 'Unknown';
     const finalClientName = formData.finalClientName;

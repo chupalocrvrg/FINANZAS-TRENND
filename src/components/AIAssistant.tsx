@@ -18,7 +18,8 @@ import {
   Mail,
   User,
   ExternalLink,
-  Key
+  Key,
+  Camera
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -911,6 +912,15 @@ IMPORTANTE: El bloque JSON-action debe estructurarse de forma impecable sin erro
 export function AIAssistant() {
   const { user, settings } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+
+  // Camera states
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const [messages, setMessages] = useState<AIMessage[]>([
     { 
       role: 'model', 
@@ -992,12 +1002,77 @@ export function AIAssistant() {
       console.error("Error fetching wallets:", error);
     });
 
+    // Digital services for duplicate checking
+    const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
+    const unsubSer = onSnapshot(qSer, (snapshot) => {
+      setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Transactions for duplicate checking
+    const qTx = query(collection(db, 'transactions'), where('ownerId', '==', user.uid));
+    const unsubTx = onSnapshot(qTx, (snapshot) => {
+      setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     return () => {
       unsubEnt();
       unsubCat();
       unsubWallets();
+      unsubSer();
+      unsubTx();
     };
   }, [user]);
+
+  const startCamera = async () => {
+    setIsCameraActive(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      alert("No se pudo acceder a la cámara. Asegúrese de otorgar permisos de cámara en su navegador.");
+      setIsCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        setImage(dataUrl);
+        setImageType('image/png');
+      }
+    }
+    stopCamera();
+  };
+
+  // Stop camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   // Scroll to bottom
   useEffect(() => {
@@ -1213,6 +1288,19 @@ export function AIAssistant() {
     const msg = messages[msgIndex];
     if (!msg || !msg.actionParsed || msg.actionParsed.type !== 'add_digital_service') return;
 
+    // Check duplicates before continuing
+    const isDuplicate = services.some(s => 
+      s.email?.trim().toLowerCase() === data.email?.trim().toLowerCase() &&
+      s.password === data.password &&
+      s.pin === data.pin &&
+      s.name?.trim().toLowerCase() === data.name.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      alert("¡Error de duplicado! Ya existe una venta de servicio digital registrada exactamente con la misma cuenta, correo, clave y pin.");
+      return;
+    }
+
     let finalClient = data.customClientName.trim();
     let finalContact = data.clientContact.trim();
 
@@ -1371,6 +1459,18 @@ export function AIAssistant() {
     if (!user) return;
     const msg = messages[msgIndex];
     if (!msg || !msg.actionParsed || msg.actionParsed.type !== 'add_transaction') return;
+
+    // Check duplicates before continuing
+    const isDuplicate = transactions.some(tx => 
+      tx.intermediaryId === data.intermediaryId &&
+      tx.finalClientName?.trim().toLowerCase() === data.finalClientName.trim().toLowerCase() &&
+      tx.warehouse?.trim().toLowerCase() === data.warehouse.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      alert("¡Error de duplicado! Ya existe una actualización ANT registrada con el mismo distribuidor, de la misma persona y bodega.");
+      return;
+    }
 
     try {
       await addDoc(collection(db, 'transactions'), {
@@ -1666,6 +1766,49 @@ export function AIAssistant() {
                   )}
                 </AnimatePresence>
 
+                {/* Camera Live Preview Box */}
+                <AnimatePresence>
+                  {isCameraActive && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className={cn("p-3 border-t flex flex-col gap-2", isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200")}
+                    >
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-rose-500 flex items-center gap-1.5 animate-pulse">
+                          <Camera className="w-3.5 h-3.5" /> Cámara en vivo activa
+                        </span>
+                        <button
+                          type="button"
+                          onClick={stopCamera}
+                          className="text-[9px] font-black uppercase tracking-wider text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                          Apagar
+                        </button>
+                      </div>
+                      <div className="relative rounded-xl overflow-hidden border border-slate-705 bg-black aspect-video max-h-48 shadow-inner">
+                        <video 
+                          ref={videoRef} 
+                          autoPlay 
+                          playsInline 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 cursor-pointer"
+                        >
+                          Capturar captura de pantalla / foto
+                        </button>
+                      </div>
+                      <canvas ref={canvasRef} className="hidden" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Input Form Bar */}
                 <div className={cn("p-4 border-t", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
                   <form onSubmit={handleSend} className="flex gap-2 items-center">
@@ -1690,6 +1833,23 @@ export function AIAssistant() {
                       )}
                     >
                       <Paperclip className="w-4 h-4" />
+                    </button>
+
+                    {/* Camera Button */}
+                    <button 
+                      type="button" 
+                      onClick={isCameraActive ? stopCamera : startCamera}
+                      title="Tomar Foto con Cámara"
+                      className={cn(
+                        "p-2.5 rounded-xl border transition-colors cursor-pointer",
+                        isCameraActive
+                          ? "bg-rose-600 hover:bg-rose-700 border-rose-600 text-white animate-pulse"
+                          : isDark 
+                          ? "bg-slate-800 hover:bg-slate-700 border-slate-705 text-slate-350" 
+                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500"
+                      )}
+                    >
+                      <Camera className="w-4 h-4" />
                     </button>
 
                     <input 

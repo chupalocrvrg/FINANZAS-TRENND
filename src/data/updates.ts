@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_25_5_28_camera_dup",
+    version: "Versión 25.5.28",
+    title: "Cámara In-App Real, Prevención de Registro Duplicado y Traducción Global",
+    date: "26-Mayo-2026, 12:00:00",
+    description: "Integración directa de cámaras web del dispositivo para capturas de recibos en tiempo real mediante el Asistente AI sin simulaciones. Implementa un motor de validación contra registros duplicados (vía Correo, Clave, PIN en Servicios Digitales, y Referencia/Factura en ANT). Se ha unificado el sistema i18n para proveer traducciones fluidas en Español e Inglés de manera global.",
+    type: "feature"
+  },
+  {
     id: "v_25_5_27_assistant",
     version: "Version 25.5.27",
     title: "Asistente Inteligente AI de Alta Precisión",

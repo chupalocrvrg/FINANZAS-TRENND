@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
+import { useTranslation } from '../lib/translations';
 
 interface NavItemProps {
   key?: string;
@@ -48,19 +49,20 @@ interface SidebarProps {
 
 export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const { settings, user } = useAuth();
+  const { t } = useTranslation();
   const disabledFeatures = settings?.disabledFeatures || [];
   
   const mainGroup = [
-    { id: 'dashboard', label: 'Panel Principal', icon: LayoutDashboard },
-    { id: 'crm', label: 'CRM Relaciones', icon: Users, featureKey: 'crm' },
-    { id: 'services', label: 'Servicios Digitales', icon: SettingsIcon, featureKey: 'services' },
-    { id: 'updates', label: 'Actualizaciones ANT', icon: Activity, featureKey: 'updates' },
+    { id: 'dashboard', label: t('nav.dashboard', 'Panel Principal'), icon: LayoutDashboard },
+    { id: 'crm', label: t('nav.crm', 'CRM Relaciones'), icon: Users, featureKey: 'crm' },
+    { id: 'services', label: t('nav.services', 'Servicios Digitales'), icon: SettingsIcon, featureKey: 'services' },
+    { id: 'updates', label: t('nav.updates', 'Actualizaciones ANT'), icon: Activity, featureKey: 'updates' },
   ].filter(item => !item.featureKey || !disabledFeatures.includes(item.featureKey));
 
   const configGroup = [
-    { id: 'treasury', label: 'Tesorería', icon: Wallet, featureKey: 'treasury' },
-    { id: 'alerts', label: 'Alertas y Cobro', icon: AlertCircle, featureKey: 'alerts' },
-    { id: 'settings', label: 'Configuración', icon: SettingsIcon },
+    { id: 'treasury', label: t('nav.treasury', 'Tesorería'), icon: Wallet, featureKey: 'treasury' },
+    { id: 'alerts', label: t('nav.alerts', 'Alertas y Cobro'), icon: AlertCircle, featureKey: 'alerts' },
+    { id: 'settings', label: t('nav.settings', 'Configuración'), icon: SettingsIcon },
   ].filter(item => !item.featureKey || !disabledFeatures.includes(item.featureKey));
 
   return (
@@ -80,7 +82,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             </div>
           </div>
 
-          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mb-3.5">Módulos Administrativos</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mb-3.5">{t('nav.admin_modules', 'Módulos Administrativos')}</div>
           <nav className="space-y-1">
             {mainGroup.map((item) => (
               <NavItem
@@ -93,7 +95,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             ))}
           </nav>
 
-          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mt-8 mb-3.5">Configuración y Alertas</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-400/80 px-3 mt-8 mb-3.5">{t('nav.config_alerts', 'Configuración y Alertas')}</div>
           <nav className="space-y-1">
             {configGroup.map((item) => (
               <NavItem
