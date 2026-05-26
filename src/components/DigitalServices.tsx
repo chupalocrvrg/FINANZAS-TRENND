@@ -22,6 +22,7 @@ import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment } from 'firebase/firestore';
 import { Wallet as WalletType } from '../types';
 import { sendLocalPushNotification } from '../lib/notifications';
+import { ConfirmModal } from './ConfirmModal';
 
 interface Entity {
   id: string;
@@ -85,6 +86,36 @@ export function DigitalServices() {
   const [newCatalogName, setNewCatalogName] = useState('');
   const [activeSupplierCatalogId, setActiveSupplierCatalogId] = useState<string | null>(null);
   const [newSupplierProv, setNewSupplierProv] = useState({ supplierId: '', cost: '', pvp: '', pvpReseller: '' });
+
+  // Editing catalog item name states
+  const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
+  const [editingCatalogName, setEditingCatalogName] = useState('');
+
+  // Editing a specific provider's pricing state
+  const [editingProviderKey, setEditingProviderKey] = useState<{catalogId: string, supplierId: string} | null>(null);
+  const [editingProviderForm, setEditingProviderForm] = useState({ cost: '', pvp: '', pvpReseller: '' });
+
+  // Confirmation state
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
 
   // Payment processing state
   const [paymentService, setPaymentService] = useState<DigitalServiceItem | null>(null);
@@ -488,9 +519,15 @@ export function DigitalServices() {
     }));
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await deleteDoc(doc(db, 'digital_services', id));
+    triggerConfirm(
+      "¿Eliminar venta de servicio?",
+      "¿Está seguro de que desea eliminar permanentemente este registro de venta digital? Esta acción no se puede deshacer.",
+      async () => {
+        await deleteDoc(doc(db, 'digital_services', id));
+      }
+    );
   };
 
   const categories = ['Streaming', 'Música', 'Gaming', 'Software', 'Otros'];
@@ -1223,20 +1260,66 @@ export function DigitalServices() {
                 {catalogItems.length > 0 ? catalogItems.map(item => (
                   <div key={item.id} className={cn("p-4 rounded-2xl border transition-all relative flex flex-col group", isDark ? "border-slate-800 bg-slate-800/10" : "border-slate-200 bg-slate-50")}>
                     <div className="flex justify-between items-center mb-2">
-                       <button 
-                         onClick={() => {
-                           setFormData(prev => ({ ...prev, name: item.name, category: item.category }));
-                           setShowCatalog(false);
-                           setIsModalOpen(true);
-                         }}
-                         className={cn("text-left font-bold text-sm hover:text-indigo-500", isDark ? "text-slate-200" : "text-slate-800")}
-                       >
-                         {item.name}
-                       </button>
-                       <button onClick={async () => { 
-                         // Simulated confirm using custom logic could go here, but since it's just deleting a catalog item let's keep it simple or implement a quick toggle state.
-                         // For simplicity, we just delete it directly if clicking the trash icon.
-                         await deleteDoc(doc(db, 'digital_catalog', item.id)); 
+                       {editingCatalogId !== item.id ? (
+                         <div className="flex items-center gap-1.5 flex-1 mr-4">
+                           <button 
+                             onClick={() => {
+                               setFormData(prev => ({ ...prev, name: item.name, category: item.category }));
+                               setShowCatalog(false);
+                               setIsModalOpen(true);
+                             }}
+                             className={cn("text-left font-bold text-sm hover:text-indigo-505 transition-colors", isDark ? "text-slate-200" : "text-slate-800")}
+                           >
+                             {item.name}
+                           </button>
+                           <button
+                             type="button"
+                             onClick={() => {
+                               setEditingCatalogId(item.id);
+                               setEditingCatalogName(item.name);
+                             }}
+                             className="text-slate-400 hover:text-indigo-600 p-1 text-xs"
+                             title="Editar Nombre"
+                           >
+                             ✏️
+                           </button>
+                         </div>
+                       ) : (
+                         <div className="flex items-center gap-1.5 flex-1 mr-4">
+                           <input
+                             type="text"
+                             value={editingCatalogName}
+                             onChange={(e) => setEditingCatalogName(e.target.value)}
+                             className={cn("flex-1 p-1 px-2 rounded border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-705 text-white" : "bg-white border-slate-250 text-slate-800")}
+                           />
+                           <button
+                             onClick={async () => {
+                               if (editingCatalogName.trim()) {
+                                 await updateDoc(doc(db, 'digital_catalog', item.id), { name: editingCatalogName.trim() });
+                                 setEditingCatalogId(null);
+                               }
+                             }}
+                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded text-xs px-2 font-bold"
+                           >
+                             ✓
+                           </button>
+                           <button
+                             onClick={() => setEditingCatalogId(null)}
+                             className="bg-slate-600 hover:bg-slate-755 text-white p-1 rounded text-xs px-2 font-bold"
+                           >
+                             X
+                           </button>
+                         </div>
+                       )}
+                       
+                       <button onClick={() => {
+                         triggerConfirm(
+                           `¿Eliminar de catálogo: ${item.name}?`,
+                           "Esto eliminará el servicio y todos sus proveedores asociados del catálogo global de forma permanente.",
+                           async () => {
+                             await deleteDoc(doc(db, 'digital_catalog', item.id));
+                           }
+                         );
                        }} className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
                          <Trash2 className="w-4 h-4" />
                        </button>
@@ -1250,10 +1333,116 @@ export function DigitalServices() {
                       ) : (
                          item.providers.map((p, idx) => {
                            const supplierInfo = suppliers.find(s => s.id === p.supplierId);
+                           const isEditingProv = editingProviderKey?.catalogId === item.id && editingProviderKey?.supplierId === p.supplierId;
                            return (
-                             <div key={idx} className="flex justify-between items-center bg-black/5 p-1 px-2 rounded">
-                               <span className="text-[10px] font-bold">{supplierInfo?.name || 'Desconocido'}</span>
-                               <span className="text-[10px] font-mono text-emerald-600">C:${p.cost} | V:${p.pvp || 0}{p.pvpReseller ? ` | Rev: ${p.pvpReseller}` : ''}</span>
+                             <div key={idx} className="flex flex-col gap-1.5 bg-black/5 p-2 rounded relative group/prov">
+                               {!isEditingProv ? (
+                                 <div className="flex justify-between items-center w-full">
+                                   <div className="flex flex-col">
+                                     <span className="text-[10px] font-bold">{supplierInfo?.name || 'Desconocido'}</span>
+                                     <span className="text-[10px] font-mono text-emerald-600">
+                                       C:$ {p.cost} | V:$ {p.pvp || 0}{p.pvpReseller ? ` | Rev: $ ${p.pvpReseller}` : ''}
+                                     </span>
+                                   </div>
+                                   <div className="flex gap-1.5 opacity-0 group-hover/prov:opacity-100 transition-opacity">
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         setEditingProviderKey({ catalogId: item.id, supplierId: p.supplierId });
+                                         setEditingProviderForm({
+                                           cost: p.cost.toString(),
+                                           pvp: (p.pvp || 0).toString(),
+                                           pvpReseller: (p.pvpReseller || 0).toString()
+                                         });
+                                       }}
+                                       className="text-indigo-500 hover:text-indigo-700 p-0.5"
+                                       title="Editar Valores"
+                                     >
+                                       ✏️
+                                     </button>
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         triggerConfirm(
+                                           `¿Quitar proveedor ${supplierInfo?.name || 'Desconocido'}?`,
+                                           `¿Está seguro de que desea remover este de los costos del servicio ${item.name}? En caso de reajustar los precios use el icono del lápiz.`,
+                                           async () => {
+                                             const remainingProvs = item.providers.filter(prov => prov.supplierId !== p.supplierId);
+                                             await updateDoc(doc(db, 'digital_catalog', item.id), { providers: remainingProvs });
+                                           }
+                                         );
+                                       }}
+                                       className="text-rose-500 hover:text-rose-700 p-0.5"
+                                       title="Quitar Proveedor"
+                                     >
+                                       🗑️
+                                     </button>
+                                   </div>
+                                 </div>
+                               ) : (
+                                 <div className="space-y-1.5 w-full">
+                                   <span className="text-[10px] font-bold text-slate-400">{supplierInfo?.name || 'Desconocido'}</span>
+                                   <div className="grid grid-cols-3 gap-1">
+                                     <div>
+                                       <span className="text-[8px] font-bold block uppercase text-slate-400">Costo</span>
+                                       <input
+                                         type="number"
+                                         value={editingProviderForm.cost}
+                                         onChange={e => setEditingProviderForm({...editingProviderForm, cost: e.target.value})}
+                                         className="w-full text-[10px] p-1 rounded border outline-none bg-white dark:bg-slate-800"
+                                       />
+                                     </div>
+                                     <div>
+                                       <span className="text-[8px] font-bold block uppercase text-slate-400">PVP</span>
+                                       <input
+                                         type="number"
+                                         value={editingProviderForm.pvp}
+                                         onChange={e => setEditingProviderForm({...editingProviderForm, pvp: e.target.value})}
+                                         className="w-full text-[10px] p-1 rounded border outline-none bg-white dark:bg-slate-800"
+                                       />
+                                     </div>
+                                     <div>
+                                       <span className="text-[8px] font-bold block uppercase text-slate-400">Rev.</span>
+                                       <input
+                                         type="number"
+                                         value={editingProviderForm.pvpReseller}
+                                         onChange={e => setEditingProviderForm({...editingProviderForm, pvpReseller: e.target.value})}
+                                         className="w-full text-[10px] p-1 rounded border outline-none bg-white dark:bg-slate-800"
+                                       />
+                                     </div>
+                                   </div>
+                                   <div className="flex gap-2 justify-end mt-1">
+                                     <button
+                                       type="button"
+                                       onClick={async () => {
+                                         const pCost = parseFloat(editingProviderForm.cost);
+                                         const pPvp = parseFloat(editingProviderForm.pvp || '0');
+                                         const pPvpReseller = parseFloat(editingProviderForm.pvpReseller || '0');
+                                         if (!isNaN(pCost)) {
+                                           const updatedProvs = item.providers.map(prov => {
+                                             if (prov.supplierId === p.supplierId) {
+                                               return { ...prov, cost: pCost, pvp: pPvp, pvpReseller: pPvpReseller };
+                                             }
+                                             return prov;
+                                           });
+                                           await updateDoc(doc(db, 'digital_catalog', item.id), { providers: updatedProvs });
+                                           setEditingProviderKey(null);
+                                         }
+                                       }}
+                                       className="bg-indigo-600 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded hover:bg-indigo-700"
+                                     >
+                                       ✓
+                                     </button>
+                                     <button
+                                       type="button"
+                                       onClick={() => setEditingProviderKey(null)}
+                                       className="bg-slate-200 dark:bg-slate-700 text-slate-650 dark:text-slate-300 text-[9px] font-bold uppercase px-2 py-0.5 rounded"
+                                     >
+                                       X
+                                     </button>
+                                   </div>
+                                 </div>
+                               )}
                              </div>
                            );
                          })
@@ -1452,6 +1641,15 @@ export function DigitalServices() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() => setConfirmModalState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalState.onConfirm}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        isDark={isDark}
+      />
     </div>
   );
 }

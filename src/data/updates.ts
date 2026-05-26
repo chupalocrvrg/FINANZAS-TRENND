@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_3_0_3_edit_pricing",
+    version: "V3.0.3",
+    title: "Edición de Precios Sencilla y Ventana Flotante de Confirmaciones",
+    date: "26-Mayo-2026, 13:10:00",
+    description: "Habilitación de un sistema interactivo para ajustar los precios de costo, PVP y PVP distribuidor de servicios de catálogo sin eliminarlos. Integración del componente de ventana flotante de confirmaciones en cascada en todos los módulos críticos del sistema para evitar borrados accidentales de ingresos, cuentas o clientes.",
+    type: "interface"
+  },
+  {
     id: "v_25_5_28_camera_dup",
     version: "Versión 25.5.28",
     title: "Cámara In-App Real, Prevención de Registro Duplicado y Traducción Global",

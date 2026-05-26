@@ -20,6 +20,7 @@ import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, orderBy, updateDoc, increment } from 'firebase/firestore';
+import { ConfirmModal } from './ConfirmModal';
 
 export function Treasury() {
   const { user, settings } = useAuth();
@@ -32,6 +33,28 @@ export function Treasury() {
   
   const [selectedWalletForDetail, setSelectedWalletForDetail] = useState<Wallet | null>(null);
   const [editingLedgerEntry, setEditingLedgerEntry] = useState<LedgerEntry | null>(null);
+
+  // Confirmation state
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
 
   const [formData, setFormData] = useState({
     id: '',
@@ -175,23 +198,29 @@ export function Treasury() {
     }
   };
 
-  const handleDelete = async (entry: LedgerEntry) => {
-    try {
-      await deleteDoc(doc(db, 'ledger', entry.id));
-      if (!entry.isPending && entry.walletId) {
-        await updateDoc(doc(db, 'wallets', entry.walletId), {
-          balance: increment(-entry.amount)
-        });
+  const handleDelete = (entry: LedgerEntry) => {
+    triggerConfirm(
+      entry.amount < 0 ? "¿Eliminar gasto de tesorería?" : "¿Eliminar ingreso de tesorería?",
+      `¿Está seguro de que desea eliminar permanentemente esta transacción de ${formatCurrency(Math.abs(entry.amount))} (${entry.category || 'Varios'})? Se reajustará el balance de la billetera afectada de forma automática.`,
+      async () => {
+        try {
+          await deleteDoc(doc(db, 'ledger', entry.id));
+          if (!entry.isPending && entry.walletId) {
+            await updateDoc(doc(db, 'wallets', entry.walletId), {
+              balance: increment(-entry.amount)
+            });
+          }
+          if (entry.isCreditCardPayment && entry.targetWalletId) {
+            await updateDoc(doc(db, 'wallets', entry.targetWalletId), {
+              balance: increment(-Math.abs(entry.amount))
+            });
+          }
+        } catch (error) {
+          console.error(error);
+          alert("Error al eliminar.");
+        }
       }
-      if (entry.isCreditCardPayment && entry.targetWalletId) {
-        await updateDoc(doc(db, 'wallets', entry.targetWalletId), {
-          balance: increment(-Math.abs(entry.amount))
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Error al eliminar.");
-    }
+    );
   };
 
   const filteredLedger = ledger.filter(l => l.type === activeType);
@@ -579,12 +608,7 @@ export function Treasury() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={async () => {
-                              await deleteDoc(doc(db, 'ledger', entry.id));
-                              if (!entry.isPending && entry.walletId) {
-                                 await updateDoc(doc(db, 'wallets', entry.walletId), { balance: increment(-entry.amount) });
-                              }
-                            }}
+                            onClick={() => handleDelete(entry)}
                             className="p-1.5 text-slate-400 hover:text-rose-500"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -599,6 +623,15 @@ export function Treasury() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() => setConfirmModalState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalState.onConfirm}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        isDark={isDark}
+      />
     </div>
   );
 }

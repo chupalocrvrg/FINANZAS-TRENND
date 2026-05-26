@@ -17,6 +17,7 @@ import { Transaction, Entity, Wallet as WalletType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
+import { ConfirmModal } from './ConfirmModal';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, orderBy, increment } from 'firebase/firestore';
 
 export function Transactions() {
@@ -36,6 +37,28 @@ export function Transactions() {
   
   // Success Message
   const [successMsg, setSuccessMsg] = useState({show: false, phone: '', text: ''});
+
+  // Confirmation state
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
 
   const [formData, setFormData] = useState({
     id: '',
@@ -218,8 +241,14 @@ export function Transactions() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteDoc(doc(db, 'transactions', id));
+  const handleDelete = (id: string) => {
+    triggerConfirm(
+      "¿Eliminar actualización?",
+      "¿Está seguro de que desea eliminar permanentemente este registro de la actualización ANT? Esta acción no se puede deshacer.",
+      async () => {
+        await deleteDoc(doc(db, 'transactions', id));
+      }
+    );
   };
 
   return (
@@ -558,6 +587,15 @@ export function Transactions() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() => setConfirmModalState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalState.onConfirm}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        isDark={isDark}
+      />
     </div>
   );
 }

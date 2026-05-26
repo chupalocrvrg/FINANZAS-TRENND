@@ -7,6 +7,7 @@ import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, B
 import { cn, formatCurrency } from '../lib/utils';
 import { Wallet } from '../types';
 import { SYSTEM_UPDATES } from '../data/updates';
+import { ConfirmModal } from './ConfirmModal';
 
 // Helper to convert raw credentials to string database storage
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -35,6 +36,28 @@ export function Settings() {
   const [purgeError, setPurgeError] = useState('');
   const [isPurging, setIsPurging] = useState(false);
   const [purgeSuccess, setPurgeSuccess] = useState(false);
+
+  // Confirmation state
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
 
   const handleOpenPurgeModal = () => {
     if (!settings?.securityPin || settings.securityPin.trim().length !== 4) {
@@ -165,14 +188,20 @@ export function Settings() {
     setIsWalletModalOpen(true);
   };
 
-  const handleDeleteWallet = async (id: string) => {
+  const handleDeleteWallet = (id: string) => {
     if (!id) return;
-    try {
-      await deleteDoc(doc(db, 'wallets', id));
-    } catch (err) {
-      console.error("Error al eliminar la cuenta:", err);
-      // alert blocked in iframe
-    }
+    const walletName = wallets.find(w => w.id === id)?.name || "esta billetera";
+    triggerConfirm(
+      `¿Eliminar cuenta: ${walletName}?`,
+      "¿Está seguro de que desea eliminar permanentemente esta billetera o tarjeta? Los saldos y transacciones quedarán sin billetera de referencia, lo cual puede descuadrar su tesorería general.",
+      async () => {
+        try {
+          await deleteDoc(doc(db, 'wallets', id));
+        } catch (err) {
+          console.error("Error al eliminar la cuenta:", err);
+        }
+      }
+    );
   };
 
   const handleSettingClick = async (field: string, value: any) => {
@@ -1249,6 +1278,15 @@ export function Settings() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() => setConfirmModalState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalState.onConfirm}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        isDark={isDark}
+      />
     </div>
   );
 }

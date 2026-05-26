@@ -19,6 +19,7 @@ import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useTranslation } from '../lib/translations';
+import { ConfirmModal } from './ConfirmModal';
 
 export function CRM() {
   const { user, settings } = useAuth();
@@ -29,6 +30,28 @@ export function CRM() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
+
+  // Confirmation state
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModalState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
   
   const [formData, setFormData] = useState({
     name: '',
@@ -101,12 +124,19 @@ export function CRM() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'entities', id));
-    } catch (error) {
-      console.error("Error al eliminar:", error);
-    }
+  const handleDelete = (id: string) => {
+    const entName = entities.find(e => e.id === id)?.name || "esta entidad";
+    triggerConfirm(
+      `¿Eliminar de CRM: ${entName}?`,
+      "¿Está seguro de que desea eliminar permanentemente este contacto del CRM? Esta acción es definitiva.",
+      async () => {
+        try {
+          await deleteDoc(doc(db, 'entities', id));
+        } catch (error) {
+          console.error("Error al eliminar:", error);
+        }
+      }
+    );
   };
 
   return (
@@ -304,6 +334,15 @@ export function CRM() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() => setConfirmModalState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalState.onConfirm}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        isDark={isDark}
+      />
     </div>
   );
 }
