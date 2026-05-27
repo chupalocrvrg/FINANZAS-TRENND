@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_3_0_5_wallet_transfers_and_comprehensive_receipts",
+    version: "V3.0.5",
+    title: "Transferencias entre Billeteras, Recibos Dinámicos Multi-Abonos y Guía de Soporte ANT",
+    date: "27-Mayo-2026, 01:30:00",
+    description: "Implementación del módulo de transferencias financieras de saldo entre billeteras con comentarios históricos auditables. Adición de un motor de comprobantes dinámicos para abonos parciales y cobros totales asociados a intermediarios, proveedores, revendedores y clientes finales con botones de emisión, descarga PDF/PNG y compartir vía WhatsApp. Sincronización de la guía interactiva para verificación e inspección de actualización de datos de facturas en el SRI y la ANT. Soporte extendido para lectura nativa de adjuntos PDF y XML en el asistente virtual.",
+    type: "feature"
+  },
+  {
     id: "v_3_0_4_reporting_billing_and_pricing",
     version: "V3.0.4",
     title: "Reportes Avanzados, Copias de Seguridad, Comprobantes y Depuración del Protocolo",

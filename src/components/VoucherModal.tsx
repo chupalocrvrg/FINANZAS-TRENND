@@ -439,7 +439,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
               </div>
               
               <div className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider">
-                V3.0.4 • Control Digital
+                V3.0.5 • Control Digital
               </div>
             </div>
           </motion.div>

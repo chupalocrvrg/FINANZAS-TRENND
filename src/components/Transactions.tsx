@@ -36,6 +36,16 @@ export function Transactions() {
   const [paymentTx, setPaymentTx] = useState<Transaction | null>(null);
   const [targetWalletId, setTargetWalletId] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+
+  useEffect(() => {
+    if (paymentTx) {
+      const pending = paymentTx.chargedRate - (paymentTx.amountPaid || 0);
+      setPaymentAmount(pending.toFixed(2));
+    } else {
+      setPaymentAmount('');
+    }
+  }, [paymentTx]);
   
   // Success Message
   const [successMsg, setSuccessMsg] = useState({show: false, phone: '', text: ''});
@@ -76,20 +86,30 @@ export function Transactions() {
   const [activeVoucher, setActiveVoucher] = useState<VoucherData | null>(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 
-  const handleOpenVoucher = (tx: Transaction) => {
+  const handleOpenVoucher = (tx: Transaction, customAmount?: number) => {
+    const totalPactado = tx.chargedRate || 5.00;
+    const paidSoFar = tx.amountPaid || 0;
+    const isPartial = paidSoFar > 0 && paidSoFar < totalPactado - 0.005;
+    const displayAmount = customAmount !== undefined ? customAmount : (paidSoFar > 0 ? paidSoFar : totalPactado);
+    
+    const details = [
+      { label: 'Intermediario / Contacto', value: tx.intermediaryName || 'Directo / Varios' },
+      { label: 'Almacén de Factura', value: tx.warehouse || '-' },
+      { label: 'Total Pactado', value: formatCurrency(totalPactado) },
+      { label: 'Total Cobrado a la Fecha', value: formatCurrency(paidSoFar > 0 ? paidSoFar : (tx.isPaid ? totalPactado : 0)) },
+      { label: 'Saldo Pendiente', value: formatCurrency(Math.max(0, totalPactado - (paidSoFar > 0 ? paidSoFar : (tx.isPaid ? totalPactado : 0)))) }
+    ];
+
     const voucherData: VoucherData = {
-      title: 'Actualización ANT - Matrícula/Licencia',
-      subtitle: `Punto de Emisión: ${tx.warehouse || 'Oficina Comercial'}`,
+      title: tx.isPaid ? 'Comprobante de Pago Total (ANT)' : (paidSoFar > 0 ? 'Comprobante de Abono Parcial (ANT)' : 'Recibo de Registro (ANT)'),
+      subtitle: `Trámite ANT para: ${tx.finalClientName}`,
       id: tx.id,
       date: tx.billingDate || new Date().toLocaleDateString(),
-      clientName: tx.finalClientName,
-      amount: tx.chargedRate || 5.00,
+      clientName: tx.intermediaryName || tx.finalClientName || 'Cliente',
+      amount: displayAmount,
       status: tx.isPaid ? 'paid' : 'pending',
-      details: [
-        { label: 'Intermediario', value: tx.intermediaryName || 'Directo / Varios' },
-        { label: 'Almacén Origen', value: tx.warehouse || '-' },
-        { label: 'Soporte Trámite', value: 'Sincronizado vía Sistemas ANT' }
-      ]
+      details: details,
+      paymentMethod: 'Caja / Billetera Digital'
     };
     setActiveVoucher(voucherData);
     setIsVoucherModalOpen(true);
@@ -222,29 +242,62 @@ export function Transactions() {
 
   const processPayment = async () => {
     if (!paymentTx || !targetWalletId) return;
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Por favor, ingresa un monto válido mayor a 0.");
+      return;
+    }
+
+    const currentPending = paymentTx.chargedRate - (paymentTx.amountPaid || 0);
+    if (amount > currentPending + 0.005) {
+      alert(`El monto ingresado ($${amount}) supera el saldo pendiente de $${currentPending.toFixed(2)}`);
+      return;
+    }
+
     setIsProcessingPayment(true);
     try {
-      await updateDoc(doc(db, 'transactions', paymentTx.id), { isPaid: true, updatedAt: new Date().toISOString() });
+      const newAmountPaid = (paymentTx.amountPaid || 0) + amount;
+      const fullyPaid = newAmountPaid >= paymentTx.chargedRate - 0.005;
+
+      // 1. Update Transaction record
+      await updateDoc(doc(db, 'transactions', paymentTx.id), { 
+        amountPaid: newAmountPaid,
+        isPaid: fullyPaid, 
+        updatedAt: new Date().toISOString() 
+      });
       
+      // 2. Add Audit Ledger Record
       await addDoc(collection(db, 'ledger'), {
-        amount: paymentTx.chargedRate,
+        amount: amount,
         category: 'Cobro de Actualización ANT',
-        description: `Cobro a ${paymentTx.intermediaryName} por ${paymentTx.finalClientName}`,
-        date: new Date().toISOString().split('T')[0],
+        description: `${fullyPaid ? 'Cobro Total' : 'Cobro Parcial'} por actualización ANT de ${paymentTx.finalClientName} (${paymentTx.intermediaryName})`,
         walletId: targetWalletId,
+        date: new Date().toISOString().split('T')[0],
         isExpense: false,
         ownerId: user!.uid,
         createdAt: new Date().toISOString()
       });
 
+      // 3. Increment Wallet balance
       await updateDoc(doc(db, 'wallets', targetWalletId), {
-        balance: increment(paymentTx.chargedRate)
+        balance: increment(amount)
       });
       
+      // Local snapshot of updated transaction to trigger immediate voucher display
+      const txSnapshot: Transaction = {
+        ...paymentTx,
+        amountPaid: newAmountPaid,
+        isPaid: fullyPaid
+      };
+
       setPaymentTx(null);
       setTargetWalletId('');
+      
+      // Automatically output matching receipt to the user
+      handleOpenVoucher(txSnapshot, amount);
     } catch (e) {
       console.error("Error validando pago", e);
+      alert("No se pudo registrar la transacción de pago.");
     } finally {
       setIsProcessingPayment(false);
     }

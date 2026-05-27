@@ -13,7 +13,8 @@ import {
   Save,
   Loader2,
   Trash2,
-  Edit2
+  Edit2,
+  ArrowLeftRight
 } from 'lucide-react';
 import { LedgerType, Wallet, LedgerEntry } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
@@ -29,7 +30,9 @@ export function Treasury() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
   
   const [selectedWalletForDetail, setSelectedWalletForDetail] = useState<Wallet | null>(null);
   const [editingLedgerEntry, setEditingLedgerEntry] = useState<LedgerEntry | null>(null);
@@ -69,6 +72,13 @@ export function Treasury() {
     installments: '1',
     isCreditCardPayment: false,
     targetWalletId: ''
+  });
+
+  const [transferData, setTransferData] = useState({
+    sourceWalletId: '',
+    destinationWalletId: '',
+    amount: '',
+    comment: ''
   });
 
   const isDark = settings?.theme === 'dark';
@@ -198,6 +208,86 @@ export function Treasury() {
     }
   };
 
+  const handleTransferSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const { sourceWalletId, destinationWalletId, amount, comment } = transferData;
+    
+    if (!sourceWalletId || !destinationWalletId) {
+      alert("Por favor seleccione ambas billeteras.");
+      return;
+    }
+    if (sourceWalletId === destinationWalletId) {
+      alert("La billetera de origen y destino no pueden ser iguales.");
+      return;
+    }
+    const transferAmount = parseFloat(amount);
+    if (isNaN(transferAmount) || transferAmount <= 0) {
+      alert("Por favor ingrese un monto válido mayor a 0.");
+      return;
+    }
+
+    const sourceWallet = wallets.find(w => w.id === sourceWalletId);
+    if (sourceWallet && sourceWallet.balance < transferAmount) {
+      if (!confirm(`La billetera de origen tiene saldo insuficiente (${formatCurrency(sourceWallet.balance)}), pero el monto de transferencia es de ${formatCurrency(transferAmount)}. ¿Desea continuar de todos modos con un saldo negativo?`)) {
+        return;
+      }
+    }
+
+    setIsTransferring(true);
+
+    try {
+      const sourceWalletName = wallets.find(w => w.id === sourceWalletId)?.name || 'Origen';
+      const destWalletName = wallets.find(w => w.id === destinationWalletId)?.name || 'Destino';
+
+      // 1. Deduct from source wallet
+      await updateDoc(doc(db, 'wallets', sourceWalletId), {
+        balance: increment(-transferAmount)
+      });
+
+      // 2. Add to destination wallet
+      await updateDoc(doc(db, 'wallets', destinationWalletId), {
+        balance: increment(transferAmount)
+      });
+
+      // 3. Write Ledger Entry for source wallet (egress)
+      await addDoc(collection(db, 'ledger'), {
+        type: activeType,
+        category: "Transferencia (Egreso)",
+        amount: -transferAmount,
+        description: `Traspaso a ${destWalletName}${comment ? `. Nota: ${comment}` : ''}`,
+        walletId: sourceWalletId,
+        date: new Date().toISOString().split('T')[0],
+        ownerId: user.uid,
+        isRecurring: false,
+        isPending: false,
+        createdAt: new Date().toISOString()
+      });
+
+      // 4. Write Ledger Entry for destination wallet (income)
+      await addDoc(collection(db, 'ledger'), {
+        type: activeType,
+        category: "Transferencia (Ingreso)",
+        amount: transferAmount,
+        description: `Traspaso desde ${sourceWalletName}${comment ? `. Nota: ${comment}` : ''}`,
+        walletId: destinationWalletId,
+        date: new Date().toISOString().split('T')[0],
+        ownerId: user.uid,
+        isRecurring: false,
+        isPending: false,
+        createdAt: new Date().toISOString()
+      });
+
+      setIsTransferModalOpen(false);
+      setTransferData({ sourceWalletId: '', destinationWalletId: '', amount: '', comment: '' });
+    } catch (error: any) {
+      console.error("Error al transferir fondos:", error);
+      alert("Error al procesar la transferencia: " + error.message);
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
   const handleDelete = (entry: LedgerEntry) => {
     triggerConfirm(
       entry.amount < 0 ? "¿Eliminar gasto de tesorería?" : "¿Eliminar ingreso de tesorería?",
@@ -289,15 +379,24 @@ export function Treasury() {
       </div>
 
       <div className={cn("rounded-3xl border shadow-sm overflow-hidden", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
-        <div className={cn("p-6 border-b flex justify-between items-center", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-50 bg-slate-50/50")}>
+        <div className={cn("p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-50 bg-slate-50/50")}>
           <h3 className={cn("font-extrabold uppercase tracking-widest text-[10px]", isDark ? "text-slate-500" : "text-slate-800")}>Libro de Auditoría de Registros</h3>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center gap-1 active:scale-95 px-3 py-1 bg-indigo-50 rounded-lg"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Ingreso Manual
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button 
+              onClick={() => setIsTransferModalOpen(true)}
+              className="flex-1 sm:flex-none text-emerald-600 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center justify-center gap-1.5 active:scale-95 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-100/30 cursor-pointer"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              Transferir Fondos
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex-1 sm:flex-none text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center justify-center gap-1 active:scale-95 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg border border-indigo-100/30 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Ingreso Manual
+            </button>
+          </div>
         </div>
         <div className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
           {loading ? (
@@ -619,6 +718,108 @@ export function Treasury() {
                   ))}
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Transferencia entre Billeteras */}
+      <AnimatePresence>
+        {isTransferModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTransferModalOpen(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl text-left", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2">
+                  <ArrowLeftRight className="w-5 h-5 text-emerald-500" />
+                  <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                    Transferir Fondos
+                  </h3>
+                </div>
+                <button onClick={() => setIsTransferModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleTransferSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Origen (Deducir)</label>
+                  <select 
+                    required
+                    value={transferData.sourceWalletId}
+                    onChange={(e) => setTransferData({...transferData, sourceWalletId: e.target.value})}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                  >
+                    <option value="">Seleccione Origen...</option>
+                    {wallets.map(w => (
+                      <option key={w.id} value={w.id}>
+                        {w.name} (Saldo: {formatCurrency(w.balance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Destino (Abonar)</label>
+                  <select 
+                    required
+                    value={transferData.destinationWalletId}
+                    onChange={(e) => setTransferData({...transferData, destinationWalletId: e.target.value})}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                  >
+                    <option value="">Seleccione Destino...</option>
+                    {wallets.map(w => (
+                      <option key={w.id} value={w.id}>
+                        {w.name} (Saldo: {formatCurrency(w.balance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Monto a Transferir ($)</label>
+                  <input 
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    value={transferData.amount}
+                    onChange={(e) => setTransferData({...transferData, amount: e.target.value})}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Comentario / Nota del Movimiento</label>
+                  <textarea 
+                    value={transferData.comment}
+                    onChange={(e) => setTransferData({...transferData, comment: e.target.value})}
+                    placeholder="Escriba el motivo de la transferencia..."
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none h-20 resize-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                  />
+                </div>
+
+                <button 
+                  disabled={isTransferring}
+                  type="submit"
+                  className="w-full text-white bg-emerald-600 hover:bg-emerald-700 p-4 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 cursor-pointer"
+                >
+                  {isTransferring ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
+                  Confirmar Transferencia
+                </button>
+              </form>
             </motion.div>
           </div>
         )}

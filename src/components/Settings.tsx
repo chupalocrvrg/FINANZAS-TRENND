@@ -28,7 +28,7 @@ export function Settings() {
   const [showRegisteredWallets, setShowRegisteredWallets] = useState(false);
   const [showRegisteredCards, setShowRegisteredCards] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
-  const [infoTab, setInfoTab] = useState<'history' | 'features'>('history');
+  const [infoTab, setInfoTab] = useState<'history' | 'features' | 'support'>('history');
   const isDark = settings?.theme === 'dark';
 
   const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
@@ -1300,6 +1300,18 @@ export function Settings() {
                 >
                   Habilitar/Deshabilitar Características
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setInfoTab('support')}
+                  className={cn(
+                    "pb-2.5 px-4 text-xs font-bold uppercase tracking-wider relative transition-all border-b-2",
+                    infoTab === 'support' 
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400" 
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  Soporte y Guías
+                </button>
               </div>
 
               {/* Content Panel */}
@@ -1358,6 +1370,77 @@ export function Settings() {
                             </p>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : infoTab === 'support' ? (
+                  <div className="space-y-6 text-sm">
+                    <div className="bg-slate-50 dark:bg-slate-950/30 p-5 rounded-2xl text-xs text-slate-500 font-medium leading-relaxed text-left">
+                      Guía paso a paso y herramientas de diagnóstico para verificar si una factura está lista o si el trámite requiere una actualización de datos obligatoria.
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Paso 1 */}
+                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">1</div>
+                        <div className="space-y-1 text-left">
+                          <label className="text-sm font-bold block">Paso 1: Dirigirse al portal oficial de la ANT</label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                            Vaya a la página de solicitudes de servicios de la <strong>Agencia Nacional de Tránsito (ANT)</strong>:
+                          </p>
+                          <a 
+                            href="https://consultaweb.ant.gob.ec/svt/paginas/portal/svf_solicitar_servicio.jsp?ps_param_tip_serv=otr" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs font-bold text-indigo-500 hover:underline flex items-center gap-1 mt-2.5 break-all"
+                          >
+                            🔗 https://consultaweb.ant.gob.ec/svt/paginas/portal/svf_solicitar_servicio.jsp?ps_param_tip_serv=otr
+                          </a>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed mt-2.5">
+                            Y busque la opción llamada: <strong className="text-indigo-600 dark:text-indigo-400">EXPEDICIÓN DE SERIES NUEVAS DE PLACAS DE IDENTIFICACIÓN DE MOTOCICLETAS</strong>.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Paso 2 */}
+                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">2</div>
+                        <div className="space-y-1 text-left">
+                          <label className="text-sm font-bold block">Paso 2: Diagnóstico mediante el nombre del cliente</label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                            Si le sale algún mensaje de error y no se muestran los nombres reales del cliente, se entiende de antemano que el trámite <strong>necesita una actualización de datos</strong> de manera obligatoria.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Paso 3 */}
+                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">3</div>
+                        <div className="space-y-1 text-left">
+                          <label className="text-sm font-bold block">Paso 3: Carga de valores al SRI</label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                            Asegúrese de tener subidos los datos correspondientes y los valores completos en la plataforma del SRI. Para verificar si los valores están completos consulte el portal oficial del SRI.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Paso 4 */}
+                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">4</div>
+                        <div className="space-y-1 text-left">
+                          <label className="text-sm font-bold block">Paso 4: Verificación final en el SRI</label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                            Consulte y valide directamente en el SRI si el cliente tiene valores ya cancelados/saldados o cuánto adeuda actualmente.
+                          </p>
+                          <a 
+                            href="https://srienlinea.sri.gob.ec/" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs font-bold text-indigo-500 hover:underline flex items-center gap-1 mt-2.5 break-all"
+                          >
+                            🔗 https://srienlinea.sri.gob.ec/
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
