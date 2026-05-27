@@ -1013,16 +1013,23 @@ export function AIAssistant() {
         });
 
         if (!response.ok) {
-          throw new Error('Network response error');
+          let errMsg = `Error de red (Status: ${response.status})`;
+          try {
+            const errData = await response.json();
+            if (errData && errData.error) {
+              errMsg = errData.error;
+            }
+          } catch (_) {}
+          throw new Error(errMsg);
         }
 
         const data = await response.json();
         responseText = data.text || 'No recibí respuesta.';
-      } catch (backendErr) {
+      } catch (backendErr: any) {
         console.error("Backend API failed:", backendErr);
         setMessages(prev => [...prev, { 
           role: 'model', 
-          text: '⚠️ **Error de Conexión o Configuración**\n\nNo se pudo establecer conexión con el asistente en el servidor backend (`/api/assistant`). Verifique que la clave de API maestra `GEMINI_API_KEY` del servidor esté configurada correctamente.' 
+          text: `⚠️ **Error de Conexión o Configuración**\n\nNo se pudo establecer conexión con el asistente en el servidor backend (\`/api/assistant\`).\n\n**Detallles del error:** ${backendErr.message || backendErr}\n\nVerifique que la clave de API maestra \`GEMINI_API_KEY\` del servidor esté configurada de forma correcta en las variables de entorno.` 
         }]);
         setIsTyping(false);
         return;

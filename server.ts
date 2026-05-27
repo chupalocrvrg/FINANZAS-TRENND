@@ -72,7 +72,7 @@ async function startServer() {
   app.post("/api/assistant", async (req, res) => {
     try {
       const { messages, image, intermediaries, suppliers, catalog } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || "AIzaSyCa-j-OGeY7jseRXEWp36jEwvSSm96V31g";
       if (!apiKey) {
         return res.json({ 
           text: "El asistente está funcionando en modo local porque no se ha detectado una clave API (GEMINI_API_KEY) en las variables de entorno. Por favor, configure su clave en las variables de entorno del servidor para disfrutar del análisis inteligente de imágenes y registros." 
