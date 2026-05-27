@@ -27,7 +27,6 @@ import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
 import { Entity } from '../types';
-import { GoogleGenAI } from '@google/genai';
 
 interface AIMessage {
   role: 'user' | 'model';
@@ -759,157 +758,6 @@ function AntUpdateFormCard({ draft, intermediaries, onConfirm, isDark }: AntUpda
   );
 }
 
-async function callGeminiClientSide(
-  apiKey: string,
-  updatedMessages: any[],
-  currentImage: string | null,
-  currentImageType: string | null,
-  intermediaries: any[],
-  suppliers: any[],
-  catalogItems: any[]
-): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey });
-  
-  // Structure chat messages correctly for @google/genai
-  const contents: any[] = updatedMessages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : m.role,
-    parts: [{ text: m.text }]
-  }));
-
-  if (currentImage) {
-    const base64Data = currentImage.split(",")[1] || currentImage;
-    const imagePart = {
-      inlineData: {
-        mimeType: currentImageType || "image/png",
-        data: base64Data
-      }
-    };
-    const lastIndex = contents.length - 1;
-    if (lastIndex >= 0 && contents[lastIndex].role === 'user') {
-      contents[lastIndex].parts.push(imagePart);
-    } else {
-      contents.push({
-        role: 'user',
-        parts: [{ text: "Analiza y extrae la información de esta transacción." }, imagePart]
-      });
-    }
-  }
-
-  // Ensure turn order correctness (skip leading 'model' nodes, merge adjacent same-role messages)
-  let normalizedContents: any[] = [];
-  let foundUser = false;
-  for (const m of contents) {
-    if (m.role === 'user') {
-      foundUser = true;
-    }
-    if (foundUser) {
-      if (normalizedContents.length > 0 && normalizedContents[normalizedContents.length - 1].role === m.role) {
-        normalizedContents[normalizedContents.length - 1].parts = [
-          ...normalizedContents[normalizedContents.length - 1].parts,
-          ...m.parts
-        ];
-      } else {
-        normalizedContents.push({
-          role: m.role,
-          parts: m.parts
-        });
-      }
-    }
-  }
-
-  // Fallback if empty after filtering
-  if (normalizedContents.length === 0) {
-    normalizedContents = [{ role: 'user', parts: [{ text: "Hola" }] }];
-  }
-
-  const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es doble:
-1. Ayudar al usuario a registrar transacciones, productos digitales y ver balances ingresando datos manualmente o procesando capturas de pantalla/chats.
-2. Ser un centro de ayuda, guía de soporte e indicaciones de navegación integral para facilitarle la vida al usuario en caso de consultar sobre el funcionamiento de cualquier sección o módulo.
-
-REGLA DE SOPORTE E INSTRUCCIÓN GENERAL DE NAVEGACIÓN:
-Si el usuario tiene dudas sobre cómo usar el sistema, dónde encontrar un botón o cómo funciona alguna pestaña, debes responderle de forma amable y pedagógica haciendo referencia exacta a la estructura del sistema:
-- Panel Principal ('dashboard'): Resumen financiero diario de flujos, cajas, cobros pendientes e indicadores gráficos con accesos directos.
-- CRM Relaciones ('crm'): Gestión de socios comerciales, intermediarios de trámites, revendedores de cuentas y deudores directos.
-- Servicios Digitales ('services'): Venta y control de suscripciones streaming (Netflix, Disney+, etc.), credenciales, perfiles con fechas de vencimiento y alertas periódicas.
-- Actualizaciones ANT ('updates'): Registro exhaustivo de transacciones, trámites viales de conductores, pagos individuales y deudas con distribuidores.
-- Tesorería y Caja ('treasury'): Libro diario de caja, ingresos de capital independientes, egresos de gastos varios, control de múltiples carteras de efectivo, bancos y tarjetas de crédito con cupos controlados.
-- Alertas y Cobros ('alerts'): Historial clínico de alertas automatizadas de vencimiento de deudas y generación de banners/acciones de recordatorio.
-- Configuración ('settings'): Gestión del nombre corporativo, RUC, temporizador de bloqueo por inactividad automático, PIN de seguridad de acceso y la nueva herramienta de "Información y Control de Características" (que permite desactivar temporalmente del menú lateral módulos enteros como ANT, CRM, etc. para aligerar la interfaz).
-
-REGLA CRÍTICA PRIMORDIAL DE NO-ASUNCIÓN (MUY IMPORTANTE):
-- Si en la imagen, captura o texto de chat compartida NO se muestra, menciona ni se hace referencia explícita al nombre o existencia de un proveedor, revendedor, distribuidor, intermediario o cliente final, el sistema NO DEBE asumir ningún nombre automáticamente.
-- No debes inventar, suponer, ni asumir nombres ni de ejemplo para 'finalClientName', 'warehouse', 'intermediaryId', 'supplierId' o 'supplierName'.
-- En caso de que no lo indique la captura, pon estrictamente una cadena de texto vacía ("") para esos campos.
-- NUNCA crees o asignes valores automáticamente a menos que estén claramente visibles o escritos en el archivo adjunto.
-
-¡TIENES DOS SÚPER PODERES INCREÍBLES PARA ACCIONES TÉCNICAS!:
-1. PROCESAR IMÁGENES/CAPTURAS DE ACTUALIZACIONES ANT:
-    - Extraer: Cliente Final ("finalClientName"), Bodega/Establecimiento ("warehouse") y asociarlo con la lista de Distribuidores.
-2. PROCESAR IMÁGENES/CHAT CON PROVEEDORES DE CUENTAS DIGITALES (Netflix, Disney+, etc.):
-    - Puedes analizar capturas de chats, mensajes de WhatsApp o recibos con proveedores que te entregan cuentas activadas.
-    - Extraerá los datos claves:
-      * Correo electrónico de la cuenta ("email")
-      * Contraseña ("password")
-      * PIN o perfil registrado ("pin")
-      * Fecha de vencimiento ("expirationDate" en formato YYYY-MM-DD. Si se indica "30 días" o similar, calcúlala sumando 30 días a la fecha de hoy, que es 2026-05-25)
-      * Costo del proveedor ("cost")
-      * Precio sugerido o real de venta ("revenue" / precio de venta)
-      * Nombre e ID del Proveedor ("supplierId" y "supplierName")
-      * Número de teléfono, celular o contacto del cliente si se menciona o se ve en la captura ("clientContact")
-
-CONTEXTO DEL USUARIO:
-- Distribuidores/Intermediarios de ANT: ${JSON.stringify(intermediaries || [], null, 2)}
-- Proveedores de Cuentas Digitales: ${JSON.stringify(suppliers || [], null, 2)}
-- Catálogo de Servicios Digitales del usuario: ${JSON.stringify(catalogItems || [], null, 2)}
-
-INSTRUCCIÓN DE TRABAJO:
-Si es un caso de Actualización ANT:
-- Presenta qué datos lograste extraer (Socio Comercial, Bodega).
-- DEBES incluir al final un bloque \`\`\`json-action con el formato exacto. Si no se puede extraer con certeza, pon "":
-\`\`\`json-action
-{
-  "type": "add_transaction",
-  "finalClientName": "NOMBRE_CLIENTE_EXTRAIDO_O_VACIO",
-  "warehouse": "BODEGA_O_ESTABLECIMIENTO_EXTRAIDA_O_VACIO",
-  "intermediaryId": "ID_INTERMEDIARIO_EXTRAIDO_O_VACIO"
-}
-\`\`\`
-
-Si es un caso de Venta de Cuenta/Servicio Digital (de proveedor o chat de entrega):
-- Indica amablemente que has detectado una cuenta digital y enumera los campos extraídos: Producto, Correo, Clave, PIN, Fecha de Vencimiento, Costo, y Venta.
-- Intenta emparejar el producto con la lista del 'Catálogo' suministrado. Si coincide, usa ese nombre exacto de producto, su costo y su precio de venta sugerido.
-- Intenta emparejar el proveedor con la lista de 'Proveedores' (por nombre o aproximación).
-- DEBES incluir al final un bloque \`\`\`json-action con el siguiente formato EXACTO, calculando la fecha de vencimiento adecuadamente si es relativa (la fecha actual es 2026-05-25):
-\`\`\`json-action
-{
-  "type": "add_digital_service",
-  "name": "NOMBRE_DEL_PRODUCTO_SOCIADO_O_CONFIGURADO",
-  "email": "CORREO_EXTRAIDO_O_VACIO",
-  "password": "CONTRASEÑA_EXTRAIDA_O_VACIO",
-  "pin": "PIN_O_PERFIL_EXTRAIDO_O_VACIO",
-  "expirationDate": "YYYY-MM-DD_FECHA_EXTRAIDA_O_CALCULADA",
-  "cost": COSTO_NUMERICO_EXTRAIDO_O_POR_CATALOGO,
-  "revenue": INGRESO_VENTA_NUMERICO_O_POR_CATALOGO,
-  "supplierId": "ID_PROVEEDOR_COINCIDENTE_O_VACIO",
-  "supplierName": "NOMBRE_PROVEEDOR_COINCIDENTE_O_VACIO",
-  "clientContact": "NUMERO_TELEFONO_CLIENTE_O_VACIO"
-}
-\`\`\`
-
-IMPORTANTE: El bloque JSON-action debe estructurarse de forma impecable sin errores de formato para que no falle la integración. Si es una pregunta informativa u holística de navegación, simplemente responde elegantemente con el formato estándar y guía al usuario sin adjuntar bloques de json-action. Saboriza tu respuesta con un tono profesional, claro, empático y estructurado en español fluido.`;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.5-flash',
-    config: {
-      systemInstruction: systemInstruction,
-      temperature: 0.1,
-    },
-    contents: normalizedContents
-  });
-
-  return response.text || "No obtuve una respuesta válida de Gemini.";
-}
-
 export function AIAssistant() {
   const { user, settings } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -938,26 +786,6 @@ export function AIAssistant() {
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
 
-  const [localApiKey, setLocalApiKey] = useState(() => localStorage.getItem('LOCAL_GEMINI_API_KEY') || '');
-  const [showKeyInput, setShowKeyInput] = useState(false);
-  const [tempKey, setTempKey] = useState('');
-
-  const handleSaveLocalKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanKey = tempKey.trim();
-    if (cleanKey) {
-      localStorage.setItem('LOCAL_GEMINI_API_KEY', cleanKey);
-      setLocalApiKey(cleanKey);
-      setShowKeyInput(false);
-      setTempKey('');
-    }
-  };
-
-  const handleClearLocalKey = () => {
-    localStorage.removeItem('LOCAL_GEMINI_API_KEY');
-    setLocalApiKey('');
-  };
-  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -1191,31 +1019,13 @@ export function AIAssistant() {
         const data = await response.json();
         responseText = data.text || 'No recibí respuesta.';
       } catch (backendErr) {
-        console.warn("Backend API failed, trying client-side Gemini fallback...", backendErr);
-        
-        // Try to get key either from localStorage or import.meta.env
-        const clientApiKey = localApiKey || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
-        
-        if (!clientApiKey) {
-          // If no key is found, explain clearly and request setup
-          setMessages(prev => [...prev, { 
-            role: 'model', 
-            text: '⚠️ **Modo Servidor Estático / Vercel Detectado**\n\nNo se pudo establecer conexión con el servidor backend (`/api/assistant`). Para utilizar el asistente directamente en tu navegador sin necesidad de servidor, configure una **Clave API de Gemini**.\n\nPuedes habilitarla haciendo click en el **icono de llave 🔑** en la parte superior derecha de esta ventana del chat, o ingresando la variable de entorno `VITE_GEMINI_API_KEY` en tu panel de Vercel.' 
-          }]);
-          setIsTyping(false);
-          return;
-        }
-
-        // Execute via global @google/genai SDK
-        responseText = await callGeminiClientSide(
-          clientApiKey,
-          updatedMessages,
-          currentImage,
-          currentImageType,
-          intermediaries,
-          suppliers,
-          catalogItems
-        );
+        console.error("Backend API failed:", backendErr);
+        setMessages(prev => [...prev, { 
+          role: 'model', 
+          text: '⚠️ **Error de Conexión o Configuración**\n\nNo se pudo establecer conexión con el asistente en el servidor backend (`/api/assistant`). Verifique que la clave de API maestra `GEMINI_API_KEY` del servidor esté configurada correctamente.' 
+        }]);
+        setIsTyping(false);
+        return;
       }
 
       // Parse structured JSON matches inside backend markdown codeblock
@@ -1539,95 +1349,14 @@ export function AIAssistant() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <button 
-                  onClick={() => {
-                    setTempKey(localApiKey);
-                    setShowKeyInput(!showKeyInput);
-                  }}
-                  title="Configurar Clave API de Gemini"
-                  className={cn(
-                    "text-white/70 hover:text-white transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/10",
-                    showKeyInput && "text-white bg-white/15"
-                  )}
-                >
-                  <Key className="w-3.5 h-3.5" />
-                </button>
                 <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {showKeyInput ? (
-              <div className={cn("flex-1 p-6 flex flex-col justify-center space-y-4", isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-slate-50 border-slate-100 text-slate-850")}>
-                <div className="text-center space-y-2">
-                  <div className="w-12 h-12 bg-indigo-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
-                    <Key className="w-5 h-5" />
-                  </div>
-                  <h4 className="font-bold text-sm">Clave API de Gemini</h4>
-                  <p className="text-[10px] leading-relaxed text-slate-500 max-w-sm mx-auto">
-                    Si tu Control Financiero está hospedado en un ambiente estático (como GitHub Pages o Vercel), puedes configurar tu clave API aquí para que el asistente funcione directamente en tu navegador sin requerir servidor backend. Se guardará de forma segura en tu navegador.
-                  </p>
-                </div>
-                
-                <form onSubmit={handleSaveLocalKey} className="space-y-3">
-                  <div>
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Tu Gemini API Key</label>
-                    <input 
-                      type="password"
-                      value={tempKey}
-                      onChange={(e) => setTempKey(e.target.value)}
-                      placeholder="AIzaSy..."
-                      className={cn(
-                        "w-full px-4 py-2 rounded-xl text-sm outline-none border transition-all duration-300", 
-                        isDark 
-                          ? "bg-slate-800 border-slate-700 text-white focus:border-indigo-500" 
-                          : "bg-white border-slate-200 focus:border-indigo-500 text-slate-800"
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="flex-1 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors cursor-pointer"
-                    >
-                      Guardar Clave
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowKeyInput(false);
-                      }}
-                      className={cn(
-                        "px-4 py-2 text-xs font-bold rounded-xl border transition-colors cursor-pointer",
-                        isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"
-                      )}
-                    >
-                      Volver
-                    </button>
-                  </div>
-                </form>
-                
-                {localApiKey && (
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-[10px]">
-                    <span className="text-emerald-500 flex items-center gap-1 font-bold uppercase">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Clave Guardada
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleClearLocalKey}
-                      className="text-rose-500 hover:underline hover:text-rose-600 transition-colors cursor-pointer"
-                    >
-                      Eliminar clave
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* Chat Messages list */}
-                <div className={cn("flex-1 p-4 overflow-y-auto space-y-4 class-message-scroller", isDark ? "bg-slate-950" : "bg-slate-50/50")}>
+            {/* Chat Messages list */}
+            <div className={cn("flex-1 p-4 overflow-y-auto space-y-4 class-message-scroller", isDark ? "bg-slate-950" : "bg-slate-50/50")}>
                   {messages.map((m, i) => (
                     <div key={i} className={cn("flex w-full mb-2", m.role === 'user' ? "justify-end" : "justify-start")}>
                       <div className={cn(
@@ -1890,9 +1619,7 @@ export function AIAssistant() {
                     Tip: Toma una captura de pantalla y presiona <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">Ctrl</kbd> + <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">V</kbd> para pegarla al instante.
                   </div>
                 </div>
-              </>
-            )}
-          </motion.div>
+              </motion.div>
         )}
       </AnimatePresence>
     </>
