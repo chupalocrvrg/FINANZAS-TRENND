@@ -27,6 +27,7 @@ import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
 import { Entity } from '../types';
+import { GoogleGenAI } from '@google/genai';
 
 interface AIMessage {
   role: 'user' | 'model';
@@ -758,6 +759,146 @@ function AntUpdateFormCard({ draft, intermediaries, onConfirm, isDark }: AntUpda
   );
 }
 
+async function callGeminiClientSide(
+  apiKey: string,
+  updatedMessages: any[],
+  currentImage: string | null,
+  currentImageType: string | null,
+  intermediaries: any[],
+  suppliers: any[],
+  catalogItems: any[]
+): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey });
+  
+  // Structure chat messages correctly for @google/genai
+  const contents: any[] = updatedMessages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : m.role,
+    parts: [{ text: m.text }]
+  }));
+
+  if (currentImage) {
+    const base64Data = currentImage.split(",")[1] || currentImage;
+    const imagePart = {
+      inlineData: {
+        mimeType: currentImageType || "image/png",
+        data: base64Data
+      }
+    };
+    const lastIndex = contents.length - 1;
+    if (lastIndex >= 0 && contents[lastIndex].role === 'user') {
+      contents[lastIndex].parts.push(imagePart);
+    } else {
+      contents.push({
+        role: 'user',
+        parts: [{ text: "Analiza y extrae la información de esta transacción o servicio digital." }, imagePart]
+      });
+    }
+  }
+
+  // Ensure turn order correctness (skip leading 'model' nodes, merge adjacent same-role messages)
+  let normalizedContents: any[] = [];
+  let foundUser = false;
+  for (const m of contents) {
+    if (m.role === 'user') {
+      foundUser = true;
+    }
+    if (foundUser) {
+      if (normalizedContents.length > 0 && normalizedContents[normalizedContents.length - 1].role === m.role) {
+        normalizedContents[normalizedContents.length - 1].parts = [
+          ...normalizedContents[normalizedContents.length - 1].parts,
+          ...m.parts
+        ];
+      } else {
+        normalizedContents.push({
+          role: m.role,
+          parts: m.parts
+        });
+      }
+    }
+  }
+
+  // Fallback if empty after filtering
+  if (normalizedContents.length === 0) {
+    normalizedContents = [{ role: 'user', parts: [{ text: "Hola" }] }];
+  }
+
+  const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es ayudar al usuario a registrar transacciones, productos digitales y ver balances.
+
+REGLA CRÍTICA PRIMORDIAL DE NO-ASUNCIÓN (MUY IMPORTANTE):
+- Si en la imagen, captura o texto de chat compartida NO se muestra, menciona ni se hace referencia explícita al nombre o existencia de un proveedor, revendedor, distribuidor, intermediario o cliente final, el sistema NO DEBE asumir ningún nombre automáticamente.
+- No debes inventar, suponer, ni asumir nombres ni de ejemplo para 'finalClientName', 'warehouse', 'intermediaryId', 'supplierId' o 'supplierName'.
+- En caso de que no lo indique la captura, pon estrictamente una cadena de texto vacía ("") para esos campos.
+- NUNCA crees o asignes valores automáticamente a menos que estén claramente visibles o escritos en el archivo adjunto.
+
+¡TIENES DOS SÚPER PODERES INCREÍBLES!:
+1. PROCESAR IMÁGENES/CAPTURAS DE ACTUALIZACIONES ANT:
+   - Extraer: Cliente Final ("finalClientName"), Bodega/Establecimiento ("warehouse") y asociarlo con la lista de Distribuidores.
+2. PROCESAR IMÁGENES/CHAT CON PROVEEDORES DE CUENTAS DIGITALES (Netflix, Disney+, etc.):
+   - Puedes analizar capturas de chats, mensajes de WhatsApp o recibos con proveedores que te entregan cuentas activadas.
+   - Extraerá los datos claves:
+     * Nombre del Producto / Servicio (ej. Netflix 1 Pantalla, Disney+, Max)
+     * Correo electrónico de la cuenta ("email")
+     * Contraseña ("password")
+     * PIN o perfil registrado ("pin")
+     * Fecha de vencimiento ("expirationDate" en formato YYYY-MM-DD. Si se indica "30 días" o similar, calcúlala sumando 30 días a la fecha de hoy, que es 2026-05-23)
+     * Costo del proveedor ("cost")
+     * Precio sugerido o real de venta ("revenue" / precio de venta)
+     * Nombre e ID del Proveedor ("supplierId" y "supplierName")
+     * Número de teléfono, celular o contacto del cliente si se menciona o se ve en la captura ("clientContact")
+
+CONTEXTO DEL USUARIO:
+- Distribuidores/Intermediarios de ANT: ${JSON.stringify(intermediaries || [], null, 2)}
+- Proveedores de Cuentas Digitales: ${JSON.stringify(suppliers || [], null, 2)}
+- Catálogo de Servicios Digitales del usuario: ${JSON.stringify(catalogItems || [], null, 2)}
+
+INSTRUCCIÓN DE TRABAJO:
+Si es un caso de Actualización ANT:
+- Presenta qué datos lograste extraer (Socio Comercial, Bodega).
+- DEBES incluir al final un bloque \`\`\`json-action con el formato exacto. Si no se puede extraer con certeza, pon "":
+\`\`\`json-action
+{
+  "type": "add_transaction",
+  "finalClientName": "NOMBRE_CLIENTE_EXTRAIDO_O_VACIO",
+  "warehouse": "BODEGA_O_ESTABLECIMIENTO_EXTRAIDA_O_VACIO",
+  "intermediaryId": "ID_INTERMEDIARIO_EXTRAIDO_O_VACIO"
+}
+\`\`\`
+
+Si es un caso de Venta de Cuenta/Servicio Digital (de proveedor o chat de entrega):
+- Indica amablemente que has detectado una cuenta digital y enumera los campos extraídos: Producto, Correo, Clave, PIN, Fecha de Vencimiento, Costo, y Venta.
+- Intenta emparejar el producto con la lista del 'Catálogo' suministrado. Si coincide, usa ese nombre exacto de producto, su costo y su precio de venta sugerido.
+- Intenta emparejar el proveedor con la lista de 'Proveedores' (por nombre o aproximación).
+- DEBES incluir al final un bloque \`\`\`json-action con el siguiente formato EXACTO, calculando la fecha de vencimiento adecuadamente si es relativa (la fecha actual es 2026-05-25):
+\`\`\`json-action
+{
+  "type": "add_digital_service",
+  "name": "NOMBRE_DEL_PRODUCTO_SOCIADO_O_CONFIGURADO",
+  "email": "CORREO_EXTRAIDO_O_VACIO",
+  "password": "CONTRASEÑA_EXTRAIDA_O_VACIO",
+  "pin": "PIN_O_PERFIL_EXTRAIDO_O_VACIO",
+  "expirationDate": "YYYY-MM-DD_FECHA_EXTRAIDA_O_CALCULADA",
+  "cost": COSTO_NUMERICO_EXTRAIDO_O_POR_CATALOGO,
+  "revenue": INGRESO_VENTA_NUMERICO_O_POR_CATALOGO,
+  "supplierId": "ID_PROVEEDOR_COINCIDENTE_O_VACIO",
+  "supplierName": "NOMBRE_PROVEEDOR_COINCIDENTE_O_VACIO",
+  "clientContact": "NUMERO_TELEFONO_CLIENTE_O_VACIO"
+}
+\`\`\`
+
+IMPORTANTE: El bloque JSON-action debe estructurarse de forma impecable sin errores de formato para que no falle la integración. Saboriza tu respuesta con un tono profesional, claro, empático y estructurado en español fluido.`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3.5-flash',
+    config: {
+      systemInstruction: systemInstruction,
+      temperature: 0.1,
+    },
+    contents: normalizedContents
+  });
+
+  return response.text || "No obtuve una respuesta válida de Gemini.";
+}
+
 export function AIAssistant() {
   const { user, settings } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -1026,13 +1167,31 @@ export function AIAssistant() {
         const data = await response.json();
         responseText = data.text || 'No recibí respuesta.';
       } catch (backendErr: any) {
-        console.error("Backend API failed:", backendErr);
-        setMessages(prev => [...prev, { 
-          role: 'model', 
-          text: `⚠️ **Error de Conexión o Configuración**\n\nNo se pudo establecer conexión con el asistente en el servidor backend (\`/api/assistant\`).\n\n**Detallles del error:** ${backendErr.message || backendErr}\n\nVerifique que la clave de API maestra \`GEMINI_API_KEY\` del servidor esté configurada de forma correcta en las variables de entorno.` 
-        }]);
-        setIsTyping(false);
-        return;
+        console.warn("Express Backend API failed (likely static hosting/Vercel), falling back to client-side Gemini...", backendErr);
+        
+        // Define the API Key to use on the client-side
+        // We prioritize the environment variable if present, and fallback to the user's requested key.
+        const clientApiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || "AIzaSyCa-j-OGeY7jseRXEWp36jEwvSSm96V31g";
+        
+        try {
+          responseText = await callGeminiClientSide(
+            clientApiKey,
+            updatedMessages,
+            currentImage,
+            currentImageType,
+            intermediaries,
+            suppliers,
+            catalogItems
+          );
+        } catch (clientGeminiErr: any) {
+          console.error("Client fallback also failed:", clientGeminiErr);
+          setMessages(prev => [...prev, { 
+            role: 'model', 
+            text: `⚠️ **Error de Conexión o Configuración**\n\nNo se pudo establecer conexión con el asistente en el servidor backend (\`/api/assistant\`).\n\n**Detalles del error del servidor:** ${backendErr.message || backendErr}\n\n**Detalles del error cliente (Gemini directa):** ${clientGeminiErr.message || clientGeminiErr}\n\nPor favor, verifique que la clave de API \`GEMINI_API_KEY\` del servidor o \`VITE_GEMINI_API_KEY\` estén configuradas correctamente en su entorno.` 
+          }]);
+          setIsTyping(false);
+          return;
+        }
       }
 
       // Parse structured JSON matches inside backend markdown codeblock
