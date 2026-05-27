@@ -927,6 +927,38 @@ export function AIAssistant() {
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
 
+  const [localApiKey, setLocalApiKey] = useState(() => localStorage.getItem('LOCAL_GEMINI_API_KEY') || '');
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [tempKey, setTempKey] = useState('');
+
+  const handleSaveLocalKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKey = tempKey.trim();
+    if (cleanKey) {
+      localStorage.setItem('LOCAL_GEMINI_API_KEY', cleanKey);
+      setLocalApiKey(cleanKey);
+      setShowKeyInput(false);
+      setTempKey('');
+      window.dispatchEvent(new Event('local-api-key-updated'));
+    }
+  };
+
+  const handleClearLocalKey = () => {
+    localStorage.removeItem('LOCAL_GEMINI_API_KEY');
+    setLocalApiKey('');
+    window.dispatchEvent(new Event('local-api-key-updated'));
+  };
+
+  useEffect(() => {
+    const handleSyncKey = () => {
+      setLocalApiKey(localStorage.getItem('LOCAL_GEMINI_API_KEY') || '');
+    };
+    window.addEventListener('local-api-key-updated', handleSyncKey);
+    return () => {
+      window.removeEventListener('local-api-key-updated', handleSyncKey);
+    };
+  }, []);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -1170,9 +1202,18 @@ export function AIAssistant() {
         console.warn("Express Backend API failed (likely static hosting/Vercel), falling back to client-side Gemini...", backendErr);
         
         // Define the API Key to use on the client-side
-        // We prioritize the environment variable if present, and fallback to the user's requested key.
-        const clientApiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || "AIzaSyCa-j-OGeY7jseRXEWp36jEwvSSm96V31g";
+        // We prioritize the secure localStorage api key first, then custom environments.
+        const clientApiKey = localApiKey || (import.meta as any).env.VITE_GEMINI_API_KEY || "";
         
+        if (!clientApiKey) {
+          setMessages(prev => [...prev, { 
+            role: 'model', 
+            text: `⚠️ **Modo Servidor Estático / Vercel Detectado**\n\nNo se pudo conectar con el servidor backend (\`/api/assistant\`).\n\nPara utilizar el asistente de forma segura en tu navegador sin requerir de un servidor activo, por favor configura una **Clave API de Gemini**.\n\nHaz clic en el **icono de llave 🔑** en la parte superior derecha de esta ventana del chat para guardarla de manera segura, o agrega la variable \`VITE_GEMINI_API_KEY\` en tu panel de Vercel.` 
+          }]);
+          setIsTyping(false);
+          return;
+        }
+
         try {
           responseText = await callGeminiClientSide(
             clientApiKey,
@@ -1187,7 +1228,7 @@ export function AIAssistant() {
           console.error("Client fallback also failed:", clientGeminiErr);
           setMessages(prev => [...prev, { 
             role: 'model', 
-            text: `⚠️ **Error de Conexión o Configuración**\n\nNo se pudo establecer conexión con el asistente en el servidor backend (\`/api/assistant\`).\n\n**Detalles del error del servidor:** ${backendErr.message || backendErr}\n\n**Detalles del error cliente (Gemini directa):** ${clientGeminiErr.message || clientGeminiErr}\n\nPor favor, verifique que la clave de API \`GEMINI_API_KEY\` del servidor o \`VITE_GEMINI_API_KEY\` estén configuradas correctamente en su entorno.` 
+            text: `⚠️ **Error de API Gemini Directa**\n\nLa conexión directa con la API de Gemini falló.\n\n**Detalles del error:** ${clientGeminiErr.message || JSON.stringify(clientGeminiErr)}\n\n*Consejo:* Si la clave ingresada fue reportada como filtrada (leaked), el sistema de seguridad de Google la desactiva automáticamente. Por favor genera un **nuevo API Key válido** en Google AI Studio y regístralo pulsando el botón **🔑**.` 
           }]);
           setIsTyping(false);
           return;
@@ -1515,14 +1556,95 @@ export function AIAssistant() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={() => {
+                    setTempKey(localApiKey);
+                    setShowKeyInput(!showKeyInput);
+                  }}
+                  title="Configurar Clave API de Gemini"
+                  className={cn(
+                    "text-white/70 hover:text-white transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/10",
+                    showKeyInput && "text-white bg-white/15"
+                  )}
+                >
+                  <Key className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={() => setIsOpen(false)} className="text-white/70 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Chat Messages list */}
-            <div className={cn("flex-1 p-4 overflow-y-auto space-y-4 class-message-scroller", isDark ? "bg-slate-950" : "bg-slate-50/50")}>
+            {showKeyInput ? (
+              <div className={cn("flex-1 p-6 flex flex-col justify-center space-y-4", isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-slate-50 border-slate-100 text-slate-800")}>
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-sm">Clave API de Gemini Personal</h4>
+                  <p className="text-[10px] leading-relaxed text-slate-500 max-w-sm mx-auto">
+                    Si tu Control Financiero está hospedado en un ambiente estático (como Vercel o GitHub Pages), puedes configurar tu propia Clave API de Gemini aquí. Se guardará de forma segura en la memoria local de tu navegador y nunca se filtrará.
+                  </p>
+                </div>
+                
+                <form onSubmit={handleSaveLocalKey} className="space-y-3">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Tu Gemini API Key</label>
+                    <input 
+                      type="password"
+                      value={tempKey}
+                      onChange={(e) => setTempKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className={cn(
+                        "w-full px-4 py-2 rounded-xl text-sm outline-none border transition-all duration-300", 
+                        isDark 
+                          ? "bg-slate-800 border-slate-700 text-white focus:border-indigo-500" 
+                          : "bg-white border-slate-200 focus:border-indigo-500 text-slate-800"
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="flex-1 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors cursor-pointer"
+                    >
+                      Guardar Clave
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowKeyInput(false);
+                      }}
+                      className={cn(
+                        "px-4 py-2 text-xs font-bold rounded-xl border transition-colors cursor-pointer",
+                        isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"
+                      )}
+                    >
+                      Volver
+                    </button>
+                  </div>
+                </form>
+                
+                {localApiKey && (
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-[10px]">
+                    <span className="text-emerald-505 text-emerald-500 flex items-center gap-1 font-bold uppercase">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Clave Guardada
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleClearLocalKey}
+                      className="text-rose-500 hover:underline hover:text-rose-600 transition-colors cursor-pointer"
+                    >
+                      Eliminar clave
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Chat Messages list */}
+                <div className={cn("flex-1 p-4 overflow-y-auto space-y-4 class-message-scroller", isDark ? "bg-slate-950" : "bg-slate-50/50")}>
                   {messages.map((m, i) => (
                     <div key={i} className={cn("flex w-full mb-2", m.role === 'user' ? "justify-end" : "justify-start")}>
                       <div className={cn(
@@ -1785,7 +1907,9 @@ export function AIAssistant() {
                     Tip: Toma una captura de pantalla y presiona <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">Ctrl</kbd> + <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">V</kbd> para pegarla al instante.
                   </div>
                 </div>
-              </motion.div>
+              </>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </>

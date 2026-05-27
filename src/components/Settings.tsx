@@ -3,7 +3,7 @@ import { useAuth } from '../lib/AuthContext';
 import { logout, db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check, Database, Download } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check, Database, Download, Sparkles, Key, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Wallet } from '../types';
 import { SYSTEM_UPDATES } from '../data/updates';
@@ -29,6 +29,9 @@ export function Settings() {
   const [showRegisteredCards, setShowRegisteredCards] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [infoTab, setInfoTab] = useState<'history' | 'features' | 'support'>('history');
+  const [localApiKey, setLocalApiKey] = useState(() => localStorage.getItem('LOCAL_GEMINI_API_KEY') || '');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [activeGuide, setActiveGuide] = useState(0);
   const isDark = settings?.theme === 'dark';
 
   const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
@@ -241,6 +244,19 @@ export function Settings() {
     }
   };
 
+  const handleSaveAssistantKey = (keyVal: string) => {
+    const cleanKey = keyVal.trim();
+    localStorage.setItem('LOCAL_GEMINI_API_KEY', cleanKey);
+    setLocalApiKey(cleanKey);
+    window.dispatchEvent(new Event('local-api-key-updated'));
+  };
+
+  const handleClearAssistantKey = () => {
+    localStorage.removeItem('LOCAL_GEMINI_API_KEY');
+    setLocalApiKey('');
+    window.dispatchEvent(new Event('local-api-key-updated'));
+  };
+
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'wallets'), where('ownerId', '==', user.uid));
@@ -249,6 +265,16 @@ export function Settings() {
     });
     return () => unsub();
   }, [user]);
+
+  useEffect(() => {
+    const handleSync = () => {
+      setLocalApiKey(localStorage.getItem('LOCAL_GEMINI_API_KEY') || '');
+    };
+    window.addEventListener('local-api-key-updated', handleSync);
+    return () => {
+      window.removeEventListener('local-api-key-updated', handleSync);
+    };
+  }, []);
 
   const handleAddWallet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -908,6 +934,94 @@ export function Settings() {
           </div>
         </motion.section>
 
+        {/* SECCIÓN CONFIGURACIÓN DEL ASISTENTE DE IA */}
+        <motion.section
+          key="aiAssistantConfigZone"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
+            <Sparkles className="w-4 h-4 text-indigo-500" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">Configuración del Asistente de IA</h2>
+          </div>
+
+          <div className={cn("p-6 rounded-2xl border flex flex-col md:flex-row gap-6 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-205 shadow-sm")}>
+            {/* Explicación / Estado */}
+            <div className="flex-1 space-y-3 border-b md:border-b-0 md:border-r border-slate-100/10 pb-6 md:pb-0 md:pr-6 text-left">
+              <h3 className="text-sm font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                <Sparkles className="w-4 h-4 animate-pulse" /> Inteligencia Conversacional Gemini
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                Configure su clave de API personal para desbloquear el máximo poder de análisis inteligente en su panel de Control Financiero. Esto permite procesar capturas de depósitos de cooperativas/bancos, recibos de remesas de la ANT, y chats o entregas de proveedores de cuentas de streaming (Netflix, Max, Disney+) de forma directa y autónoma desde el navegador.
+              </p>
+              
+              <div className="flex items-center gap-2 text-xs font-bold pt-1">
+                <span className={cn("text-[8px] uppercase px-2 py-0.5 rounded font-black tracking-wider", 
+                  localApiKey ? "bg-emerald-100 text-emerald-850 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400"
+                )}>
+                  {localApiKey ? "● ASISTENTE EN ÓPTIMO ESTADO" : "● EN ESPERA DE CONFIGURAR CLAVE"}
+                </span>
+              </div>
+            </div>
+
+            {/* Formulario */}
+            <div className="flex-1 space-y-4 text-left flex flex-col justify-between">
+              <div className="space-y-2">
+                <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-600")}>
+                  Clave de API de Gemini (Google AI Studio)
+                </label>
+                <div className="relative flex items-center font-mono">
+                  <span className="absolute left-3.5 text-slate-400">
+                    <Key className="w-4 h-4" />
+                  </span>
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={localApiKey}
+                    onChange={(e) => handleSaveAssistantKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className={cn(
+                      "w-full pl-10 pr-12 py-3 rounded-xl text-sm font-bold outline-none border transition-colors shadow-sm focus:border-indigo-500", 
+                      isDark 
+                        ? "bg-slate-950 border-slate-800 text-slate-100" 
+                        : "bg-slate-50 border-slate-205 text-slate-800"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal font-medium mt-1">
+                  Su clave se almacena exclusivamente en la memoria local de su navegador, garantizando total privacidad y seguridad "Zero-Server".
+                </p>
+              </div>
+
+              {localApiKey && (
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100/10">
+                  <div className="flex items-center gap-1.5 text-emerald-500 text-[10px] font-bold uppercase">
+                    <Check className="w-4 h-4" /> Clave Guardada en Navegador
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("¿Desea eliminar de forma definitiva la clave de Gemini en su navegador?")) {
+                        handleClearAssistantKey();
+                      }
+                    }}
+                    className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                  >
+                    Eliminar clave
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.section>
+
         {/* SECCIÓN INFORMACIÓN Y CONTROL */}
         <motion.section 
           initial={{ opacity: 0, y: 10 }}
@@ -1375,73 +1489,206 @@ export function Settings() {
                   </div>
                 ) : infoTab === 'support' ? (
                   <div className="space-y-6 text-sm">
-                    <div className="bg-slate-50 dark:bg-slate-950/30 p-5 rounded-2xl text-xs text-slate-500 font-medium leading-relaxed text-left">
-                      Guía paso a paso y herramientas de diagnóstico para verificar si una factura está lista o si el trámite requiere una actualización de datos obligatoria.
+                    {/* Selector de Guías tipo Slider / Carrusel */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div className="text-left">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500">Manuales Interactivos</span>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                          {activeGuide === 0 ? "1. Verificación de Trámites & Placas ANT" : "2. Activación Inteligente del Asistente IA"}
+                        </h4>
+                      </div>
+                      
+                      {/* Controladores de Slider */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setActiveGuide(activeGuide === 0 ? 1 : 0)}
+                          className={cn(
+                            "p-2 rounded-xl border transition-all cursor-pointer",
+                            isDark ? "border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-400" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600"
+                          )}
+                          title="Guía Anterior"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        
+                        {/* Indicadores Visuales en Barra */}
+                        <div className="flex items-center gap-1 px-2.5">
+                          <button 
+                            type="button"
+                            onClick={() => setActiveGuide(0)} 
+                            className={cn("h-1.5 rounded-full transition-all duration-300 cursor-pointer", activeGuide === 0 ? "bg-indigo-600 w-6" : "bg-slate-300 dark:bg-slate-800 w-2")} 
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setActiveGuide(1)} 
+                            className={cn("h-1.5 rounded-full transition-all duration-300 cursor-pointer", activeGuide === 1 ? "bg-indigo-600 w-6" : "bg-slate-300 dark:bg-slate-800 w-2")} 
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveGuide(activeGuide === 1 ? 0 : 1)}
+                          className={cn(
+                            "p-2 rounded-xl border transition-all cursor-pointer",
+                            isDark ? "border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-400" : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600"
+                          )}
+                          title="Guía Siguiente"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="space-y-4">
-                      {/* Paso 1 */}
-                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">1</div>
-                        <div className="space-y-1 text-left">
-                          <label className="text-sm font-bold block">Paso 1: Dirigirse al portal oficial de la ANT</label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                            Vaya a la página de solicitudes de servicios de la <strong>Agencia Nacional de Tránsito (ANT)</strong>:
-                          </p>
-                          <a 
-                            href="https://consultaweb.ant.gob.ec/svt/paginas/portal/svf_solicitar_servicio.jsp?ps_param_tip_serv=otr" 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-xs font-bold text-indigo-500 hover:underline flex items-center gap-1 mt-2.5 break-all"
+                    <div className="relative overflow-hidden min-h-[460px] sm:min-h-[420px]">
+                      <AnimatePresence mode="wait">
+                        {activeGuide === 0 ? (
+                          <motion.div
+                            key="guide_ant"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.25 }}
+                            className="space-y-4"
                           >
-                            🔗 https://consultaweb.ant.gob.ec/svt/paginas/portal/svf_solicitar_servicio.jsp?ps_param_tip_serv=otr
-                          </a>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed mt-2.5">
-                            Y busque la opción llamada: <strong className="text-indigo-600 dark:text-indigo-400">EXPEDICIÓN DE SERIES NUEVAS DE PLACAS DE IDENTIFICACIÓN DE MOTOCICLETAS</strong>.
-                          </p>
-                        </div>
-                      </div>
+                            <div className="bg-indigo-50 dark:bg-indigo-950/10 p-4 rounded-xl border border-indigo-100/50 dark:border-indigo-505/10 text-xs text-slate-500 font-semibold leading-relaxed text-left">
+                              Guía paso a paso y herramientas de diagnóstico para verificar si una factura está lista o si el trámite requiere una actualización de datos obligatoria en los portales del SRI y la Agencia Nacional de Tránsito (ANT).
+                            </div>
 
-                      {/* Paso 2 */}
-                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">2</div>
-                        <div className="space-y-1 text-left">
-                          <label className="text-sm font-bold block">Paso 2: Diagnóstico mediante el nombre del cliente</label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                            Si le sale algún mensaje de error y no se muestran los nombres reales del cliente, se entiende de antemano que el trámite <strong>necesita una actualización de datos</strong> de manera obligatoria.
-                          </p>
-                        </div>
-                      </div>
+                            <div className="space-y-4">
+                              {/* Paso 1 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">1</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-indigo-500 block">Paso 1: Dirigirse al portal oficial de la ANT</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    Vaya a la página de solicitudes de servicios de la <strong>Agencia Nacional de Tránsito (ANT)</strong>:
+                                  </p>
+                                  <a 
+                                    href="https://consultaweb.ant.gob.ec/svt/paginas/portal/svf_solicitar_servicio.jsp?ps_param_tip_serv=otr" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1 mt-2 break-all"
+                                  >
+                                    🔗 https://consultaweb.ant.gob.ec/svt/paginas/portal/...
+                                  </a>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed mt-2 text-slate-400 dark:text-slate-505">
+                                    Y busque la opción llamada: <strong className="text-slate-700 dark:text-slate-350">EXPEDICIÓN DE SERIES NUEVAS DE PLACAS DE IDENTIFICACIÓN DE MOTOCICLETAS</strong>.
+                                  </p>
+                                </div>
+                              </div>
 
-                      {/* Paso 3 */}
-                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">3</div>
-                        <div className="space-y-1 text-left">
-                          <label className="text-sm font-bold block">Paso 3: Carga de valores al SRI</label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                            Asegúrese de tener subidos los datos correspondientes y los valores completos en la plataforma del SRI. Para verificar si los valores están completos consulte el portal oficial del SRI.
-                          </p>
-                        </div>
-                      </div>
+                              {/* Paso 2 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">2</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-indigo-500 block">Paso 2: Diagnóstico mediante el nombre del cliente</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    Si le sale algún mensaje de error y no se muestran los nombres reales del cliente, se entiende de antemano que el trámite <strong>necesita una actualización de datos</strong> de manera obligatoria.
+                                  </p>
+                                </div>
+                              </div>
 
-                      {/* Paso 4 */}
-                      <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-505/20 text-indigo-500 font-extrabold flex items-center justify-center shrink-0">4</div>
-                        <div className="space-y-1 text-left">
-                          <label className="text-sm font-bold block">Paso 4: Verificación final en el SRI</label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                            Consulte y valide directamente en el SRI si el cliente tiene valores ya cancelados/saldados o cuánto adeuda actualmente.
-                          </p>
-                          <a 
-                            href="https://srienlinea.sri.gob.ec/" 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-xs font-bold text-indigo-500 hover:underline flex items-center gap-1 mt-2.5 break-all"
+                              {/* Paso 3 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">3</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-indigo-500 block">Paso 3: Carga de valores al SRI</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    Asegúrese de tener subidos los datos correspondientes y los valores completos en la plataforma del SRI. Para verificar si los valores están completos consulte el portal oficial del SRI.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Paso 4 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">4</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-indigo-500 block">Paso 4: Verificación final en el SRI</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    Consulte y valide directamente en el SRI si el cliente tiene valores ya cancelados/saldados o cuánto adeuda actualmente.
+                                  </p>
+                                  <a 
+                                    href="https://srienlinea.sri.gob.ec/" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1 mt-2.5 break-all"
+                                  >
+                                    🔗 https://srienlinea.sri.gob.ec/
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="guide_ai_activation"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.25 }}
+                            className="space-y-4"
                           >
-                            🔗 https://srienlinea.sri.gob.ec/
-                          </a>
-                        </div>
-                      </div>
+                            <div className="bg-emerald-50 dark:bg-emerald-950/10 p-4 rounded-xl border border-emerald-100/30 dark:border-emerald-505/10 text-xs text-slate-500 font-semibold leading-relaxed text-left">
+                              Aprenda a habilitar el Asistente Inteligente mediante una clave de API de Gemini personal de Google AI Studio. Este proceso toma menos de un minuto y le dará los mejores superpoderes.
+                            </div>
+
+                            <div className="space-y-4">
+                              {/* Paso 1 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">1</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">Paso 1: obtener la API Key</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    Esto se logra entrando al portal de desarrolladores de Google AI Studio con su cuenta habitual:
+                                  </p>
+                                  <a 
+                                    href="https://aistudio.google.com/api-keys?project=gen-lang-client-0052201582" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1 mt-2 break-all"
+                                  >
+                                    🔗 https://aistudio.google.com/api-keys?project=gen-lang-client-0052201582
+                                  </a>
+                                </div>
+                              </div>
+
+                              {/* Paso 2 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">2</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">Paso 2: buscar la opción llamada obtener API KEY</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    En la barra izquierda o cabecera del portal de Google, busque y presione la opción principal identificada con el nombre de <strong className="text-indigo-600 dark:text-indigo-400">Crear clave de API ("Get API Key")</strong>.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Paso 3 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">3</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">Paso 3: aceptar términos y copiar la llave</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    Se le cargará automáticamente una ventana flotante de Google. Marque la casilla para aceptar los términos de servicio, complete la generación y copie la llave al portapapeles.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Paso 4 */}
+                              <div className={cn("p-5 rounded-2xl border flex gap-4 transition-all text-left", isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">4</div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">Paso 4: pegar la API KEY en configuración del asistente</label>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                    Regrese a esta pantalla de Configuración y pegue su llave en la sección superior <strong className="text-indigo-600 dark:text-indigo-400">"Configuración del Asistente de IA"</strong> para finalizar la activación de su asistente.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 ) : (
