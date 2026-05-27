@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_3_1_0_universal_excel_backups_and_cascading_privacy",
+    version: "V3.1.0",
+    title: "Módulo Excel Universal, Pestañas en Cascada y Purga Integrada en Privacidad",
+    date: "27-Mayo-2026, 14:00:00",
+    description: "Inauguración de la exportación e importación avanzada en formatos Excel (.xlsx y .xls) estructurando los datos comerciales en pestañas independientes para facilidad de control manual. Integración tipo cascada colapsable automática para la gestión de Copias de Seguridad y Migración. Reubicación unificada de la Provisión de Eliminación Segura (Purga Total con PIN de seguridad) directamente dentro de la sección de Privacidad y Seguridad. Desplazamiento del panel de Información y Control de Módulos al final absoluto de la pantalla de configuración.",
+    type: "feature"
+  },
+  {
     id: "v_3_0_5_wallet_transfers_and_comprehensive_receipts",
     version: "V3.0.5",
     title: "Transferencias entre Billeteras, Recibos Dinámicos Multi-Abonos y Guía de Soporte ANT",

@@ -21,13 +21,11 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
   useEffect(() => {
     if (!settings) return;
 
-    // Solo se debe activar si es el primer inicio de sesión del día para esta actualización
-    const todayStr = new Date().toISOString().split('T')[0]; // "2026-05-25"
-    const storageKey = `welcome_notified_${todayStr}_${CURRENT_VERSION_ID}`;
+    // Se activa de manera automática la primera vez que inicia sesión con una versión nueva
+    const storageKey = `welcome_notified_version_${CURRENT_VERSION_ID}`;
+    const alreadyNotified = localStorage.getItem(storageKey);
 
-    const alreadyNotifiedToday = localStorage.getItem(storageKey);
-
-    if (!alreadyNotifiedToday) {
+    if (!alreadyNotified) {
       // Mostrar popup con retraso elegante de 1.2s
       const timer = setTimeout(() => {
         setIsOpen(true);
@@ -37,8 +35,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
   }, [settings, CURRENT_VERSION_ID]);
 
   const handleClose = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const storageKey = `welcome_notified_${todayStr}_${CURRENT_VERSION_ID}`;
+    const storageKey = `welcome_notified_version_${CURRENT_VERSION_ID}`;
     localStorage.setItem(storageKey, 'true');
     setIsOpen(false);
   };

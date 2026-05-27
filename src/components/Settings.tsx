@@ -3,11 +3,12 @@ import { useAuth } from '../lib/AuthContext';
 import { logout, db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check, Database, Download, Sparkles, Key, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check, Database, Download, Sparkles, Key, ChevronLeft, ChevronRight, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Wallet } from '../types';
 import { SYSTEM_UPDATES } from '../data/updates';
 import { ConfirmModal } from './ConfirmModal';
+import * as XLSX from 'xlsx';
 
 // Helper to convert raw credentials to string database storage
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -33,6 +34,16 @@ export function Settings() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [activeGuide, setActiveGuide] = useState(0);
   const isDark = settings?.theme === 'dark';
+
+  // Cascading/collapsible accordion states for Privacy & Security
+  const [isIdentityExpanded, setIsIdentityExpanded] = useState(false);
+  const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
+  const [isAssistantExpanded, setIsAssistantExpanded] = useState(false);
+  const [isPurgeExpanded, setIsPurgeExpanded] = useState(false);
+  const [isBackupExpanded, setIsBackupExpanded] = useState(false);
+
+  // Modular personalization visual toggle
+  const [showPersonalizationModule, setShowPersonalizationModule] = useState(() => localStorage.getItem('SHOW_PERSONALIZATION_MODULE') === 'true');
 
   const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
   const [purgePinInput, setPurgePinInput] = useState('');
@@ -164,6 +175,66 @@ export function Settings() {
     }
   };
 
+  // Export backup excel file handler
+  const handleExportExcel = async () => {
+    if (!user) return;
+    setIsExporting(true);
+    try {
+      const collectionsToExport = ['wallets', 'entities', 'transactions', 'ledger', 'digital_catalog', 'digital_services'];
+      const exportedData: Record<string, any[]> = {};
+
+      for (const colName of collectionsToExport) {
+        const qSnap = await getDocs(query(collection(db, colName), where('ownerId', '==', user.uid)));
+        exportedData[colName] = qSnap.docs.map(docRef => ({
+          id: docRef.id,
+          ...docRef.data()
+        }));
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      for (const colName of collectionsToExport) {
+        const items = exportedData[colName] || [];
+        // Flatten nested structures to string for readability in xlsx
+        const rows = items.map(item => {
+          const flatItem: Record<string, any> = {};
+          for (const [key, val] of Object.entries(item)) {
+            if (val && typeof val === 'object') {
+              flatItem[key] = JSON.stringify(val);
+            } else {
+              flatItem[key] = val;
+            }
+          }
+          return flatItem;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, colName.substring(0, 31));
+      }
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+      const s2ab = (s: string) => {
+        const buf = new ArrayBuffer(s.length);
+        const view = new Uint8Array(buf);
+        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+        return buf;
+      };
+
+      const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Copia_Seguridad_ControlFinanciero_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Error exporting excel backup:", err);
+      alert("Error al exportar la copia de seguridad en Excel: " + err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Import backup file handler
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,60 +244,135 @@ export function Settings() {
     setImportStatus('Leyendo archivo de copia de seguridad...');
     setImportFeedback({ success: false, text: '' });
 
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
     const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (!parsed.data || typeof parsed.data !== 'object') {
-          throw new Error("El formato del archivo no contiene la estructura de datos obligatorios.");
-        }
 
-        const dataObj = parsed.data;
-        const collectionsToImport = ['wallets', 'entities', 'transactions', 'ledger', 'digital_catalog', 'digital_services'];
-        let importedTotal = 0;
+    if (isExcel) {
+      reader.onload = async (event) => {
+        try {
+          const data = event.target?.result as ArrayBuffer;
+          const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+          const dataObj: Record<string, any[]> = {};
+          const collectionsToImport = ['wallets', 'entities', 'transactions', 'ledger', 'digital_catalog', 'digital_services'];
 
-        for (const colName of collectionsToImport) {
-          const items = dataObj[colName];
-          if (Array.isArray(items)) {
-            setImportStatus(`Importando '${colName}' (${items.length} registros)...`);
-            for (const item of items) {
-              const { id, ...itemData } = item;
-              if (id) {
-                // Ensure ownerId is forced to current user for privacy and safety rules
-                itemData.ownerId = user.uid;
-                await setDoc(doc(db, colName, id), itemData);
-                importedTotal++;
+          for (const sheetName of workbook.SheetNames) {
+            const matchedCol = collectionsToImport.find(c => c.toLowerCase() === sheetName.toLowerCase());
+            if (matchedCol) {
+              const sheet = workbook.Sheets[sheetName];
+              const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+              dataObj[matchedCol] = rows.map((row: any) => {
+                const parsedRow: Record<string, any> = {};
+                for (const [key, val] of Object.entries(row)) {
+                  if (typeof val === 'string' && (val.trim().startsWith('{') || val.trim().startsWith('['))) {
+                    try {
+                      parsedRow[key] = JSON.parse(val);
+                    } catch {
+                      parsedRow[key] = val;
+                    }
+                  } else {
+                    parsedRow[key] = val;
+                  }
+                }
+                return parsedRow;
+              });
+            }
+          }
+
+          let importedTotal = 0;
+          for (const colName of collectionsToImport) {
+            const items = dataObj[colName];
+            if (Array.isArray(items)) {
+              setImportStatus(`Importando '${colName}' (${items.length} registros desde Excel)...`);
+              for (const item of items) {
+                const { id, ...itemData } = item;
+                if (id) {
+                  itemData.ownerId = user.uid;
+                  await setDoc(doc(db, colName, id), itemData);
+                  importedTotal++;
+                }
               }
             }
           }
+
+          setImportFeedback({
+            success: true,
+            text: `¡Restauración Excel Completada Con Éxito! Se cargaron ${importedTotal} registros desde las hojas de cálculo.`
+          });
+          setImportStatus('');
+        } catch (err: any) {
+          console.error("Error importing Excel file:", err);
+          setImportFeedback({
+            success: false,
+            text: "Fallo de restauración Excel: " + (err.message || "No se pudo leer el archivo Excel.")
+          });
+          setImportStatus('');
+        } finally {
+          setIsImporting(false);
+          e.target.value = '';
         }
+      };
 
-        setImportFeedback({
-          success: true,
-          text: `¡Restauración Completada Exitosamente! Se cargaron ${importedTotal} registros correctamente en su base de datos comercial.`
-        });
-        setImportStatus('');
-      } catch (err: any) {
-        console.error("Error importing backup file:", err);
-        setImportFeedback({
-          success: false,
-          text: "Fallo de restauración: " + (err.message || "Estructura corrupta o incompatible.")
-        });
-        setImportStatus('');
-      } finally {
+      reader.onerror = () => {
+        setImportFeedback({ success: false, text: "No se pudo leer el archivo Excel seleccionado." });
         setIsImporting(false);
-        // Reset file input target value
-        e.target.value = '';
-      }
-    };
+        setImportStatus('');
+      };
 
-    reader.onerror = () => {
-      setImportFeedback({ success: false, text: "No se pudo leer el archivo seleccionado." });
-      setIsImporting(false);
-      setImportStatus('');
-    };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = async (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          if (!parsed.data || typeof parsed.data !== 'object') {
+            throw new Error("El formato del archivo no contiene la estructura de datos obligatorios.");
+          }
 
-    reader.readAsText(file);
+          const dataObj = parsed.data;
+          const collectionsToImport = ['wallets', 'entities', 'transactions', 'ledger', 'digital_catalog', 'digital_services'];
+          let importedTotal = 0;
+
+          for (const colName of collectionsToImport) {
+            const items = dataObj[colName];
+            if (Array.isArray(items)) {
+              setImportStatus(`Importando '${colName}' (${items.length} registros)...`);
+              for (const item of items) {
+                const { id, ...itemData } = item;
+                if (id) {
+                  itemData.ownerId = user.uid;
+                  await setDoc(doc(db, colName, id), itemData);
+                  importedTotal++;
+                }
+              }
+            }
+          }
+
+          setImportFeedback({
+            success: true,
+            text: `¡Restauración Completada Exitosamente! Se cargaron ${importedTotal} registros correctamente en su base de datos comercial.`
+          });
+          setImportStatus('');
+        } catch (err: any) {
+          console.error("Error importing backup file:", err);
+          setImportFeedback({
+            success: false,
+            text: "Fallo de restauración: " + (err.message || "Estructura corrupta o incompatible.")
+          });
+          setImportStatus('');
+        } finally {
+          setIsImporting(false);
+          e.target.value = '';
+        }
+      };
+
+      reader.onerror = () => {
+        setImportFeedback({ success: false, text: "No se pudo leer el archivo seleccionado." });
+        setIsImporting(false);
+        setImportStatus('');
+      };
+
+      reader.readAsText(file);
+    }
   };
 
   const toggleFeature = async (featureId: string) => {
@@ -413,51 +559,6 @@ export function Settings() {
     }
   };
 
-  const sections = [
-    {
-      id: 'personal',
-      title: 'Identidad Global',
-      icon: Smartphone,
-      items: [
-        { label: 'Nombre de la Empresa o Entidad', field: 'companyName', type: 'text', value: settings?.companyName },
-        { label: 'Nombre Completo del Propietario', field: 'displayName', type: 'text', value: settings?.displayName },
-        { label: 'Cédula o RUC', field: 'ruc', type: 'text', value: settings?.ruc },
-        { label: 'Número de Celular', field: 'phone', type: 'text', value: settings?.phone || '' },
-      ]
-    },
-    {
-      id: 'security',
-      title: 'Núcleo de Seguridad y Bloqueo',
-      icon: Shield,
-      items: [
-        { label: 'PIN de Seguridad (4 dígitos)', field: 'securityPin', type: 'password', value: settings?.securityPin },
-        { 
-          label: 'Desbloqueo con Datos Biométricos', 
-          field: 'biometricEnabled', 
-          type: 'select', 
-          options: [
-            { id: true, label: 'Habilitado' }, 
-            { id: false, label: 'Deshabilitado' }
-          ],
-          value: settings?.biometricEnabled ?? false
-        },
-        { 
-          label: 'Temporizador Bloqueo por Inactividad', 
-          field: 'autoLockTimer', 
-          type: 'select', 
-          options: [
-            { id: 0, label: 'Desactivado' }, 
-            { id: 1, label: '1 minuto' }, 
-            { id: 5, label: '5 minutos' }, 
-            { id: 10, label: '10 minutos' }, 
-            { id: 15, label: '15 minutos' }
-          ],
-          value: settings?.autoLockTimer ?? 5
-        }
-      ]
-    }
-  ];
-
   return (
     <div className={cn("p-8 max-w-4xl mx-auto pb-24 text-left", isDark ? "text-slate-100" : "text-slate-900")}>
       <div className="mb-12">
@@ -615,59 +716,399 @@ export function Settings() {
           </AnimatePresence>
         </motion.section>
 
-        {sections.map((section) => (
-          <motion.section 
-            key={section.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
-              <section.icon className="w-4 h-4 text-slate-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-black">{section.title}</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {section.items.map((item) => (
-                <div key={item.field} className="space-y-2">
-                  <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-600")}>{item.label}</label>
-                  {item.type === 'text' || item.type === 'password' ? (
-                    <input 
-                      type={item.type}
-                      value={String(item.value ?? '')}
-                      onChange={(e) => updateSettings({ [item.field]: e.target.value })}
-                      className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm", isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800")}
-                    />
-                  ) : (
-                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                      {item.options?.map((opt) => (
-                        <button
-                          key={String(opt.id)}
-                          type="button"
-                          onClick={() => handleSettingClick(item.field, opt.id)}
-                          className={cn(
-                            "flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer min-w-[80px]",
-                            item.value === opt.id 
-                              ? "bg-indigo-600 text-white border-indigo-600" 
-                              : isDark 
-                              ? "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800"
-                              : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.section>
-        ))}
-
-        {/* MÓDULO DE PERSONALIZACIÓN */}
+        {/* SECCIÓN UNIFICADA: PRIVACIDAD Y SEGURIDAD */}
         <motion.section
-          key="personalization"
+          key="unifiedPrivacySecurity"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
+            <Shield className="w-4 h-4 text-indigo-505 text-indigo-500 font-extrabold" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">Privacidad y Seguridad</h2>
+          </div>
+
+          <div className="space-y-3">
+            
+            {/* PANEL CASCADA 1: IDENTIDAD GLOBAL */}
+            <div className={cn("rounded-2xl border overflow-hidden transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+              <button
+                type="button"
+                onClick={() => setIsIdentityExpanded(!isIdentityExpanded)}
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-400">Identificación</h3>
+                    <p className={cn("text-xs font-bold sm:text-sm", isDark ? "text-slate-100" : "text-slate-800")}>Identidad Global del Sistema</p>
+                  </div>
+                </div>
+                {isIdentityExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isIdentityExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden border-t border-slate-100/10"
+                  >
+                    <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Company Name */}
+                      <div className="space-y-2">
+                        <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-650")}>
+                          Nombre de la Empresa o Entidad
+                        </label>
+                        <input 
+                          type="text"
+                          value={settings?.companyName || ''}
+                          onChange={(e) => updateSettings({ companyName: e.target.value })}
+                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
+                          placeholder="Ej. Mi Control Financiero"
+                        />
+                      </div>
+
+                      {/* Propietario */}
+                      <div className="space-y-2">
+                        <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                          Nombre Completo del Propietario
+                        </label>
+                        <input 
+                          type="text"
+                          value={settings?.displayName || ''}
+                          onChange={(e) => updateSettings({ displayName: e.target.value })}
+                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
+                          placeholder="Ej. Marcelo Gutama"
+                        />
+                      </div>
+
+                      {/* RUC / Cédula */}
+                      <div className="space-y-2">
+                        <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                          Cédula o RUC
+                        </label>
+                        <input 
+                          type="text"
+                          value={settings?.ruc || ''}
+                          onChange={(e) => updateSettings({ ruc: e.target.value })}
+                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold font-mono", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
+                          placeholder="Ej. 0102030405001"
+                        />
+                      </div>
+
+                      {/* Phone */}
+                      <div className="space-y-2">
+                        <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                          Número de Celular
+                        </label>
+                        <input 
+                          type="text"
+                          value={settings?.phone || ''}
+                          onChange={(e) => updateSettings({ phone: e.target.value })}
+                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
+                          placeholder="Ej. +593987654321"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* PANEL CASCADA 2: PROTECCIÓN Y BLOQUEO DE CUENTA */}
+            <div className={cn("rounded-2xl border overflow-hidden transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+              <button
+                type="button"
+                onClick={() => setIsSecurityExpanded(!isSecurityExpanded)}
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-400">Protección</h3>
+                    <p className={cn("text-xs font-bold sm:text-sm", isDark ? "text-slate-100" : "text-slate-800")}>Seguridad y Filtros de Bloqueo</p>
+                  </div>
+                </div>
+                {isSecurityExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isSecurityExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden border-t border-slate-100/10"
+                  >
+                    <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Security Pin */}
+                      <div className="space-y-2">
+                        <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                          PIN de Seguridad (4 dígitos de acceso)
+                        </label>
+                        <input 
+                          type="password"
+                          maxLength={4}
+                          value={settings?.securityPin || ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            updateSettings({ securityPin: val });
+                          }}
+                          className={cn("w-full border p-3 rounded-xl text-center text-lg tracking-[0.5em] font-mono outline-none focus:border-indigo-505 transition-colors shadow-sm", isDark ? "bg-slate-950 border-slate-850 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
+                          placeholder="****"
+                        />
+                        <p className="text-[10px] text-slate-400 font-semibold mt-1">Requerido para purgar datos y autorizar cambios de seguridad críticos.</p>
+                      </div>
+
+                      {/* Biometrics */}
+                      <div className="space-y-2">
+                        <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                          Desbloqueo Biométrico (Face ID/Touch ID)
+                        </label>
+                        <div className="flex gap-2 pt-1">
+                          {[
+                            { id: true, label: "Habilitado" },
+                            { id: false, label: "Deshabilitado" }
+                          ].map((opt) => (
+                            <button
+                              key={String(opt.id)}
+                              type="button"
+                              onClick={() => handleSettingClick('biometricEnabled', opt.id)}
+                              className={cn(
+                                "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer",
+                                (settings?.biometricEnabled ?? false) === opt.id 
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" 
+                                  : isDark 
+                                  ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
+                                  : "bg-slate-100 text-slate-600 border-slate-205 hover:bg-slate-200"
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-1">Utiliza la autenticación WebAuthn nativa de su dispositivo móvil o PC.</p>
+                      </div>
+
+                      {/* Custom Inactivity Timer */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                          Temporizador de Bloqueo Automático por Inactividad
+                        </label>
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 pt-1">
+                          {[
+                            { id: 0, label: 'Desactivado' }, 
+                            { id: 1, label: '1 min' }, 
+                            { id: 5, label: '5 min' }, 
+                            { id: 10, label: '10 min' }, 
+                            { id: 15, label: '15 min' }
+                          ].map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => handleSettingClick('autoLockTimer', opt.id)}
+                              className={cn(
+                                "flex-1 py-2.5 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer min-w-[70px]",
+                                (settings?.autoLockTimer ?? 5) === opt.id 
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" 
+                                  : isDark 
+                                  ? "bg-slate-950 text-slate-400 border-slate-850 hover:bg-slate-800"
+                                  : "bg-slate-100 text-slate-600 border-slate-205 hover:bg-slate-200"
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-1">El sistema solicitará el PIN o biometría después de transcurrido este tiempo sin registrar pulsaciones.</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* PANEL CASCADA 3: CONFIGURACIÓN SMART DEL ASISTENTE DE IA */}
+            <div className={cn("rounded-2xl border overflow-hidden transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+              <button
+                type="button"
+                onClick={() => setIsAssistantExpanded(!isAssistantExpanded)}
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-400">Inteligencia Conversacional</h3>
+                    <p className={cn("text-xs font-bold sm:text-sm", isDark ? "text-slate-100" : "text-slate-800")}>Asistente Inteligente IA (Clave API Gemini)</p>
+                  </div>
+                </div>
+                {isAssistantExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isAssistantExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden border-t border-slate-100/10"
+                  >
+                    <div className="p-5 flex flex-col md:flex-row gap-6">
+                      
+                      {/* Explicación / Estado */}
+                      <div className="flex-1 space-y-3 border-b md:border-b-0 md:border-r border-slate-100/10 pb-6 md:pb-0 md:pr-6 text-left">
+                        <h4 className="text-sm font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                          <Sparkles className="w-4 h-4 animate-pulse" /> Inteligencia Conversacional Gemini
+                        </h4>
+                        <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                          Configure su clave de API personal para desbloquear el máximo poder de análisis inteligente en su panel de Control Financiero. Esto permite procesar capturas de depósitos de cooperativas/bancos, recibos de remesas de la ANT, y chats o entregas de proveedores de cuentas de streaming (Netflix, Max, Disney+) de forma directa y autónoma desde el navegador.
+                        </p>
+                        
+                        <div className="flex items-center gap-2 text-xs font-bold pt-1">
+                          <span className={cn("text-[8px] uppercase px-2 py-0.5 rounded font-black tracking-wider", 
+                            localApiKey ? "bg-emerald-100 text-emerald-850 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400"
+                          )}>
+                            {localApiKey ? "● ASISTENTE EN ÓPTIMO ESTADO" : "● EN ESPERA DE CONFIGURAR CLAVE"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Formulario */}
+                      <div className="flex-1 space-y-4 text-left flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                            Clave de API de Gemini (Google AI Studio)
+                          </label>
+                          <div className="relative flex items-center font-mono">
+                            <span className="absolute left-3.5 text-slate-400">
+                              <Key className="w-4 h-4" />
+                            </span>
+                            <input
+                              type={showApiKey ? "text" : "password"}
+                              value={localApiKey}
+                              onChange={(e) => handleSaveAssistantKey(e.target.value)}
+                              placeholder="AIzaSy..."
+                              className={cn(
+                                "w-full pl-10 pr-12 py-3 rounded-xl text-sm font-bold outline-none border transition-colors shadow-sm focus:border-indigo-500", 
+                                isDark 
+                                  ? "bg-slate-950 border-slate-800 text-slate-100" 
+                                  : "bg-slate-50 border-slate-205 text-slate-800"
+                              )}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
+                            >
+                              {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-normal font-medium mt-1">
+                            Su clave se almacena exclusivamente en la memoria local de su navegador, garantizando total privacidad y seguridad "Zero-Server".
+                          </p>
+                        </div>
+
+                        {localApiKey && (
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100/10">
+                            <div className="flex items-center gap-1.5 text-emerald-500 text-[10px] font-bold uppercase">
+                              <Check className="w-4 h-4" /> Clave Guardada en Navegador
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm("¿Desea eliminar de forma definitiva la clave de Gemini en su navegador?")) {
+                                  handleClearAssistantKey();
+                                }
+                              }}
+                              className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                            >
+                              Eliminar clave
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* PANEL CASCADA 4: PROVISIÓN DE ELIMINACIÓN SEGURA */}
+            <div className={cn("rounded-2xl border overflow-hidden transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+              <button
+                type="button"
+                onClick={() => setIsPurgeExpanded(!isPurgeExpanded)}
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-rose-50 dark:bg-rose-950/45 text-rose-650 dark:text-rose-400 rounded-lg">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-400">Desmantelamiento</h3>
+                    <p className={cn("text-xs font-bold sm:text-sm", isDark ? "text-slate-100" : "text-slate-800")}>Provisión de Eliminación Segura (Purga Total)</p>
+                  </div>
+                </div>
+                {isPurgeExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isPurgeExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden border-t border-slate-100/10"
+                  >
+                    <div className="p-5 space-y-4 text-left">
+                      <div className="rounded-xl bg-rose-500/10 p-4 border border-rose-500/20 text-rose-600 dark:text-rose-405">
+                        <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-2 mb-1.5 font-bold">
+                          <Shield className="w-4 h-4 animate-pulse" /> Advertencia de Destrucción Irreversible
+                        </h4>
+                        <p className="text-xs font-semibold leading-relaxed">
+                          La purga del sistema borrará permanentemente todas sus cuentas de banco, transacciones registradas de ANT, catálogo de proveedores, servicios activos, asientos contables e histórico del CRM en la base de datos de la nube. Esta acción **no se puede deshacer**.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                        <div className="space-y-1">
+                          <p className="text-xs text-slate-550 dark:text-slate-400 font-semibold">
+                            Para iniciar la destrucción, presione el botón lateral e ingrese su PIN de seguridad de 4 dígitos.
+                          </p>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={handleOpenPurgeModal}
+                          className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 border border-rose-500/25 animate-pulse"
+                        >
+                          <Trash2 className="w-4 h-4" /> Ejecutar Purga Total
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+          </div>
+        </motion.section>
+
+        {/* MODULO DE PERSONALIZACION DEL SISTEMA */}
+        <motion.section
+          key="personalizationSectionZone"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
@@ -677,352 +1118,425 @@ export function Settings() {
             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-extrabold">Módulo de Personalización Global</h2>
           </div>
 
-          <div className={cn("p-6 sm:p-8 rounded-3xl border space-y-8 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
-            
-            {/* GRID 1: AVATAR, TEMA E IDIOMA */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+          <div className={cn("p-5 rounded-2xl border transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+            {/* Visual selector toggle switch */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-1 text-left">
+                <span className="text-[9px] font-black uppercase tracking-wider text-indigo-500">Suite de Apariencia</span>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-150">Habilitar módulo de personalización</h3>
+                <p className="text-xs text-slate-400 font-medium">Configure fotos, temas de interfaz, idioma, colores de acento y tipografías arquitectónicas a medida.</p>
+              </div>
               
-              {/* Columna Foto de Perfil */}
-              <div className="space-y-4 flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-500/5 text-center">
-                <div className="relative group shrink-0 w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-500/25 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                  {settings?.useGoogleAvatar && user?.photoURL ? (
-                    <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : settings?.customProfilePic ? (
-                    <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-full h-full bg-indigo-100 text-indigo-700 font-black text-3xl flex items-center justify-center uppercase">
-                      {settings?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
-                    </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const val = !showPersonalizationModule;
+                  setShowPersonalizationModule(val);
+                  localStorage.setItem('SHOW_PERSONALIZATION_MODULE', String(val));
+                }}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  showPersonalizationModule ? "bg-indigo-600" : (isDark ? "bg-slate-800" : "bg-slate-200")
+                )}
+              >
+                <span
+                  className={cn(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                    showPersonalizationModule ? "translate-x-5" : "translate-x-0"
                   )}
-                  
-                  {/* Hover uploader label */}
-                  {!settings?.useGoogleAvatar && (
-                    <label className="absolute inset-0 bg-slate-950/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[10px] font-bold uppercase tracking-widest gap-1 text-center">
-                      <Upload className="w-4 h-4" />
-                      <span>Subir Foto</span>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          
-                          if (file.size > 400 * 1024) {
-                            window.alert("La imagen debe pesar menos de 400 KB.");
-                            return;
-                          }
+                />
+              </button>
+            </div>
 
-                          const reader = new FileReader();
-                          reader.onloadend = async () => {
-                            const base64String = reader.result as string;
-                            try {
-                              await updateSettings({ customProfilePic: base64String });
-                            } catch (err) {
-                              console.error("Error al cargar la foto:", err);
-                              window.alert("Error al cargar la foto");
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        }} 
-                        className="hidden" 
-                      />
-                    </label>
-                  )}
-                </div>
-
-                <div className="space-y-3 flex-1 text-center w-full">
-                  <h3 className="text-xs font-bold tracking-tight">Preferencias del Avatar</h3>
-                  <div className="flex flex-col gap-1.5 w-full">
-                    <button
-                      type="button"
-                      onClick={() => updateSettings({ useGoogleAvatar: true })}
-                      className={cn(
-                        "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
-                        settings?.useGoogleAvatar 
-                          ? "bg-indigo-600 text-white border-indigo-600" 
-                          : isDark 
-                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
-                          : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <span>Usar foto de Google</span>
-                      {settings?.useGoogleAvatar && <Check className="w-3 h-3" />}
-                    </button>
+            <AnimatePresence initial={false}>
+              {showPersonalizationModule && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden mt-6 pt-6 border-t border-slate-100 dark:border-slate-800/80 space-y-8"
+                >
+                  {/* GRID 1: AVATAR, TEMA E IDIOMA */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                     
-                    <button
-                      type="button"
-                      onClick={() => updateSettings({ useGoogleAvatar: false })}
-                      className={cn(
-                        "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
-                        !settings?.useGoogleAvatar 
-                          ? "bg-indigo-600 text-white border-indigo-600" 
-                          : isDark 
-                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
-                          : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <span>Foto personalizada</span>
-                      {!settings?.useGoogleAvatar && <Check className="w-3 h-3" />}
-                    </button>
+                    {/* Columna Foto de Perfil */}
+                    <div className="space-y-4 flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-500/5 text-center">
+                      <div className="relative group shrink-0 w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-500/25 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        {settings?.useGoogleAvatar && user?.photoURL ? (
+                          <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : settings?.customProfilePic ? (
+                          <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-full h-full bg-indigo-100 text-indigo-700 font-black text-3xl flex items-center justify-center uppercase">
+                            {settings?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase()}
+                          </div>
+                        )}
+                        
+                        {/* Hover uploader label */}
+                        {!settings?.useGoogleAvatar && (
+                          <label className="absolute inset-0 bg-slate-950/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[10px] font-bold uppercase tracking-widest gap-1 text-center">
+                            <Upload className="w-4 h-4" />
+                            <span>Subir Foto</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                
+                                if (file.size > 400 * 1024) {
+                                  window.alert("La imagen debe pesar menos de 400 KB.");
+                                  return;
+                                }
+
+                                const reader = new FileReader();
+                                reader.onloadend = async () => {
+                                  const base64String = reader.result as string;
+                                  try {
+                                    await updateSettings({ customProfilePic: base64String });
+                                  } catch (err) {
+                                    console.error("Error al cargar la foto:", err);
+                                    window.alert("Error al cargar la foto");
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }} 
+                              className="hidden" 
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      <div className="space-y-3 flex-1 text-center w-full">
+                        <h3 className="text-xs font-bold tracking-tight">Preferencias del Avatar</h3>
+                        <div className="flex flex-col gap-1.5 w-full">
+                          <button
+                            type="button"
+                            onClick={() => updateSettings({ useGoogleAvatar: true })}
+                            className={cn(
+                              "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                              settings?.useGoogleAvatar 
+                                ? "bg-indigo-600 text-white border-indigo-600" 
+                                : isDark 
+                                ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
+                                : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
+                            )}
+                          >
+                            <span>Usar foto de Google</span>
+                            {settings?.useGoogleAvatar && <Check className="w-3 h-3" />}
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => updateSettings({ useGoogleAvatar: false })}
+                            className={cn(
+                              "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                              !settings?.useGoogleAvatar 
+                                ? "bg-indigo-600 text-white border-indigo-600" 
+                                : isDark 
+                                ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
+                                : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
+                            )}
+                          >
+                            <span>Foto personalizada</span>
+                            {!settings?.useGoogleAvatar && <Check className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Columna Modo de Tema */}
+                    <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-between text-left">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Palette className="w-4 h-4 text-indigo-500" />
+                          <h3 className="text-sm font-bold tracking-tight">Motor de Interfaz / Tema</h3>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">Defina el protocolo cromático global de la aplicación.</p>
+                      </div>
+                      <div className="flex flex-col gap-1.5 mt-2">
+                        {[
+                          { id: 'light', label: '☀️ Protocolo Claro' },
+                          { id: 'dark', label: '🌙 Protocolo Oscuro' },
+                          { id: 'system', label: '💻 Predeterminado' }
+                        ].map((themeOpt) => (
+                          <button
+                            key={themeOpt.id}
+                            type="button"
+                            onClick={() => handleSettingClick('theme', themeOpt.id)}
+                            className={cn(
+                              "w-full px-3 py-2 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
+                              settings?.theme === themeOpt.id 
+                                ? "bg-indigo-600 text-white border-indigo-600" 
+                                : isDark 
+                                ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
+                                : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
+                            )}
+                          >
+                            <span>{themeOpt.label}</span>
+                            {settings?.theme === themeOpt.id && <Check className="w-3 h-3" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Columna Idioma */}
+                    <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-between text-left">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Languages className="w-4 h-4 text-slate-450" />
+                          <h3 className="text-sm font-bold tracking-tight">Idioma de Preferencia / Localization</h3>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">Cambia instantáneamente la traducción de textos fijos en la navegación.</p>
+                      </div>
+                      <div className="flex flex-col gap-1.5 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => updateSettings({ language: 'es' })}
+                          className={cn(
+                            "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
+                            settings?.language === 'es' 
+                              ? "bg-indigo-600 text-white border-indigo-600" 
+                              : isDark 
+                              ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
+                              : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100"
+                          )}
+                        >
+                          <span>🇪🇸 Español</span>
+                          {settings?.language === 'es' && <Check className="w-3 h-3" />}
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => updateSettings({ language: 'en' })}
+                          className={cn(
+                            "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
+                            settings?.language === 'en' 
+                              ? "bg-indigo-600 text-white border-indigo-600" 
+                              : isDark 
+                              ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
+                              : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100"
+                          )}
+                        >
+                          <span>🇺🇸 English</span>
+                          {settings?.language === 'en' && <Check className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+
                   </div>
-                </div>
-              </div>
 
-              {/* Columna Modo de Tema */}
-              <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-between text-left">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-indigo-500" />
-                    <h3 className="text-sm font-bold tracking-tight">Motor de Interfaz / Tema</h3>
+                  {/* SEPARADOR */}
+                  <hr className="border-slate-100 dark:border-slate-800/80" />
+
+                  {/* GRID 2: ACCENT PALETTE Y FONTS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start text-left">
+                    
+                    {/* Paleta de Colores de Acento */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Palette className="w-4 h-4 text-slate-450" />
+                        <h3 className="text-sm font-bold tracking-tight">Paleta Cromática de Acento</h3>
+                      </div>
+                      <p className="text-xs text-slate-500 leading-relaxed font-semibold">Seleccione su color primario favorito. Todas las tarjetas, botones interactivos y alertas se acoplarán con esta vibración visual.</p>
+                      
+                      <div className="flex flex-wrap gap-2.5 pt-2">
+                        {[
+                          { id: 'indigo', name: 'Índigo', hex: '#4f46e5' },
+                          { id: 'emerald', name: 'Esmeralda', hex: '#059669' },
+                          { id: 'rose', name: 'Rosa Calm', hex: '#e11d48' },
+                          { id: 'amber', name: 'Ámbar', hex: '#d97706' },
+                          { id: 'violet', name: 'Violeta', hex: '#7c3aed' },
+                          { id: 'sky', name: 'Celeste', hex: '#0284c7' },
+                          { id: 'slate', name: 'Mineral', hex: '#475569' },
+                        ].map((col) => (
+                          <button
+                            key={col.id}
+                            type="button"
+                            onClick={() => updateSettings({ accentColor: col.id })}
+                            className={cn(
+                              "w-9 h-9 rounded-full transition-all flex items-center justify-center border border-black/10 relative cursor-pointer ring-4 ring-transparent hover:scale-105",
+                              (settings?.accentColor || 'indigo') === col.id ? "scale-110 ring-indigo-505 dark:ring-indigo-500/40" : "hover:ring-slate-300 dark:hover:ring-slate-700"
+                            )}
+                            style={{ backgroundColor: col.hex }}
+                            title={col.name}
+                          >
+                            {(settings?.accentColor || 'indigo') === col.id && (
+                              <Check className="w-4 h-4 text-white drop-shadow-sm font-bold" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Selector de Fuente */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Type className="w-4 h-4 text-slate-450" />
+                        <h3 className="text-sm font-bold tracking-tight">Tipo de Letra del Sistema</h3>
+                      </div>
+                      <p className="text-xs text-slate-500 leading-relaxed font-semibold">Modifique la arquitectura tipográfica para acoplar el grosor de letras y números a su agrado visual.</p>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1.5">
+                        {[
+                          { id: 'inter', label: 'Inter (Sans)', style: 'font-sans' },
+                          { id: 'space', label: 'Space Grotesk', style: 'font-space font-space' },
+                          { id: 'outfit', label: 'Outfit (Sleek)', style: 'font-outfit font-outfit' },
+                          { id: 'mono', label: 'JetBrains (Mono)', style: 'font-mono' },
+                          { id: 'playfair', label: 'Playfair (Serif)', style: 'font-playfair font-playfair' },
+                        ].map((fontSpec) => (
+                          <button
+                            key={fontSpec.id}
+                            type="button"
+                            onClick={() => updateSettings({ fontFamily: fontSpec.id })}
+                            className={cn(
+                              "p-2 rounded-xl border text-[11px] font-bold text-left transition-all flex items-center justify-between cursor-pointer",
+                              fontSpec.style,
+                              (settings?.fontFamily || 'inter') === fontSpec.id 
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" 
+                                : isDark 
+                                ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
+                                : "bg-slate-50 text-slate-650 border-slate-205 hover:bg-slate-100"
+                            )}
+                          >
+                            <span>{fontSpec.label}</span>
+                            {(settings?.fontFamily || 'inter') === fontSpec.id && <Check className="w-3 h-3 inline shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                   </div>
-                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">Defina el protocolo cromático global de la aplicación.</p>
-                </div>
-                <div className="flex flex-col gap-1.5 mt-2">
-                  {[
-                    { id: 'light', label: '☀️ Protocolo Claro' },
-                    { id: 'dark', label: '🌙 Protocolo Oscuro' },
-                    { id: 'system', label: '💻 Predeterminado' }
-                  ].map((themeOpt) => (
-                    <button
-                      key={themeOpt.id}
-                      type="button"
-                      onClick={() => handleSettingClick('theme', themeOpt.id)}
-                      className={cn(
-                        "w-full px-3 py-2 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
-                        settings?.theme === themeOpt.id 
-                          ? "bg-indigo-600 text-white border-indigo-600" 
-                          : isDark 
-                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
-                          : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <span>{themeOpt.label}</span>
-                      {settings?.theme === themeOpt.id && <Check className="w-3 h-3" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Columna Idioma */}
-              <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-between text-left">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Languages className="w-4 h-4 text-slate-450" />
-                    <h3 className="text-sm font-bold tracking-tight">Idioma de Preferencia / Localization</h3>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">Cambia instantáneamente la traducción de textos fijos en la navegación.</p>
-                </div>
-                <div className="flex flex-col gap-1.5 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ language: 'es' })}
-                    className={cn(
-                      "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
-                      settings?.language === 'es' 
-                        ? "bg-indigo-600 text-white border-indigo-600" 
-                        : isDark 
-                        ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
-                        : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100"
-                    )}
-                  >
-                    <span>🇪🇸 Español</span>
-                    {settings?.language === 'es' && <Check className="w-3 h-3" />}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ language: 'en' })}
-                    className={cn(
-                      "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
-                      settings?.language === 'en' 
-                        ? "bg-indigo-600 text-white border-indigo-600" 
-                        : isDark 
-                        ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850"
-                        : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100"
-                    )}
-                  >
-                    <span>🇺🇸 English</span>
-                    {settings?.language === 'en' && <Check className="w-3 h-3" />}
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-            {/* SEPARADOR */}
-            <hr className="border-slate-100 dark:border-slate-800/80" />
-
-            {/* GRID 2: ACCENT PALETTE Y FONTS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start text-left">
-              
-              {/* Paleta de Colores de Acento */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-slate-450" />
-                  <h3 className="text-sm font-bold tracking-tight">Paleta Cromática de Acento</h3>
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed font-semibold">Seleccione su color primario favorito. Todas las tarjetas, botones interactivos y alertas se acoplarán con esta vibración visual.</p>
-                
-                <div className="flex flex-wrap gap-2.5 pt-2">
-                  {[
-                    { id: 'indigo', name: 'Índigo', hex: '#4f46e5' },
-                    { id: 'emerald', name: 'Esmeralda', hex: '#059669' },
-                    { id: 'rose', name: 'Rosa Calm', hex: '#e11d48' },
-                    { id: 'amber', name: 'Ámbar', hex: '#d97706' },
-                    { id: 'violet', name: 'Violeta', hex: '#7c3aed' },
-                    { id: 'sky', name: 'Celeste', hex: '#0284c7' },
-                    { id: 'slate', name: 'Mineral', hex: '#475569' },
-                  ].map((col) => (
-                    <button
-                      key={col.id}
-                      type="button"
-                      onClick={() => updateSettings({ accentColor: col.id })}
-                      className={cn(
-                        "w-9 h-9 rounded-full transition-all flex items-center justify-center border border-black/10 relative cursor-pointer ring-4 ring-transparent hover:scale-105",
-                        (settings?.accentColor || 'indigo') === col.id ? "scale-110 ring-indigo-500/30 dark:ring-indigo-500/40" : "hover:ring-slate-300 dark:hover:ring-slate-700"
-                      )}
-                      style={{ backgroundColor: col.hex }}
-                      title={col.name}
-                    >
-                      {(settings?.accentColor || 'indigo') === col.id && (
-                        <Check className="w-4 h-4 text-white drop-shadow-sm font-bold" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Selector de Fuente */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Type className="w-4 h-4 text-slate-450" />
-                  <h3 className="text-sm font-bold tracking-tight">Tipo de Letra del Sistema</h3>
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed font-semibold">Modifique la arquitectura tipográfica para acoplar el grosor de letras y números a su agrado visual.</p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1.5">
-                  {[
-                    { id: 'inter', label: 'Inter (Sans)', style: 'font-sans' },
-                    { id: 'space', label: 'Space Grotesk', style: 'font-space font-space' },
-                    { id: 'outfit', label: 'Outfit (Sleek)', style: 'font-outfit font-outfit' },
-                    { id: 'mono', label: 'JetBrains (Mono)', style: 'font-mono' },
-                    { id: 'playfair', label: 'Playfair (Serif)', style: 'font-playfair font-playfair' },
-                  ].map((fontSpec) => (
-                    <button
-                      key={fontSpec.id}
-                      type="button"
-                      onClick={() => updateSettings({ fontFamily: fontSpec.id })}
-                      className={cn(
-                        "p-2 rounded-xl border text-[11px] font-bold text-left transition-all flex items-center justify-between cursor-pointer",
-                        fontSpec.style,
-                        (settings?.fontFamily || 'inter') === fontSpec.id 
-                          ? "bg-indigo-600 text-white border-indigo-600" 
-                          : isDark 
-                          ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800"
-                          : "bg-slate-50 text-slate-650 border-slate-200 hover:bg-slate-100"
-                      )}
-                    >
-                      <span>{fontSpec.label}</span>
-                      {(settings?.fontFamily || 'inter') === fontSpec.id && <Check className="w-3 h-3 inline shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.section>
 
-        {/* SECCIÓN CONFIGURACIÓN DEL ASISTENTE DE IA */}
+        {/* SECCIÓN COPIAS DE SEGURIDAD Y RESPALDOS (COMPACTABLE EN CASCADA) */}
         <motion.section
-          key="aiAssistantConfigZone"
+          key="backupRestoreZone"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
         >
           <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
-            <Sparkles className="w-4 h-4 text-indigo-500" />
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">Configuración del Asistente de IA</h2>
+            <Database className="w-4 h-4 text-indigo-550 text-indigo-500 font-black" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">Copias de Seguridad y Migración</h2>
           </div>
 
-          <div className={cn("p-6 rounded-2xl border flex flex-col md:flex-row gap-6 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-205 shadow-sm")}>
-            {/* Explicación / Estado */}
-            <div className="flex-1 space-y-3 border-b md:border-b-0 md:border-r border-slate-100/10 pb-6 md:pb-0 md:pr-6 text-left">
-              <h3 className="text-sm font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                <Sparkles className="w-4 h-4 animate-pulse" /> Inteligencia Conversacional Gemini
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                Configure su clave de API personal para desbloquear el máximo poder de análisis inteligente en su panel de Control Financiero. Esto permite procesar capturas de depósitos de cooperativas/bancos, recibos de remesas de la ANT, y chats o entregas de proveedores de cuentas de streaming (Netflix, Max, Disney+) de forma directa y autónoma desde el navegador.
-              </p>
-              
-              <div className="flex items-center gap-2 text-xs font-bold pt-1">
-                <span className={cn("text-[8px] uppercase px-2 py-0.5 rounded font-black tracking-wider", 
-                  localApiKey ? "bg-emerald-100 text-emerald-850 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400"
-                )}>
-                  {localApiKey ? "● ASISTENTE EN ÓPTIMO ESTADO" : "● EN ESPERA DE CONFIGURAR CLAVE"}
-                </span>
-              </div>
-            </div>
-
-            {/* Formulario */}
-            <div className="flex-1 space-y-4 text-left flex flex-col justify-between">
-              <div className="space-y-2">
-                <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-600")}>
-                  Clave de API de Gemini (Google AI Studio)
-                </label>
-                <div className="relative flex items-center font-mono">
-                  <span className="absolute left-3.5 text-slate-400">
-                    <Key className="w-4 h-4" />
-                  </span>
-                  <input
-                    type={showApiKey ? "text" : "password"}
-                    value={localApiKey}
-                    onChange={(e) => handleSaveAssistantKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className={cn(
-                      "w-full pl-10 pr-12 py-3 rounded-xl text-sm font-bold outline-none border transition-colors shadow-sm focus:border-indigo-500", 
-                      isDark 
-                        ? "bg-slate-950 border-slate-800 text-slate-100" 
-                        : "bg-slate-50 border-slate-205 text-slate-800"
-                    )}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
-                  >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+          <div className={cn("rounded-2xl border overflow-hidden transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+            <button
+              type="button"
+              onClick={() => setIsBackupExpanded(!isBackupExpanded)}
+              className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                  <Database className="w-4 h-4" />
                 </div>
-                <p className="text-[10px] text-slate-400 leading-normal font-medium mt-1">
-                  Su clave se almacena exclusivamente en la memoria local de su navegador, garantizando total privacidad y seguridad "Zero-Server".
-                </p>
+                <div>
+                  <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-400">Migración</h3>
+                  <p className={cn("text-xs font-bold sm:text-sm", isDark ? "text-slate-100" : "text-slate-800")}>Administración de Copias y Respaldos (JSON y Excel)</p>
+                </div>
               </div>
+              {isBackupExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
 
-              {localApiKey && (
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100/10">
-                  <div className="flex items-center gap-1.5 text-emerald-500 text-[10px] font-bold uppercase">
-                    <Check className="w-4 h-4" /> Clave Guardada en Navegador
+            <AnimatePresence initial={false}>
+              {isBackupExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden border-t border-slate-100/10"
+                >
+                  <div className="p-5 flex flex-col md:flex-row gap-6">
+                    {/* Export block */}
+                    <div className="flex-1 space-y-3 border-b md:border-b-0 md:border-r border-slate-100/10 pb-6 md:pb-0 md:pr-6 text-left">
+                      <h3 className="text-sm font-bold flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <Download className="w-4 h-4" /> Respaldar Todo el Sistema
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                        Descargue una copia de seguridad local que incluye la totalidad de sus cuentas bancarias, transacciones, catálogo de proveedores, servicios activos, CRM e historial en un solo archivo.
+                      </p>
+                      
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={handleExportData}
+                          disabled={isExporting}
+                          className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-500/20"
+                        >
+                          {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                          {isExporting ? 'Procesando...' : 'Formato JSON'}
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={handleExportExcel}
+                          disabled={isExporting}
+                          className="flex-1 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-600/20 whitespace-nowrap"
+                        >
+                          {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                          {isExporting ? 'Procesando...' : 'Formato Excel (XLSX)'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-normal font-semibold mt-1">
+                        El formato Excel genera un libro con múltiples hojas de cálculo (una por cada colección de datos), facilitando la depuración, control y auditoría manual de registros.
+                      </p>
+                    </div>
+
+                    {/* Import block */}
+                    <div className="flex-1 space-y-3 text-left">
+                      <h3 className="text-sm font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                        <Upload className="w-4 h-4" /> Restaurar Copia de Seguridad
+                      </h3>
+                      <p className="text-xs text-slate-505 leading-relaxed font-semibold">
+                        ¿Cambió de navegador o dispositivo? Seleccione su archivo de respaldo en formato de texto JSON (.json) o libro de cálculo de Microsoft Excel (.xlsx, .xls) para re-establecer sus bases de datos comerciales en la nube de forma transparente y segura.
+                      </p>
+                      
+                      <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                        <label className="w-full sm:w-auto relative cursor-pointer px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-indigo-505/20">
+                          <Upload className="w-4 h-4" />
+                          {isImporting ? 'Cargando...' : 'Seleccionar Archivo'}
+                          <input
+                            type="file"
+                            accept=".json,.xlsx,.xls"
+                            onChange={handleImportData}
+                            disabled={isImporting}
+                            className="hidden"
+                          />
+                        </label>
+                        {importStatus && (
+                          <span className="text-[10px] font-bold text-indigo-500 animate-pulse">
+                            {importStatus}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Feedback Alert */}
+                      {importFeedback.text && (
+                        <div className={cn(
+                          "p-3 rounded-xl border text-xs font-bold transition-all mt-2",
+                          importFeedback.success 
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-650 dark:text-emerald-400" 
+                            : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                        )}>
+                          {importFeedback.text}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm("¿Desea eliminar de forma definitiva la clave de Gemini en su navegador?")) {
-                        handleClearAssistantKey();
-                      }
-                    }}
-                    className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
-                  >
-                    Eliminar clave
-                  </button>
-                </div>
+                </motion.div>
               )}
-            </div>
+            </AnimatePresence>
           </div>
         </motion.section>
 
-        {/* SECCIÓN INFORMACIÓN Y CONTROL */}
+        {/* SECCIÓN INFORMACIÓN Y CONTROL (ULTIMA OPCIÓN CONFIGURABLE) */}
         <motion.section 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1033,10 +1547,10 @@ export function Settings() {
             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 font-extrabold">Información y Control de Módulos</h2>
           </div>
 
-          <div className={cn("p-6 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200")}>
-            <div className="space-y-1">
-              <h3 className={cn("text-base font-bold", isDark ? "text-slate-100" : "text-slate-800")}>Centro de Soporte, Cambios y Adaptabilidad</h3>
-              <p className="text-xs text-slate-500 font-medium">Revise el historial exacto de actualizaciones, la versión instalada y personalice las características activas del aplicativo.</p>
+          <div className={cn("p-6 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+            <div className="space-y-1 text-left">
+              <h3 className={cn("text-base font-bold", isDark ? "text-slate-100" : "text-slate-805")}>Centro de Soporte, Cambios y Adaptabilidad</h3>
+              <p className="text-xs text-slate-500 font-semibold">Revise el historial exacto de actualizaciones, la versión instalada y personalice las características activas del aplicativo.</p>
             </div>
             <button 
               type="button"
@@ -1044,112 +1558,6 @@ export function Settings() {
               className="px-5 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 border border-indigo-500/25"
             >
               <Info className="w-4 h-4" /> Ver Información del Protocolo
-            </button>
-          </div>
-        </motion.section>
-
-        {/* SECCIÓN COPIAS DE SEGURIDAD Y RESPALDOS */}
-        <motion.section
-          key="backupRestoreZone"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
-            <Database className="w-4 h-4 text-indigo-500" />
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">Copias de Seguridad y Migración</h2>
-          </div>
-
-          <div className={cn("p-6 rounded-2xl border flex flex-col md:flex-row gap-6 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-205 shadow-sm")}>
-            {/* Export block */}
-            <div className="flex-1 space-y-3 border-b md:border-b-0 md:border-r border-slate-100/10 pb-6 md:pb-0 md:pr-6 text-left">
-              <h3 className="text-sm font-bold flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                <Download className="w-4 h-4" /> Respaldar Todo el Sistema
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                Descargue una copia de seguridad local que incluye la totalidad de sus cuentas bancarias, transacciones registradas de ANT, catálogo de proveedores, servicios activos, CRM e historial en un solo archivo JSON seguro de recuperar.
-              </p>
-              <button
-                type="button"
-                onClick={handleExportData}
-                disabled={isExporting}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-500/20"
-              >
-                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                {isExporting ? 'Procesando...' : 'Descargar Copia JSON'}
-              </button>
-            </div>
-
-            {/* Import block */}
-            <div className="flex-1 space-y-3 text-left">
-              <h3 className="text-sm font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                <Upload className="w-4 h-4" /> Restaurar Copia de Seguridad
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                ¿Cambió de navegador o dispositivo? Seleccione su archivo de respaldo previo para restablecer por completo la información de sus bases de datos en la nube de forma segura.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <label className="w-full sm:w-auto relative cursor-pointer px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-indigo-505/20">
-                  <Upload className="w-4 h-4" />
-                  {isImporting ? 'Cargando...' : 'Seleccionar Archivo'}
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportData}
-                    disabled={isImporting}
-                    className="hidden"
-                  />
-                </label>
-                {importStatus && (
-                  <span className="text-[10px] font-bold text-indigo-500 animate-pulse">
-                    {importStatus}
-                  </span>
-                )}
-              </div>
-
-              {/* Feedback Alert */}
-              {importFeedback.text && (
-                <div className={cn(
-                  "p-3 rounded-xl border text-xs font-bold transition-all",
-                  importFeedback.success 
-                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" 
-                    : "bg-rose-500/10 border-rose-500/20 text-rose-500"
-                )}>
-                  {importFeedback.text}
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.section>
-
-        {/* SECCIÓN PRIVACIDAD Y SEGURIDAD (BORRADO DE DATOS) */}
-        <motion.section
-          key="privacyZone"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <div className="flex items-center gap-2 border-b border-rose-100/20 pb-2">
-            <Shield className="w-4 h-4 text-rose-500" />
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 font-extrabold">Zona de Privacidad y Eliminación Segura</h2>
-          </div>
-
-          <div className={cn("p-6 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
-            <div className="space-y-1 text-left">
-              <h3 className="text-base font-bold text-rose-600 dark:text-rose-450 flex items-center gap-2">
-                <Trash2 className="w-4 h-4" /> Borrado Autónomo de Datos del Sistema
-              </h3>
-              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                Adquiera control absoluto. Purgue y elimine de forma permanente el 100% de su base de datos local y en la nube (cuentas, transacciones, libros diarios, CRM y catálogos creados). Esta acción requiere de su PIN de seguridad y es completamente irreversible.
-              </p>
-            </div>
-            <button 
-              type="button"
-              onClick={handleOpenPurgeModal}
-              className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 border border-rose-500/25"
-            >
-              <Trash2 className="w-4 h-4" /> Ejecutar Purga Total
             </button>
           </div>
         </motion.section>
