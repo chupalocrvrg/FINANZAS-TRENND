@@ -15,7 +15,8 @@ import {
   MessageCircle,
   CheckCircle2,
   Wallet,
-  Receipt
+  Receipt,
+  FileText
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
 import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate } from '../lib/utils';
@@ -155,7 +156,7 @@ export function DigitalServices() {
   const [paymentAmount, setPaymentAmount] = useState('');
 
   // Success Message
-  const [successMsg, setSuccessMsg] = useState({show: false, phone: '', text: ''});
+  const [successMsg, setSuccessMsg] = useState<{show: boolean, phone: string, text: string, service?: any}>({show: false, phone: '', text: ''});
 
   const [formData, setFormData] = useState({
     id: '', // for edit mode
@@ -365,11 +366,14 @@ export function DigitalServices() {
         }
         
         // Show success modal for new sales
-        if (serviceData.clientContact) {
-            const phone = serviceData.clientContact;
-            const text = `Hola *${serviceData.clientName || 'Cliente'}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nConfirmamos la activación de tu servicio de *${serviceData.name}*.\n👤 Usuario: ${serviceData.email || 'N/A'}\n🔑 Clave: ${serviceData.password || 'N/A'}\n🔒 PIN/Mesa: ${serviceData.pin || 'N/A'}\n\nFecha de vencimiento: *${serviceData.expirationDate}*.\n\n¡Gracias por tu compra! 🎉`;
-            setSuccessMsg({ show: true, phone, text });
-        }
+        const createdService: any = {
+          id: docRef.id,
+          ...serviceData,
+          createdAt: new Date().toISOString()
+        };
+        const phone = serviceData.clientContact || '';
+        const text = `Hola *${serviceData.clientName || 'Cliente'}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nConfirmamos la activación de tu servicio de *${serviceData.name}*.\n👤 Usuario: ${serviceData.email || 'N/A'}\n🔑 Clave: ${serviceData.password || 'N/A'}\n🔒 PIN/Mesa: ${serviceData.pin || 'N/A'}\n\nFecha de vencimiento: *${serviceData.expirationDate}*.\n\n¡Gracias por tu compra! 🎉`;
+        setSuccessMsg({ show: true, phone, text, service: createdService });
       }
       
       // Reset UI state immediately
@@ -1736,28 +1740,44 @@ export function DigitalServices() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-emerald-950/40 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }} className={cn("relative w-full max-w-sm p-6 sm:p-8 rounded-3xl border shadow-2xl z-10 flex flex-col items-center text-center", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
-              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-emerald-105 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-slate-900")}>Servicio Creado</h3>
-              <p className="text-slate-500 text-sm mb-6">La venta digital se registró. ¿Desea notificar al cliente vía WhatsApp?</p>
+              <p className="text-slate-500 text-sm mb-6">La venta digital se registró de manera exitosa. ¿Cómo deseas proceder sustentando el comprobante?</p>
               
-              <div className="flex w-full gap-3">
-                <button 
-                  onClick={() => setSuccessMsg({show: false, phone: '', text: ''})}
-                  className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest", isDark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
-                >
-                  Cerrar
-                </button>
+              <div className="flex flex-col w-full gap-2.5">
                 <button 
                   onClick={() => {
-                     const encoded = encodeURIComponent(successMsg.text);
-                     window.open(`https://wa.me/${successMsg.phone.replace(/\D/g, '')}?text=${encoded}`, '_blank');
-                     setSuccessMsg({show: false, phone: '', text: ''});
+                    const svc = successMsg.service;
+                    setSuccessMsg({show: false, phone: '', text: ''});
+                    if (svc) {
+                      handleOpenVoucher(svc);
+                    }
                   }}
-                  className="flex-1 bg-emerald-500 text-white px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 flex items-center justify-center gap-2"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
-                  <MessageCircle className="w-4 h-4"/> WhatsApp
+                  <FileText className="w-4 h-4"/> Ver/Emitir Recibo (PDF/PNG)
+                </button>
+
+                {successMsg.phone && (
+                  <button 
+                    onClick={() => {
+                      const encoded = encodeURIComponent(successMsg.text);
+                      window.open(`https://wa.me/${successMsg.phone.replace(/\D/g, '')}?text=${encoded}`, '_blank');
+                      setSuccessMsg({show: false, phone: '', text: ''});
+                    }}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4"/> WhatsApp (Texto Rápido)
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => setSuccessMsg({show: false, phone: '', text: ''})}
+                  className={cn("w-full px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest border transition-all cursor-pointer", isDark ? "bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200")}
+                >
+                  Cerrar
                 </button>
               </div>
             </motion.div>

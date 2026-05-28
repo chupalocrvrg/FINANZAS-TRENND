@@ -66,6 +66,10 @@ interface ConfirmData {
   clientContact: string;
   clientType: 'client' | 'reseller' | 'intermediary';
 
+  // Supplier
+  supplierId?: string;
+  customSupplierName?: string;
+
   // Account details
   name: string;
   email?: string;
@@ -78,8 +82,6 @@ interface ConfirmData {
   // Custom prices
   pvpClient: number;
   pvpReseller: number;
-  
-  // Catalog options
   addToCatalog: boolean;
 
   // Wallet parameters
@@ -96,17 +98,21 @@ interface DigitalServiceFormCardProps {
   intermediaries: Entity[];
   catalogItems: any[];
   wallets: any[];
+  suppliers: Entity[];
   onConfirm: (data: ConfirmData) => void;
   isDark: boolean;
 }
 
-function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, catalogItems, wallets, onConfirm, isDark }: DigitalServiceFormCardProps) {
+function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, catalogItems, wallets, suppliers, onConfirm, isDark }: DigitalServiceFormCardProps) {
   // Account details states
   const [serviceName, setServiceName] = useState(draft.name || '');
   const [email, setEmail] = useState(draft.email || '');
   const [password, setPassword] = useState(draft.password || '');
   const [pin, setPin] = useState(draft.pin || '');
-  const [expirationDate, setExpirationDate] = useState(draft.expirationDate || '');
+  const [expirationDate, setExpirationDate] = useState(() => {
+    if (draft.expirationDate) return draft.expirationDate;
+    return calculateServiceExpirationDate(draft.name || '', draft.pin || '');
+  });
 
   // Financial parameters
   const [cost, setCost] = useState(Number(draft.cost) || 0);
@@ -122,6 +128,11 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [clientPhone, setClientPhone] = useState(draft.clientContact || '');
   const [addToCatalog, setAddToCatalog] = useState(false);
+
+  // Supplier Selection States
+  const [supplierId, setSupplierId] = useState(draft.supplierId || '');
+  const [customSupplierInput, setCustomSupplierInput] = useState(draft.supplierName || '');
+  const [showCustomSupplier, setShowCustomSupplier] = useState(false);
 
   // Wallet and payment states
   const [isPaid, setIsPaid] = useState(true);
@@ -144,12 +155,64 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
         setPvpReseller(Number(matchedItem.pvpReseller));
       }
       if (matchedItem.providers && matchedItem.providers.length > 0) {
-        setCost(Number(matchedItem.providers[0].cost));
+        const foundSupp = matchedItem.providers[0];
+        setCost(Number(foundSupp.cost));
+        if (foundSupp.supplierId) {
+          setSupplierId(foundSupp.supplierId);
+          setShowCustomSupplier(false);
+        }
       }
     } else {
       setAddToCatalog(true);
     }
   }, [serviceName, catalogItems]);
+
+  // Real-time cost updates when supplier dropdown changes
+  useEffect(() => {
+    if (!serviceName || !supplierId) return;
+    const matchedItem = catalogItems.find(c => c.name.toLowerCase() === serviceName.toLowerCase());
+    if (matchedItem && matchedItem.providers) {
+      const matchProvider = matchedItem.providers.find((p: any) => p.supplierId === supplierId);
+      if (matchProvider && matchProvider.cost) {
+        setCost(Number(matchProvider.cost));
+      }
+    }
+  }, [supplierId, serviceName, catalogItems]);
+
+  // Auto-fill client states if matching client name exists in CRM
+  useEffect(() => {
+    const draftName = draft.customClientName || draft.clientName || '';
+    if (draftName) {
+      const match = [...clients, ...resellers, ...intermediaries].find(
+        c => c.name.toLowerCase() === draftName.toLowerCase()
+      );
+      if (match) {
+        setSelectedClientId(match.id);
+        setClientType(match.type as 'client' | 'reseller' | 'intermediary' || 'client');
+        setShowCustomInput(false);
+      } else {
+        setCustomNameInput(draftName);
+        setShowCustomInput(true);
+      }
+    }
+  }, [draft.customClientName, draft.clientName, clients, resellers, intermediaries]);
+
+  // Auto-fill supplier states if matching supplier name exists in CRM
+  useEffect(() => {
+    const draftSupp = draft.supplierName || '';
+    if (draftSupp) {
+      const match = suppliers.find(
+        s => s.name.toLowerCase() === draftSupp.toLowerCase()
+      );
+      if (match) {
+        setSupplierId(match.id);
+        setShowCustomSupplier(false);
+      } else {
+        setCustomSupplierInput(draftSupp);
+        setShowCustomSupplier(true);
+      }
+    }
+  }, [draft.supplierName, suppliers]);
 
   const handleSelectCatalogItem = (name: string) => {
     if (!name) return;
@@ -194,11 +257,31 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
       finalClientName = match ? match.name : '';
     }
 
+    let finalSupplierId = '';
+    let finalSupplierName = '';
+    if (showCustomSupplier) {
+      if (!customSupplierInput.trim()) {
+        alert("Escriba por favor el nombre del nuevo proveedor.");
+        return;
+      }
+      finalSupplierName = customSupplierInput.trim();
+    } else {
+      if (!supplierId) {
+        alert("Selecciona un proveedor de la lista o añade uno nuevo (+).");
+        return;
+      }
+      const matchSupp = suppliers.find(s => s.id === supplierId);
+      finalSupplierName = matchSupp ? matchSupp.name : '';
+      finalSupplierId = supplierId;
+    }
+
     onConfirm({
       clientEntityId: showCustomInput ? '' : selectedClientId,
       customClientName: showCustomInput ? finalClientName : '',
       clientContact: clientPhone.trim(),
       clientType,
+      supplierId: finalSupplierId,
+      customSupplierName: finalSupplierName,
       name: serviceName.trim(),
       email: email.trim(),
       password: password.trim(),
@@ -376,6 +459,60 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
               🏢 Intermed.
             </button>
           </div>
+        </div>
+
+        {/* Supplier / Provider Selection */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">¿Quién es el Proveedor?</label>
+          
+          {!showCustomSupplier ? (
+            <div className="flex gap-1.5 flex-row">
+              <select
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+                className={cn(
+                  "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
+                  isDark ? "bg-slate-800 border-slate-750 text-slate-100" : "bg-white border-slate-200 text-slate-850"
+                )}
+              >
+                <option value="">-- Seleccionar Proveedor --</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => { setShowCustomSupplier(true); setSupplierId(''); }}
+                title="Añadir nuevo proveedor"
+                className={cn(
+                  "p-1.5 rounded-lg border flex items-center justify-center cursor-pointer hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors",
+                  isDark ? "bg-slate-850 border-slate-700" : "bg-white border-slate-200"
+                )}
+              >
+                <PlusCircle className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-1.5 items-center flex-row">
+              <input
+                type="text"
+                placeholder="Nombre del nuevo proveedor..."
+                value={customSupplierInput}
+                onChange={(e) => setCustomSupplierInput(e.target.value)}
+                className={cn(
+                  "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
+                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-880"
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => { setShowCustomSupplier(false); setCustomSupplierInput(''); }}
+                className="text-[10px] font-extrabold text-slate-450 hover:text-indigo-500 cursor-pointer"
+              >
+                Volver
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Client Selection */}
@@ -1488,19 +1625,45 @@ export function AIAssistant() {
       }
     }
 
+    let finalSupplierId = data.supplierId || '';
+    let finalSupplierName = data.customSupplierName?.trim() || '';
+
+    if (data.supplierId) {
+      const matchSupp = suppliers.find(s => s.id === data.supplierId);
+      if (matchSupp) {
+        finalSupplierName = matchSupp.name;
+      }
+    }
+
     try {
       // 1. Create client entity record if custom name typed
       if (!data.clientEntityId && finalClient) {
         try {
-          await addDoc(collection(db, 'entities'), {
+          const clientRef = await addDoc(collection(db, 'entities'), {
             name: finalClient,
             type: data.clientType,
             contact: finalContact,
             createdAt: new Date().toISOString(),
             ownerId: user.uid
           });
+          data.clientEntityId = clientRef.id;
         } catch (entityErr) {
           console.error("Error auto-registering client entity model:", entityErr);
+        }
+      }
+
+      // 1b. Create supplier entity record if custom name typed
+      if (!data.supplierId && finalSupplierName) {
+        try {
+          const supplierRef = await addDoc(collection(db, 'entities'), {
+            name: finalSupplierName,
+            type: 'supplier',
+            createdAt: new Date().toISOString(),
+            ownerId: user.uid
+          });
+          finalSupplierId = supplierRef.id;
+        } catch (suppErr) {
+          console.error("Error auto-registering supplier entity model:", suppErr);
         }
       }
 
@@ -1518,8 +1681,8 @@ export function AIAssistant() {
               pvpReseller: Number(data.pvpReseller) || 0,
               providers: [
                 {
-                  supplierId: msg.actionParsed.supplierId || '',
-                  supplierName: msg.actionParsed.supplierName || 'Proveedor',
+                  supplierId: finalSupplierId || '',
+                  supplierName: finalSupplierName || 'Proveedor',
                   cost: Number(data.cost) || 0,
                   pvp: Number(data.pvpClient) || 0,
                   pvpReseller: Number(data.pvpReseller) || 0
@@ -1538,8 +1701,8 @@ export function AIAssistant() {
         category: 'Streaming',
         revenue: Number(data.revenue),
         cost: Number(data.cost),
-        supplierId: msg.actionParsed.supplierId || '',
-        supplierName: msg.actionParsed.supplierName || 'Asistente AI',
+        supplierId: finalSupplierId,
+        supplierName: finalSupplierName || 'Asistente AI',
         clientName: finalClient,
         clientContact: finalContact,
         clientType: data.clientType, // 'client' | 'reseller'
@@ -1911,6 +2074,7 @@ export function AIAssistant() {
                               intermediaries={intermediaries}
                               catalogItems={catalogItems}
                               wallets={wallets}
+                              suppliers={suppliers}
                               isDark={isDark} 
                               onConfirm={(data) => handleConfirmDigitalService(i, data)}
                             />

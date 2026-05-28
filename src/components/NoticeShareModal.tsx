@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Share2, FileText, Image as ImageIcon, Copy, Check } from 'lucide-react';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import jsPDF from 'jspdf';
 
@@ -72,8 +72,8 @@ export function NoticeShareModal({
       text += `${index + 1}. *${item.concept}* ${item.reference ? `(${item.reference})` : ''} - *${formatCurrency(item.amount)}*\n`;
     });
     text += `\n*Total:* *${formatCurrency(totalAmount)}*\n`;
-    if (paymentInstructions) text += `\n_${paymentInstructions}_`;
-    text += `\n\n_Generado por ${settings?.companyName || 'Control Financiero'}_`;
+    if (paymentInstructions) text += `\n_${paymentInstructions}_\n`;
+    text += `\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
     return text;
   };
 
@@ -97,14 +97,14 @@ export function NoticeShareModal({
 
     const scale = 2;
     canvas.width = 450 * scale;
-    canvas.height = (320 + Math.min(items.length, 10) * 35) * scale;
+    canvas.height = (440 + Math.min(items.length, 10) * 35) * scale;
     
     // Reset transform & scale
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(scale, scale);
 
     const width = 450;
-    const height = 320 + Math.min(items.length, 10) * 35;
+    const height = 440 + Math.min(items.length, 10) * 35;
 
     // Background
     ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
@@ -224,10 +224,33 @@ export function NoticeShareModal({
     ctx.fillStyle = `rgb(${accentColorRgb[0]}, ${accentColorRgb[1]}, ${accentColorRgb[2]})`;
     ctx.fillText(formatCurrency(totalAmount), 350, currentY + 32);
 
+    // PAYMENT METHODS ON CANVAS DE CUENTAS POR COBRAR
+    currentY += 55;
+    ctx.fillStyle = isDark ? '#1e293b' : '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(25, currentY, width - 50, 115, 6);
+    ctx.fill();
+    ctx.strokeStyle = isDark ? '#334155' : '#cbd5e1';
+    ctx.strokeRect(25, currentY, width - 50, 115);
+
+    ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
+    ctx.font = 'bold 9.5px sans-serif';
+    ctx.fillText('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 35, currentY + 16);
+
+    ctx.font = 'normal 8.5px sans-serif';
+    ctx.fillStyle = isDark ? '#cbd5e1' : '#475569';
+    ctx.fillText('Pichincha Ahorros: 2203066545 (Marcelo Gutama)', 35, currentY + 32);
+    ctx.fillText('Guayaquil Ahorros: 0032481285 (Marcelo Gutama)', 35, currentY + 45);
+    ctx.fillText('Coop JEP Ahorros: 406002489704 (Marcelo Gutama)', 35, currentY + 58);
+    ctx.fillText('Binance ID: 717956622 | Paypal: paypal.me/trennd07', 35, currentY + 71);
+    ctx.fillText('Titular Cédula: 0105884977 | Enlace Binance: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1', 35, currentY + 84);
+    ctx.fillText('Pago a nombre de Gutama Chima Marcelo. Envíe capturas una vez realizado.', 35, currentY + 97);
+
     ctx.fillStyle = '#64748b';
     ctx.font = 'italic 8px sans-serif';
-    ctx.fillText('Consulte los canales autorizados para transferencias.', 25, currentY + 30);
-    ctx.fillText('Comprobante digital provisto de manera segura.', 25, currentY + 41);
+    currentY += 135;
+    ctx.fillText('Consulte los canales autorizados para transferencias.', 25, currentY);
+    ctx.fillText('Comprobante digital provisto de manera segura.', 25, currentY + 11);
   };
 
   useEffect(() => {
@@ -251,13 +274,13 @@ export function NoticeShareModal({
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [110, 180] 
+      format: [110, 240] 
     });
 
     // Outer Border
     doc.setDrawColor(accentColorRgb[0], accentColorRgb[1], accentColorRgb[2]);
     doc.setLineWidth(1.2);
-    doc.rect(4, 4, 102, 172);
+    doc.rect(4, 4, 102, 232);
 
     // Title / Header
     doc.setTextColor(15, 23, 42);
@@ -357,12 +380,36 @@ export function NoticeShareModal({
     doc.setTextColor(accentColorRgb[0], accentColorRgb[1], accentColorRgb[2]);
     doc.text(formatCurrency(totalAmount), 58, startY + 13);
 
+    // Payment info box in pdf de cuentas por cobrar
+    startY = Math.max(startY, 120);
+    doc.setFillColor(248, 250, 252);
+    doc.rect(10, startY + 22, 90, 50, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(10, startY + 22, 90, 50, 'D');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 14, startY + 27);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text('• Pichincha Ahorros: 2203066545 (Marcelo Gutama)', 14, startY + 33);
+    doc.text('• Guayaquil Ahorros: 0032481285 (Marcelo Gutama)', 14, startY + 38);
+    doc.text('• Coop JEP Ahorros: 406002489704 (Marcelo Gutama)', 14, startY + 43);
+    doc.text('• Binance ID: 717956622 (Trennd001)', 14, startY + 48);
+    doc.text('• QR Binance: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1', 14, startY + 53);
+    doc.text('• Paypal: paypal.me/trennd07 (Marcelo Gutama)', 14, startY + 58);
+    doc.text('• Ced: 0105884977 | Correo: marcelogutama3eroa@gmail.com', 14, startY + 63);
+    doc.text('• Envíe comprobante para regularizar cuenta.', 14, startY + 68);
+
     // Footnotes
     doc.setFont('Helvetica', 'oblique');
     doc.setFontSize(6.5);
     doc.setTextColor(148, 163, 184);
-    doc.text('No corresponde a una factura fiscal de bienes.', 10, startY + 25);
-    doc.text('Documento emitido dinámicamente y firmado de forma íntegra.', 10, startY + 28);
+    doc.text('No corresponde a una factura fiscal de bienes.', 10, startY + 77);
+    doc.text('Documento emitido dinámicamente y firmado de forma íntegra.', 10, startY + 80);
 
     doc.save(`Notificacion_${recipientName.replace(/\s+/g, '_')}.pdf`);
   };

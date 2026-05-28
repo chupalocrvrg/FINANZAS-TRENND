@@ -156,3 +156,31 @@ export function calculateServiceExpirationDate(serviceName: string, supplierOrPr
   today.setDate(today.getDate() + 30);
   return getGMT5DateString(today);
 }
+
+export const PAYMENT_INSTRUCTIONS_TXT = `💵 *MÉTODOS DE PAGO* 💵
+--------------------------------
+🏦 *DEPÓSITO / TRANSFERENCIA / APPS*
+
+✅ *DATOS PARA DEPÓSITOS:*
+• *Nombre:* GUTAMA CHIMA MARCELO
+• *Cédula:* 0105884977
+• *Correo:* marcelogutama3eroa@gmail.com
+
+*Banco Pichincha* ✅
+• *Ahorros:* 2203066545
+
+*Banco Guayaquil* ✅
+• *Ahorros:* 0032481285
+
+*COOPERATIVA JEP* ✅
+• *Ahorros:* 406002489704
+
+*BINANCE* ✅
+• *ID Binance:* 717956622
+• *Enlace:* https://app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1
+📌 *Verificar como:* Trennd001 (Al verificar, procede con el envío)
+
+*PAYPAL* ✅
+• *Enlace:* https://paypal.me/trennd07
+📌 *Verificar:* Marcelo Gutama`;
+

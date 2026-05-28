@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Share2, FileText, Image as ImageIcon, Send, Copy, Check } from 'lucide-react';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { SYSTEM_UPDATES } from '../data/updates';
 import jsPDF from 'jspdf';
@@ -44,17 +44,17 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     // Canvas scaling for high resolution (Retina support)
     const scale = 2;
     canvas.width = 400 * scale;
-    canvas.height = 560 * scale;
+    canvas.height = 710 * scale;
     ctx.scale(scale, scale);
 
     // Context drawing settings
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 400, 560);
+    ctx.fillRect(0, 0, 400, 710);
 
     // Draw solid border accent
     ctx.strokeStyle = v.status === 'paid' ? '#10b981' : v.status === 'expired' ? '#f43f5e' : '#f59e0b';
     ctx.lineWidth = 6;
-    ctx.strokeRect(10, 10, 380, 540);
+    ctx.strokeRect(10, 10, 380, 690);
 
     // Header Company Name
     ctx.fillStyle = '#0f172a';
@@ -159,14 +159,38 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     ctx.fillText(isDigital ? 'VALOR PVP' : 'TOTAL TRANSACCIÓN', 50, currentY + 12);
 
     ctx.fillStyle = v.status === 'paid' ? '#10b981' : '#f59e0b';
-    ctx.font = 'bold 18px monospace';
+    ctx.font = 'bold 18 monospace';
     ctx.textAlign = 'right';
     ctx.fillText(formatCurrency(v.amount), 345, currentY + 14);
+
+    // PAYMENT METHODS BLOCK ON CANVAS
+    currentY += 45;
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.roundRect(35, currentY - 15, 330, 140, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(35, currentY - 15, 330, 140);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 9.5px sans-serif';
+    ctx.fillText('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 45, currentY + 3);
+
+    ctx.font = 'normal 8.5px sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('Ahorros Pichincha: 2203066545 (Gutama Marcelo)', 45, currentY + 22);
+    ctx.fillText('Ahorros Guayaquil: 0032481285 (Gutama Marcelo)', 45, currentY + 37);
+    ctx.fillText('Ahorros Coop JEP: 406002489704 (Gutama Marcelo)', 45, currentY + 52);
+    ctx.fillText('Binance ID: 717956622 | Paypal: paypal.me/trennd07', 45, currentY + 67);
+    ctx.fillText('Titular Cédula: 0105884977 | Enlace Binance: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1', 45, currentY + 82);
+    ctx.fillText('Pago a nombre de Gutama Chima Marcelo. Envíe capturas una vez realizado.', 45, currentY + 97);
 
     // Barcode rendering footer (simulated)
     ctx.textAlign = 'center';
     ctx.fillStyle = '#334155';
-    currentY += 55;
+    currentY += 145;
     
     // Draw vertical barcode lines
     ctx.fillStyle = '#000000';
@@ -229,7 +253,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [100, 160] // Custom ticket size
+      format: [100, 230] // Custom ticket size stretched
     });
 
     const isPaid = voucher.status === 'paid';
@@ -240,7 +264,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     // Aesthetic Ticket Border
     doc.setDrawColor(isPaid ? 16 : 244, isPaid ? 185 : 63, isPaid ? 129 : 94);
     doc.setLineWidth(1.5);
-    doc.rect(3, 3, 94, 154);
+    doc.rect(3, 3, 94, 224);
 
     // Title / Header
     doc.setTextColor(15, 23, 42);
@@ -322,8 +346,31 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     doc.setFontSize(12);
     doc.text(formatCurrency(voucher.amount), 86, y + 8, { align: 'right' });
 
+    // Payment Accounts on PDF
+    y += 18;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(10, y, 80, 50, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(10, y, 80, 50, 'S');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 14, y + 5);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(51, 65, 85);
+    doc.text('• Pichincha Ahorros: 2203066545 (Marcelo Gutama)', 14, y + 11);
+    doc.text('• Guayaquil Ahorros: 0032481285 (Marcelo Gutama)', 14, y + 17);
+    doc.text('• Coop JEP Ahorros: 406002489704 (Marcelo Gutama)', 14, y + 23);
+    doc.text('• Binance ID: 717956622 (Titular: Trennd001)', 14, y + 29);
+    doc.text('• QR Binance: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1', 14, y + 35);
+    doc.text('• Paypal: paypal.me/trennd07 (Marcelo Gutama)', 14, y + 41);
+    doc.text('• Ced: 0105884977 | Correo: marcelogutama3eroa@gmail.com', 14, y + 47);
+
     // Legal / bottom footer text
-    y += 20;
+    y += 58;
     doc.setTextColor(148, 163, 184);
     doc.setFont('Helvetica', 'italic');
     doc.setFontSize(7);
@@ -336,7 +383,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
   // Prepares the WhatsApp content message
   const handleShareWhatsApp = () => {
     const detailsTxt = filteredDetails.map(d => `*${d.label}:* ${d.value}`).join('\n');
-    const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*${isDigitalService ? 'Valor PVP' : 'Monto Total'}:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!`;
+    const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*${isDigitalService ? 'Valor PVP' : 'Monto Total'}:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!\n\n${PAYMENT_INSTRUCTIONS_TXT}`;
     const encoded = encodeURIComponent(text);
     
     // Direct popup link to WA
@@ -347,7 +394,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
   // Copy text support
   const handleCopyText = () => {
     const detailsTxt = filteredDetails.map(d => `${d.label}: ${d.value}`).join('\n');
-    const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n${isDigitalService ? 'Valor PVP' : 'Monto Total'}: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}`;
+    const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n${isDigitalService ? 'Valor PVP' : 'Monto Total'}: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}\n\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
