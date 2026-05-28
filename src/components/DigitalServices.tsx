@@ -18,7 +18,7 @@ import {
   Receipt
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment } from 'firebase/firestore';
@@ -207,6 +207,59 @@ export function DigitalServices() {
 
     return () => { unsubSer(); unsubEnt(); unsubCat(); unsubWallets(); };
   }, [user]);
+
+  // Dynamically set or update expiration date for new services based on service name and notes/PIN
+  useEffect(() => {
+    if (formData.id) return; // Only auto-set/calculate during creation
+    
+    const defaultDate = getGMT5DateString(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    if (!formData.expirationDate || formData.expirationDate === defaultDate) {
+      const calculated = calculateServiceExpirationDate(formData.name, formData.pin);
+      if (calculated !== formData.expirationDate) {
+        setFormData(prev => ({ ...prev, expirationDate: calculated }));
+      }
+    }
+  }, [formData.name, formData.pin, formData.id]);
+
+  // Clean up expired digital service accounts that have been past their expiration date by more than 3 waiting days without being renewed
+  useEffect(() => {
+    if (!user || services.length === 0) return;
+
+    const runExpiredCleanup = async () => {
+      const today = new Date();
+      const toDelete = services.filter(service => {
+        if (!service.expirationDate) return false;
+        
+        const expiryDate = new Date(service.expirationDate);
+        if (isNaN(expiryDate.getTime())) return false;
+
+        // Calculate direct difference in milliseconds converted to decimal days
+        const diffTime = today.getTime() - expiryDate.getTime();
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+        // Deletes if expired and more than 3 waiting days elapsed (meaning diffDays > 3)
+        return diffDays > 3;
+      });
+
+      if (toDelete.length === 0) return;
+
+      console.log(`[Auto-Cleanup] Found ${toDelete.length} digital account(s) overdue by more than 3 waiting days. Initiating deletion...`);
+      for (const service of toDelete) {
+        try {
+          await deleteDoc(doc(db, 'digital_services', service.id));
+          console.log(`[Auto-Cleanup] Successfully deleted expired account: name="${service.name}" email="${service.email}"`);
+        } catch (err) {
+          console.error(`[Auto-Cleanup] Error executing deletion on doc ${service.id}:`, err);
+        }
+      }
+    };
+
+    const runTimer = setTimeout(() => {
+      runExpiredCleanup();
+    }, 2000);
+
+    return () => clearTimeout(runTimer);
+  }, [services, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

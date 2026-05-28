@@ -74,3 +74,85 @@ export function getGMT5DateTimeString(dateInput?: Date | string | number): strin
   const d = dateInput ? new Date(dateInput) : new Date();
   return `${getGMT5DateString(d)} ${getGMT5TimeString(d)} (GMT-5)`;
 }
+
+/**
+ * Calculates service expiration date based on service name and provider message or note.
+ * Standard default is 30 days. This helper parses other duration hints dynamically.
+ */
+export function calculateServiceExpirationDate(serviceName: string, supplierOrProviderMsg: string = ''): string {
+  const combined = `${serviceName} ${supplierOrProviderMsg}`.toLowerCase();
+  const today = new Date();
+
+  // Look for days keyword first (e.g. "15 dias", "15 días", "45 dias", "7 d")
+  const daysRegex = /(\d+)\s*(dí?as|d\b)/;
+  const daysMatch = combined.match(daysRegex);
+  if (daysMatch) {
+    const days = parseInt(daysMatch[1], 10);
+    if (!isNaN(days) && days > 0) {
+      today.setDate(today.getDate() + days);
+      return getGMT5DateString(today);
+    }
+  }
+
+  // Look for years or annual indicators
+  if (
+    combined.includes('anual') || 
+    combined.includes('año') || 
+    combined.includes('anualmente') || 
+    combined.includes('1 year') || 
+    combined.includes('1 yr') || 
+    combined.includes('12 meses') ||
+    combined.includes('12m')
+  ) {
+    today.setDate(today.getDate() + 365);
+    return getGMT5DateString(today);
+  }
+
+  // Look for semi-annual (180 days / 6 months)
+  if (
+    combined.includes('semestre') || 
+    combined.includes('semestral') || 
+    combined.includes('6m') || 
+    combined.includes('6 meses')
+  ) {
+    today.setDate(today.getDate() + 180);
+    return getGMT5DateString(today);
+  }
+
+  // Look for quarterly (90 days / 3 months)
+  if (
+    combined.includes('trimestre') || 
+    combined.includes('trimestral') || 
+    combined.includes('3m') || 
+    combined.includes('3 meses')
+  ) {
+    today.setDate(today.getDate() + 90);
+    return getGMT5DateString(today);
+  }
+
+  // Look for bi-monthly (60 days / 2 months)
+  if (
+    combined.includes('bimestre') || 
+    combined.includes('bimestral') || 
+    combined.includes('2m') || 
+    combined.includes('2 meses')
+  ) {
+    today.setDate(today.getDate() + 60);
+    return getGMT5DateString(today);
+  }
+
+  // Look for month counts e.g. "4 m", "4 meses", "5 meses", "2 meses"
+  const monthsRegex = /(\d+)\s*(meses|mes|m\b)/;
+  const monthsMatch = combined.match(monthsRegex);
+  if (monthsMatch) {
+    const months = parseInt(monthsMatch[1], 10);
+    if (!isNaN(months) && months > 0) {
+      today.setDate(today.getDate() + months * 30);
+      return getGMT5DateString(today);
+    }
+  }
+
+  // Default is 30 days
+  today.setDate(today.getDate() + 30);
+  return getGMT5DateString(today);
+}

@@ -22,7 +22,7 @@ import {
   Key,
   Camera
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, calculateServiceExpirationDate } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
@@ -64,7 +64,7 @@ interface ConfirmData {
   clientEntityId: string;
   customClientName: string;
   clientContact: string;
-  clientType: 'client' | 'reseller';
+  clientType: 'client' | 'reseller' | 'intermediary';
 
   // Account details
   name: string;
@@ -92,13 +92,15 @@ interface ConfirmData {
 interface DigitalServiceFormCardProps {
   draft: any;
   clients: Entity[];
+  resellers: Entity[];
+  intermediaries: Entity[];
   catalogItems: any[];
   wallets: any[];
   onConfirm: (data: ConfirmData) => void;
   isDark: boolean;
 }
 
-function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfirm, isDark }: DigitalServiceFormCardProps) {
+function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, catalogItems, wallets, onConfirm, isDark }: DigitalServiceFormCardProps) {
   // Account details states
   const [serviceName, setServiceName] = useState(draft.name || '');
   const [email, setEmail] = useState(draft.email || '');
@@ -114,7 +116,7 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
   );
   
   // Selection States
-  const [clientType, setClientType] = useState<'client' | 'reseller'>('client');
+  const [clientType, setClientType] = useState<'client' | 'reseller' | 'intermediary'>('client');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [customNameInput, setCustomNameInput] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -157,7 +159,7 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
     if (clientId) {
-      const match = clients.find(c => c.id === clientId);
+      const match = [...clients, ...resellers, ...intermediaries].find(c => c.id === clientId);
       if (match) {
         if (match.contact) {
           setClientPhone(match.contact);
@@ -188,7 +190,7 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
         alert("Selecciona un cliente de la lista o añade uno nuevo (+).");
         return;
       }
-      const match = clients.find(c => c.id === selectedClientId);
+      const match = [...clients, ...resellers, ...intermediaries].find(c => c.id === selectedClientId);
       finalClientName = match ? match.name : '';
     }
 
@@ -336,28 +338,42 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
         {/* Toggle between End Client & Reseller */}
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tipo de Cliente / Comprador</label>
-          <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-250 dark:bg-slate-800 rounded-lg">
+          <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-250 dark:bg-slate-800 rounded-lg">
             <button
-              onClick={() => setClientType('client')}
+              type="button"
+              onClick={() => { setClientType('client'); setSelectedClientId(''); }}
               className={cn(
-                "py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer",
+                "py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center",
                 clientType === 'client'
                   ? "bg-indigo-600 text-white shadow-xs"
                   : (isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-indigo-600")
               )}
             >
-              👤 Cliente Final
+              👤 Cliente
             </button>
             <button
-              onClick={() => setClientType('reseller')}
+              type="button"
+              onClick={() => { setClientType('reseller'); setSelectedClientId(''); }}
               className={cn(
-                "py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer",
+                "py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center",
                 clientType === 'reseller'
                   ? "bg-indigo-600 text-white shadow-xs"
                   : (isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-indigo-600")
               )}
             >
-              🏪 Revendedor
+              🏪 Revend.
+            </button>
+            <button
+              type="button"
+              onClick={() => { setClientType('intermediary'); setSelectedClientId(''); }}
+              className={cn(
+                "py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center",
+                clientType === 'intermediary'
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : (isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-indigo-600")
+              )}
+            >
+              🏢 Intermed.
             </button>
           </div>
         </div>
@@ -376,14 +392,21 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
                   isDark ? "bg-slate-800 border-slate-750 text-slate-100" : "bg-white border-slate-200 text-slate-850"
                 )}
               >
-                <option value="">-- Seleccionar cliente --</option>
-                {clients.map(c => (
+                <option value="">-- Seleccionar --</option>
+                {clientType === 'client' && clients.map(c => (
                   <option key={c.id} value={c.id}>{c.name} {c.contact ? `(${c.contact})` : ''}</option>
+                ))}
+                {clientType === 'reseller' && resellers.map(r => (
+                  <option key={r.id} value={r.id}>{r.name} {r.contact ? `(${r.contact})` : ''}</option>
+                ))}
+                {clientType === 'intermediary' && intermediaries.map(i => (
+                  <option key={i.id} value={i.id}>{i.name} {i.contact ? `(${i.contact})` : ''}</option>
                 ))}
               </select>
               <button
+                type="button"
                 onClick={() => { setShowCustomInput(true); setSelectedClientId(''); }}
-                title="Añadir nuevo cliente"
+                title="Añadir nuevo cliente/socio"
                 className={cn(
                   "p-1.5 rounded-lg border flex items-center justify-center cursor-pointer hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors",
                   isDark ? "bg-slate-850 border-slate-700" : "bg-white border-slate-200"
@@ -396,7 +419,7 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
             <div className="flex gap-1.5 items-center">
               <input
                 type="text"
-                placeholder="Nombre del nuevo cliente..."
+                placeholder="Nombre del nuevo..."
                 value={customNameInput}
                 onChange={(e) => setCustomNameInput(e.target.value)}
                 className={cn(
@@ -405,6 +428,7 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
                 )}
               />
               <button
+                type="button"
                 onClick={() => { setShowCustomInput(false); setCustomNameInput(''); }}
                 className="text-[10px] font-extrabold text-slate-400 hover:text-indigo-500 cursor-pointer"
               >
@@ -622,6 +646,9 @@ function DigitalServiceFormCard({ draft, clients, catalogItems, wallets, onConfi
 }
 
 interface AntUpdateConfirmData {
+  clientEntityId?: string;
+  customClientName?: string;
+  clientType?: 'client' | 'reseller' | 'intermediary';
   finalClientName: string;
   warehouse: string;
   intermediaryId: string;
@@ -631,22 +658,58 @@ interface AntUpdateConfirmData {
 
 interface AntUpdateFormCardProps {
   draft: any;
+  clients: Entity[];
+  resellers: Entity[];
   intermediaries: Entity[];
   onConfirm: (data: AntUpdateConfirmData) => void;
   isDark: boolean;
 }
 
-function AntUpdateFormCard({ draft, intermediaries, onConfirm, isDark }: AntUpdateFormCardProps) {
-  const [finalClientName, setFinalClientName] = useState(draft.finalClientName || '');
+function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfirm, isDark }: AntUpdateFormCardProps) {
   const [warehouse, setWarehouse] = useState(draft.warehouse || '');
   const [intermediaryId, setIntermediaryId] = useState(draft.intermediaryId || '');
   const [isVerified, setIsVerified] = useState(false);
 
-  const handleRegister = () => {
-    if (!finalClientName.trim()) {
-      alert("Ingrese por favor el socio comercial o cliente final.");
-      return;
+  // Selection States
+  const [clientType, setClientType] = useState<'client' | 'reseller' | 'intermediary'>('client');
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [customNameInput, setCustomNameInput] = useState(draft.finalClientName || '');
+  const [showCustomInput, setShowCustomInput] = useState(!draft.finalClientName);
+
+  // Auto-fill states if matching name exists
+  useEffect(() => {
+    if (draft.finalClientName) {
+      const match = [...clients, ...resellers, ...intermediaries].find(
+        c => c.name.toLowerCase() === draft.finalClientName.toLowerCase()
+      );
+      if (match) {
+        setSelectedClientId(match.id);
+        setClientType(match.type as 'client' | 'reseller' | 'intermediary' || 'client');
+        setShowCustomInput(false);
+      } else {
+        setCustomNameInput(draft.finalClientName);
+        setShowCustomInput(true);
+      }
     }
+  }, [draft.finalClientName, clients, resellers, intermediaries]);
+
+  const handleRegister = () => {
+    let finalClient = '';
+    if (showCustomInput) {
+      if (!customNameInput.trim()) {
+        alert("Escriba por favor el nombre del nuevo socio comercial.");
+        return;
+      }
+      finalClient = customNameInput.trim();
+    } else {
+      if (!selectedClientId) {
+        alert("Selecciona un socio comercial de la lista o añade uno nuevo (+).");
+        return;
+      }
+      const match = [...clients, ...resellers, ...intermediaries].find(c => c.id === selectedClientId);
+      finalClient = match ? match.name : '';
+    }
+
     if (!warehouse.trim()) {
       alert("Ingrese por favor la bodega o establecimiento.");
       return;
@@ -654,7 +717,10 @@ function AntUpdateFormCard({ draft, intermediaries, onConfirm, isDark }: AntUpda
 
     const inter = intermediaries.find(i => i.id === intermediaryId);
     onConfirm({
-      finalClientName: finalClientName.trim(),
+      clientEntityId: showCustomInput ? '' : selectedClientId,
+      customClientName: showCustomInput ? finalClient : '',
+      clientType: clientType,
+      finalClientName: finalClient,
       warehouse: warehouse.trim(),
       intermediaryId: intermediaryId || '',
       intermediaryName: inter ? inter.name : 'Distribuidor General',
@@ -679,19 +745,107 @@ function AntUpdateFormCard({ draft, intermediaries, onConfirm, isDark }: AntUpda
       {/* 1. Account / Product details Block */}
       <div className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200/40 dark:border-slate-800 bg-white/40 dark:bg-slate-950/20">
         
-        {/* finalClientName Input */}
+        {/* Toggle between End Client, Reseller & Intermediary */}
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Socio Comercial / Cliente Final</label>
-          <input
-            type="text"
-            value={finalClientName}
-            onChange={(e) => setFinalClientName(e.target.value)}
-            className={cn(
-              "w-full px-2.5 py-1.5 rounded-lg text-xs font-bold border outline-none focus:border-indigo-500",
-              isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
-            )}
-            placeholder="Ej. Juan Pérez / Empresa..."
-          />
+          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tipo de Socio Comercial</label>
+          <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-250 dark:bg-slate-800 rounded-lg">
+            <button
+              type="button"
+              onClick={() => { setClientType('client'); setSelectedClientId(''); }}
+              className={cn(
+                "py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center",
+                clientType === 'client'
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : (isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-indigo-600")
+              )}
+            >
+              👥 Cliente
+            </button>
+            <button
+              type="button"
+              onClick={() => { setClientType('reseller'); setSelectedClientId(''); }}
+              className={cn(
+                "py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center",
+                clientType === 'reseller'
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : (isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-indigo-600")
+              )}
+            >
+              🏪 Revend.
+            </button>
+            <button
+              type="button"
+              onClick={() => { setClientType('intermediary'); setSelectedClientId(''); }}
+              className={cn(
+                "py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer text-center",
+                clientType === 'intermediary'
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : (isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-indigo-600")
+              )}
+            >
+              🏢 Intermed.
+            </button>
+          </div>
+        </div>
+
+        {/* Client Selection */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Seleccionar Socio Comercial</label>
+          
+          {!showCustomInput ? (
+            <div className="flex gap-1.5">
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className={cn(
+                  "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
+                  isDark ? "bg-slate-800 border-slate-750 text-slate-100" : "bg-white border-slate-200 text-slate-850"
+                )}
+              >
+                <option value="">-- Seleccionar socio --</option>
+                {clientType === 'client' && clients.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+                {clientType === 'reseller' && resellers.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+                {clientType === 'intermediary' && intermediaries.map(i => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => { setShowCustomInput(true); setSelectedClientId(''); }}
+                title="Añadir nuevo socio"
+                className={cn(
+                  "p-1.5 rounded-lg border flex items-center justify-center cursor-pointer hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors",
+                  isDark ? "bg-slate-850 border-slate-700" : "bg-white border-slate-200"
+                )}
+              >
+                <PlusCircle className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-1.5 items-center">
+              <input
+                type="text"
+                placeholder="Nombre del nuevo socio..."
+                value={customNameInput}
+                onChange={(e) => setCustomNameInput(e.target.value)}
+                className={cn(
+                  "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
+                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-880"
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => { setShowCustomInput(false); setCustomNameInput(''); }}
+                className="text-[10px] font-extrabold text-slate-400 hover:text-indigo-500 cursor-pointer"
+              >
+                Volver
+              </button>
+            </div>
+          )}
         </div>
 
         {/* warehouse Input */}
@@ -923,6 +1077,7 @@ export function AIAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [intermediaries, setIntermediaries] = useState<Entity[]>([]);
   const [clients, setClients] = useState<Entity[]>([]);
+  const [resellers, setResellers] = useState<Entity[]>([]);
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
@@ -978,6 +1133,7 @@ export function AIAssistant() {
       setIntermediaries(allEnt.filter(e => e.type === 'intermediary'));
       setClients(allEnt.filter(e => e.type === 'client'));
       setSuppliers(allEnt.filter(e => e.type === 'supplier'));
+      setResellers(allEnt.filter(e => e.type === 'reseller'));
     }, (error) => {
       console.error("Error fetching context for AI assistant:", error);
     });
@@ -1275,7 +1431,7 @@ export function AIAssistant() {
             email: email || '',
             password: password || '',
             pin: pin || '',
-            expirationDate: expirationDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            expirationDate: expirationDate || calculateServiceExpirationDate(name || '', pin || ''),
             cost: Number(cost) || 0,
             revenue: Number(revenue) || 0,
             supplierId: supplierId || '',
@@ -1323,7 +1479,7 @@ export function AIAssistant() {
     let finalContact = data.clientContact.trim();
 
     if (data.clientEntityId) {
-      const match = clients.find(c => c.id === data.clientEntityId);
+      const match = [...clients, ...resellers, ...intermediaries].find(c => c.id === data.clientEntityId);
       if (match) {
         finalClient = match.name;
         if (!finalContact) {
@@ -1338,7 +1494,7 @@ export function AIAssistant() {
         try {
           await addDoc(collection(db, 'entities'), {
             name: finalClient,
-            type: 'client',
+            type: data.clientType,
             contact: finalContact,
             createdAt: new Date().toISOString(),
             ownerId: user.uid
@@ -1491,6 +1647,20 @@ export function AIAssistant() {
     }
 
     try {
+      // Create companion entity record if custom name typed
+      if (data.customClientName && data.clientType) {
+        try {
+          await addDoc(collection(db, 'entities'), {
+            name: data.customClientName.trim(),
+            type: data.clientType,
+            createdAt: new Date().toISOString(),
+            ownerId: user.uid
+          });
+        } catch (entityErr) {
+          console.error("Error auto-registering client entity model inside ANT update handler:", entityErr);
+        }
+      }
+
       await addDoc(collection(db, 'transactions'), {
         intermediaryId: data.intermediaryId || 'default_intermediary_id',
         intermediaryName: data.intermediaryName || 'Distribuidor General',
@@ -1694,6 +1864,8 @@ export function AIAssistant() {
                           ) : (
                             <AntUpdateFormCard
                               draft={m.actionParsed}
+                              clients={clients}
+                              resellers={resellers}
                               intermediaries={intermediaries}
                               isDark={isDark}
                               onConfirm={(data) => handleConfirmAntUpdate(i, data)}
@@ -1735,6 +1907,8 @@ export function AIAssistant() {
                             <DigitalServiceFormCard 
                               draft={m.actionParsed} 
                               clients={clients} 
+                              resellers={resellers}
+                              intermediaries={intermediaries}
                               catalogItems={catalogItems}
                               wallets={wallets}
                               isDark={isDark} 
