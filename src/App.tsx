@@ -27,6 +27,7 @@ import { Bell, Menu, X, ChevronDown } from 'lucide-react';
 import { cn } from './lib/utils';
 import { db } from './lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { SYSTEM_UPDATES } from './data/updates';
 
 export default function App() {
   const { user, settings, loading, onboarding } = useAuth();
@@ -38,6 +39,22 @@ export default function App() {
   const [txCount, setTxCount] = useState(0);
   const [serAlertCount, setSerAlertCount] = useState(0);
   const [isLocked, setIsLocked] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+
+  // Monitor dynamic network connection state
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Combine counts for notifications
   useEffect(() => {
@@ -256,10 +273,13 @@ export default function App() {
       </AnimatePresence>
 
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 w-72 lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); }} />
+        <p className="absolute bottom-18 left-0 right-0 text-center pointer-events-none select-none text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500/85 z-[100]">
+          {SYSTEM_UPDATES[0]?.version || 'V4.0.0'} By Trennd
+        </p>
       </div>
       
       <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen">
@@ -278,14 +298,20 @@ export default function App() {
             <h1 className="text-lg lg:text-xl font-bold tracking-tight truncate max-w-[150px] lg:max-w-none">
               {settings?.companyName || 'Control Financiero'}
             </h1>
-            <span className="hidden sm:inline-block bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Live</span>
+            {isOnline ? (
+              <span className="hidden sm:inline-flex items-center gap-1 bg-emerald-100/80 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                Sincronizado
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                Modo Offline Activo
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3 lg:gap-6">
-            <div className="hidden md:flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rate:</span>
-              <span className="text-sm font-mono font-bold tracking-tighter">$5.00</span>
-            </div>
             <button 
               onClick={async () => {
                 try {

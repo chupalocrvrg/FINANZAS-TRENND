@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { jsPDF } from 'jspdf';
+import { NoticeShareModal } from './NoticeShareModal';
 import 'jspdf-autotable';
 import { 
   TrendingUp, 
@@ -22,9 +23,11 @@ import {
   List,
   ChevronDown,
   ChevronUp,
-  CreditCard
+  CreditCard,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, getGMT5DateString } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -102,6 +105,11 @@ export function Dashboard() {
   const [paymentTarget, setPaymentTarget] = useState<{ item: any; type: 'receivables' | 'payables' } | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [selectedWalletId, setSelectedWalletId] = useState<string>('');
+  const [noticeShareData, setNoticeShareData] = useState<any | null>(null);
+
+  // Calendar state
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => new Date());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const isDark = settings?.theme === 'dark';
 
@@ -130,8 +138,8 @@ export function Dashboard() {
       setDigitalServices(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
-    // Ledger (pending payables)
-    const unsubLedger = onSnapshot(query(collection(db, 'ledger'), where('ownerId', '==', user.uid), where('isPending', '==', true)), (snap) => {
+    // Ledger (all entries for calendar & payables)
+    const unsubLedger = onSnapshot(query(collection(db, 'ledger'), where('ownerId', '==', user.uid)), (snap) => {
       setLedgerEntries(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
@@ -168,7 +176,7 @@ export function Dashboard() {
 
   // Derived payables
   const payables = [
-    ...ledgerEntries.filter(e => e.amount < 0).map(e => ({
+    ...ledgerEntries.filter(e => e.isPending && e.amount < 0).map(e => ({
       ...e,
       isLedger: true,
       category: e.category || 'Gasto General',
@@ -326,9 +334,23 @@ export function Dashboard() {
       return;
     }
     const amountVal = rx.pendingAmount || rx.chargedRate || 0;
-    const text = `Hola *${contactEntity?.name}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nTe recordamos amablemente un valor pendiente de pago en nuestro sistema por *${formatCurrency(amountVal)}* por concepto de servicio de actualizaciones ANT para el cliente *${rx.finalClientName || rx.clientName || 'Cliente'}* (${rx.warehouse || rx.name || 'Suscripción'}).\n\nPor favor, confirmamos cuando realices la transferencia. ¡Muchas gracias!`;
-    const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    
+    // Set Notice Data
+    setNoticeShareData({
+      recipientName: contactEntity?.name || rx.intermediaryName || rx.finalClientName || 'Cliente Pendiente',
+      recipientPhone: phone,
+      title: "Notificación de Saldo Pendiente",
+      subtitle: rx.isTx ? `Trámite ANT: ${rx.finalClientName}` : `Servicio Digital: ${rx.name}`,
+      items: [{
+        concept: rx.isTx ? `Trámite ANT (${rx.warehouse})` : `Servicio Digital (${rx.name})`,
+        reference: rx.isTx ? `Cliente: ${rx.finalClientName}` : undefined,
+        amount: amountVal
+      }],
+      totalAmount: amountVal,
+      statusLabel: "PENDIENTE",
+      paymentInstructions: "Por favor, confírmanos con un comprobante de transferencia al verificar este saldo.",
+      type: "receivable"
+    });
   };
 
   const handleWhatsAppGroupRedirect = (group: { entityName: string; total: number; rawItems: any[] }) => {
@@ -341,22 +363,22 @@ export function Dashboard() {
       return;
     }
 
-    let text = `Hola *${group.entityName}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\n`;
-    text += `Mi estimado, te recordamos que tenemos pendiente de cobro un total de *${formatCurrency(group.total)}* correspondiente a:\n\n`;
-    
-    group.rawItems.forEach((item, index) => {
-      const typeLabel = item.isTx ? 'Actualización ANT' : 'Servicio Digital';
-      const detail = item.isTx 
-        ? `${item.finalClientName || 'Cliente'} (${item.warehouse || 'S/D'})` 
-        : `${item.name}`;
-      const amountPending = item.pendingAmount;
-      text += `${index + 1}. *${typeLabel}*: ${detail} - Saldo: *${formatCurrency(amountPending)}*\n`;
+    // Set Notice Data for mass selection
+    setNoticeShareData({
+      recipientName: group.entityName,
+      recipientPhone: phone,
+      title: "Estado de Cuenta Consolidado",
+      subtitle: `Resumen de movimientos y saldos pendientes`,
+      items: group.rawItems.map(item => ({
+        concept: item.isTx ? `Trámite ANT: ${item.finalClientName}` : `Servicio: ${item.name}`,
+        reference: item.warehouse ? `Almacén: ${item.warehouse}` : undefined,
+        amount: item.pendingAmount || 0
+      })),
+      totalAmount: group.total,
+      statusLabel: "PENDIENTE",
+      paymentInstructions: "Por favor, confírmanos cuando realices la transferencia. ¡Muchas gracias!",
+      type: "receivable"
     });
-    
-    text += `\n*TOTAL PENDIENTE: ${formatCurrency(group.total)}*\n\nPor favor, confírmanos cuando realices la transferencia. ¡Muchas gracias! 🙏🏼`;
-    
-    const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
   };
 
   const handleConfirmPayment = async () => {
@@ -556,13 +578,135 @@ export function Dashboard() {
         }
       }
 
-      alert("¡Transacción registrada y caja general actualizada con éxito! 🟢");
+      // Automatically construct and prompt the user to download or share the digital transaction voucher
+      const isCollectionGroup = type === 'receivables';
+      setNoticeShareData({
+        recipientName: item.entityName || item.intermediaryName || item.clientName || 'Cliente / Intermediario',
+        recipientPhone: '', 
+        title: isCollectionGroup ? "COMPROBANTE DE COBRO" : "COMPROBANTE DE PAGO",
+        subtitle: `Registro de caja - Estado: Procesado`,
+        items: [{
+          concept: item.isMass ? `Abono Masivo de Cartera: ${item.entityName}` : (item.isTx ? `Trámite ANT: ${item.finalClientName || 'Cliente'}` : `${item.name || item.description || 'Movimiento de Caja'}`),
+          reference: `Billetera: ${selectedWalletId}`,
+          amount: amount
+        }],
+        totalAmount: amount,
+        statusLabel: "COMPLETADO",
+        paymentInstructions: isCollectionGroup ? "Le agradecemos enormemente el saldo abonado a su cuenta." : "Comprobante de egreso y pago de valores de servicio.",
+        type: isCollectionGroup ? "receivable" : "payable"
+      });
+
       setPaymentTarget(null);
     } catch (err) {
       console.error(err);
       alert("Error al procesar la transacción en Firebase.");
     }
   };
+
+  // Calendar helper calculations
+  const calendarMonths = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() - 1);
+      return d;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() + 1);
+      return d;
+    });
+  };
+
+  // Build the array of days to display in the grid
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+
+  // First day of the month
+  const firstDay = new Date(year, month, 1);
+  const firstDayIndex = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  const prevTotalDays = new Date(year, month, 0).getDate();
+
+  const daysGrid: { dateStr: string; dayNum: number; isCurrent: boolean }[] = [];
+
+  // Prev month filler
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const day = prevTotalDays - i;
+    const dateObj = new Date(year, month - 1, day);
+    daysGrid.push({
+      dateStr: getGMT5DateString(dateObj),
+      dayNum: day,
+      isCurrent: false
+    });
+  }
+
+  // Current month days
+  for (let i = 1; i <= totalDays; i++) {
+    const dateObj = new Date(year, month, i);
+    daysGrid.push({
+      dateStr: getGMT5DateString(dateObj),
+      dayNum: i,
+      isCurrent: true
+    });
+  }
+
+  // Next month filler to complete full weeks
+  const totalOffsetDays = daysGrid.length;
+  const remainingOffsetCells = totalOffsetDays % 7;
+  if (remainingOffsetCells > 0) {
+    const extraCells = 7 - remainingOffsetCells;
+    for (let i = 1; i <= extraCells; i++) {
+      const dateObj = new Date(year, month + 1, i);
+      daysGrid.push({
+        dateStr: getGMT5DateString(dateObj),
+        dayNum: i,
+        isCurrent: false
+      });
+    }
+  }
+
+  const getDayFinancials = (dateStr: string) => {
+    const dayEntries = ledgerEntries.filter(e => {
+      return e.date === dateStr || e.dueDate === dateStr;
+    });
+
+    let realIncome = 0;
+    let realExpense = 0;
+    let pendingPaymentsCount = 0;
+    let pendingPaymentsTotal = 0;
+
+    dayEntries.forEach(e => {
+      if (e.isPending) {
+        pendingPaymentsCount++;
+        pendingPaymentsTotal += Math.abs(e.amount);
+      } else {
+        if (e.amount > 0) {
+          realIncome += e.amount;
+        } else {
+          realExpense += Math.abs(e.amount);
+        }
+      }
+    });
+
+    return {
+      realIncome,
+      realExpense,
+      pendingPaymentsCount,
+      pendingPaymentsTotal,
+      entries: dayEntries
+    };
+  };
+
+  const selectedDayData = selectedDay ? getDayFinancials(selectedDay) : null;
 
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
@@ -616,101 +760,193 @@ export function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Cuentas por Cobrar */}
-        <div className={cn("border rounded-2xl shadow-sm flex flex-col", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200")}>
-          <div className={cn("p-5 border-b flex items-center justify-between", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-100 bg-emerald-50")}>
-            <div className="flex items-center gap-2">
-              <ArrowUpCircle className="w-5 h-5 text-emerald-500" />
-              <h2 className={cn("font-bold tracking-tight text-sm uppercase tracking-widest", isDark ? "text-emerald-400" : "text-emerald-700")}>
-                Cuentas por Cobrar
-              </h2>
-            </div>
-            <span className="text-sm font-black font-mono text-emerald-600">{formatCurrency(totalReceivables)}</span>
+      {/* Interactive Calendar Segment */}
+      <div className={cn("p-6 rounded-3xl border text-left", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h3 className={cn("text-lg font-black uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
+              📅 Calendario de Control de Caja y Gastos Programados
+            </h3>
+            <p className="text-slate-550 dark:text-slate-400 text-xs font-semibold mt-1">
+              Monitoreo diario de ingresos reales, egresos y vencimientos de tarjetas de crédito o fijos.
+            </p>
           </div>
-          <div className="p-5 overflow-y-auto max-h-[300px] divide-y divide-slate-100/10">
-            {receivables.map(rx => (
-              <div key={rx.id} className="py-3 flex justify-between items-center group">
-                <div className="min-w-0 pr-4">
-                  <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{rx.intermediaryName || rx.clientName || 'S/N'}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">Cliente: {rx.finalClientName || '-'}</p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <span className="text-sm font-black font-mono text-emerald-500 block">{formatCurrency(rx.pendingAmount)}</span>
-                    {rx.amountPaid > 0 && (
-                      <span className="text-[9px] text-slate-400 font-bold block">Abonado: {formatCurrency(rx.amountPaid)}</span>
-                    )}
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setActiveModal('receivables');
-                      setPaymentTarget({ item: rx, type: 'receivables' });
-                      setPaymentAmount((rx.pendingAmount || 0).toString());
-                      setSelectedWalletId(wallets[0]?.id || '');
-                    }}
-                    title="Registrar Abono en Billetera / Efectivo"
-                    className="p-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
-                  >
-                    <Wallet className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleWhatsAppRedirect(rx)}
-                    title="Enviar recordatorio por WhatsApp al número registrado"
-                    className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {receivables.length === 0 && <div className="text-center text-slate-500 py-8 text-xs font-bold uppercase tracking-widest">No hay cuentas por cobrar</div>}
+          
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handlePrevMonth}
+              className={cn("p-2 rounded-xl border transition-colors cursor-pointer", isDark ? "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900")}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className={cn("text-sm font-black uppercase tracking-widest min-w-[150px] text-center", isDark ? "text-white" : "text-slate-800")}>
+              {calendarMonths[month]} {year}
+            </span>
+            <button 
+              onClick={handleNextMonth}
+              className={cn("p-2 rounded-xl border transition-colors cursor-pointer", isDark ? "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900")}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Cuentas por Pagar */}
-        <div className={cn("border rounded-2xl shadow-sm flex flex-col", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200")}>
-          <div className={cn("p-5 border-b flex items-center justify-between", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-100 bg-rose-50")}>
-            <div className="flex items-center gap-2">
-              <ArrowDownCircle className="w-5 h-5 text-rose-500" />
-              <h2 className={cn("font-bold tracking-tight text-sm uppercase tracking-widest", isDark ? "text-rose-400" : "text-rose-700")}>
-                Cuentas por Pagar
-              </h2>
-            </div>
-            <span className="text-sm font-black font-mono text-rose-600">{formatCurrency(totalPayables)}</span>
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 mb-6 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100/10 pb-4">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            Ingresos Reales
           </div>
-          <div className="p-5 overflow-y-auto max-h-[300px] divide-y divide-slate-100/10">
-            {payables.map(px => (
-              <div key={px.id} className="py-3 flex justify-between items-center group">
-                <div className="min-w-0 pr-4">
-                  <p className={cn("text-sm font-bold truncate", isDark ? "text-slate-200" : "text-slate-800")}>{px.category}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">{px.description || 'Sin detalles'}</p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0 font-bold">
-                  <div className="text-right">
-                    <span className="text-sm font-black font-mono text-rose-500 block">{formatCurrency(px.pendingAmount)}</span>
-                    {px.costPaid > 0 && (
-                      <span className="text-[9px] text-slate-400 font-bold block">Pagado: {formatCurrency(px.costPaid)}</span>
-                    )}
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setActiveModal('payables');
-                      setPaymentTarget({ item: px, type: 'payables' });
-                      setPaymentAmount((px.pendingAmount || 0).toString());
-                      setSelectedWalletId(wallets[0]?.id || '');
-                    }}
-                    title="Registrar Pago a Proveedor / Gasto"
-                    className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors flex items-center justify-center shadow-sm cursor-pointer"
-                  >
-                    <Wallet className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {payables.length === 0 && <div className="text-center text-slate-500 py-8 text-xs font-bold uppercase tracking-widest">No hay cuentas por pagar</div>}
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+            Egresos Reales
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            Pagos Programados (Tarjetas / Fijos)
           </div>
         </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-2">
+          {/* Weekday headers */}
+          {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((weekday) => (
+            <div key={weekday} className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500 py-1">
+              {weekday}
+            </div>
+          ))}
+
+          {/* Days */}
+          {daysGrid.map(({ dateStr, dayNum, isCurrent }, idx) => {
+            const dayFin = getDayFinancials(dateStr);
+            const isToday = dateStr === getGMT5DateString(new Date());
+            const isSelected = selectedDay === dateStr;
+
+            return (
+              <motion.div
+                whileHover={{ y: -1, scale: 1.01 }}
+                onClick={() => setSelectedDay(dateStr)}
+                key={`${dateStr}-${idx}`}
+                className={cn(
+                  "min-h-[85px] p-2 border rounded-2xl cursor-pointer flex flex-col justify-between transition-all duration-300 relative",
+                  isCurrent 
+                    ? (isDark ? "bg-slate-950/45 border-slate-850" : "bg-slate-50/50 border-slate-200/50")
+                    : (isDark ? "bg-slate-950/10 border-slate-900 opacity-40" : "bg-slate-100/30 border-slate-100 opacity-45"),
+                  isToday && (isDark ? "ring-2 ring-indigo-500/50 bg-indigo-950/20" : "ring-2 ring-indigo-500 bg-indigo-50/50"),
+                  isSelected && (isDark ? "border-indigo-500 bg-slate-900" : "border-indigo-600 bg-indigo-50/20")
+                )}
+              >
+                <div className="flex justify-between items-center">
+                  <span className={cn(
+                    "text-xs font-black",
+                    isCurrent 
+                      ? (isDark ? "text-slate-300" : "text-slate-700") 
+                      : "text-slate-500",
+                    isToday && "text-indigo-500 font-extrabold"
+                  )}>
+                    {dayNum}
+                  </span>
+                  {dayFin.pendingPaymentsCount > 0 && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" title={`${dayFin.pendingPaymentsCount} programados`} />
+                  )}
+                </div>
+
+                {/* Values stack */}
+                <div className="space-y-0.5 mt-2 text-[8.5px] font-bold font-mono tracking-tighter">
+                  {dayFin.realIncome > 0 && (
+                    <div className="text-emerald-500 truncate" title="Ingreso Real">
+                      +{formatCurrency(dayFin.realIncome)}
+                    </div>
+                  )}
+                  {dayFin.realExpense > 0 && (
+                    <div className="text-rose-500 truncate" title="Egreso Real">
+                      -{formatCurrency(dayFin.realExpense)}
+                    </div>
+                  )}
+                  {dayFin.pendingPaymentsTotal > 0 && (
+                    <div className="text-amber-500 truncate border-t border-dashed border-slate-500/10 pt-0.5 block" title="Programado">
+                      P: {formatCurrency(dayFin.pendingPaymentsTotal)}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Selected Day Details Panel */}
+        <AnimatePresence mode="wait">
+          {selectedDay && selectedDayData && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className={cn("mt-6 p-5 rounded-2xl border text-left", isDark ? "bg-slate-950/60 border-slate-850" : "bg-slate-50/70 border-slate-100")}
+            >
+              <div className="flex justify-between items-center mb-4 border-b border-dashed border-slate-500/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className={cn("text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full", isDark ? "bg-slate-800 text-slate-300" : "bg-indigo-50 text-indigo-700")}>
+                    Detalles para: {selectedDay}
+                  </span>
+                  {selectedDay === getGMT5DateString(new Date()) && (
+                    <span className="text-[9px] font-black uppercase tracking-widest bg-indigo-500 text-white px-2 py-0.5 rounded-full">Hoy</span>
+                  )}
+                </div>
+                <button 
+                  onClick={() => setSelectedDay(null)}
+                  className="text-slate-400 hover:text-slate-600 text-xs font-black uppercase tracking-widest cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              {selectedDayData.entries.length === 0 ? (
+                <div className="text-center py-6 text-slate-550 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                  No hay transacciones guardadas ni pagos programados para este día.
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[250px] overflow-y-auto">
+                  {selectedDayData.entries.map((entry) => (
+                    <div 
+                      key={entry.id} 
+                      className={cn(
+                        "p-3 rounded-xl border flex justify-between items-center gap-4 transition-all hover:translate-x-0.5",
+                        entry.isPending 
+                          ? (isDark ? "bg-amber-950/15 border-amber-900/30 text-amber-500" : "bg-amber-50 border-amber-100 text-amber-700")
+                          : entry.amount > 0
+                            ? (isDark ? "bg-emerald-950/15 border-emerald-900/30 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-700")
+                            : (isDark ? "bg-rose-950/15 border-rose-900/30 text-rose-400" : "bg-rose-50 border-rose-100 text-rose-700")
+                      )}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-black uppercase tracking-widest block truncate">
+                          {entry.category}
+                        </span>
+                        <span className={cn("text-[10px] uppercase font-bold text-slate-400 mt-0.5 block truncate", isDark ? "text-slate-500" : "text-slate-400")}>
+                          {entry.description || "Sin descripción"}
+                        </span>
+                        {entry.isPending && entry.dueDate && (
+                          <span className="text-[9px] font-black tracking-widest text-amber-600 block mt-0.5 uppercase">
+                            ⚠️ Programado para Vencer: {entry.dueDate}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-black font-mono tracking-tight block">
+                          {entry.amount > 0 ? "+" : ""}{formatCurrency(entry.amount)}
+                        </span>
+                        <span className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">
+                          {entry.isPending ? "Pendiente" : "Asentado"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -758,7 +994,10 @@ export function Dashboard() {
                   {/* Selector de Filtro de Relación */}
                   <div className="flex flex-col gap-1.5 text-left">
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">Filtrar por Ecosistema CRM</span>
-                    <div className="flex flex-wrap gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/50 w-full">
+                    <div className={cn(
+                      "flex flex-wrap gap-1.5 p-1 rounded-xl w-full border",
+                      isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200/50"
+                    )}>
                       <button
                         onClick={() => setFilterType('all')}
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
@@ -854,7 +1093,10 @@ export function Dashboard() {
                   </div>
 
                   {/* Resumen Total del Filtro */}
-                  <div className="p-3.5 rounded-xl border border-dashed flex justify-between items-center text-xs font-bold leading-none bg-slate-50/50 dark:bg-slate-950/20 dark:border-slate-800 border-slate-200">
+                  <div className={cn(
+                    "p-3.5 rounded-xl border border-dashed flex justify-between items-center text-xs font-bold leading-none",
+                    isDark ? "bg-slate-950/45 border-slate-800" : "bg-slate-50 border-slate-200"
+                  )}>
                     <span className="text-slate-400 uppercase tracking-widest text-[9px] font-black">Total en Selección Activa:</span>
                     <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
                       {activeModal === 'receivables' ? formatCurrency(filteredReceivablesTotal) : formatCurrency(filteredPayablesTotal)}
@@ -1043,7 +1285,12 @@ export function Dashboard() {
                         <div key={entityName} className="py-3 text-left border-b border-slate-100/10 dark:border-slate-800/50">
                           <div 
                             onClick={() => setExpandedGroups(prev => ({ ...prev, [entityName]: !isExpanded }))}
-                            className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-850/40 hover:bg-slate-100 dark:hover:bg-slate-850/80 cursor-pointer transition-colors"
+                            className={cn(
+                              "flex justify-between items-center p-3 rounded-xl cursor-pointer transition-colors border",
+                              isDark 
+                                ? "bg-slate-800/60 border-slate-700/60 hover:bg-slate-800" 
+                                : "bg-slate-50 border-slate-200/50 hover:bg-slate-100"
+                            )}
                           >
                             <div className="flex items-center gap-2">
                               {isExpanded ? <ChevronUp className="w-4 h-4 text-indigo-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -1181,7 +1428,12 @@ export function Dashboard() {
                         <div key={entityName} className="py-3 text-left border-b border-slate-100/10 dark:border-slate-850/50">
                           <div 
                             onClick={() => setExpandedGroups(prev => ({ ...prev, [entityName]: !isExpanded }))}
-                            className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-850/40 hover:bg-slate-100 dark:hover:bg-slate-850/80 cursor-pointer transition-colors"
+                            className={cn(
+                              "flex justify-between items-center p-3 rounded-xl cursor-pointer transition-colors border",
+                              isDark 
+                                ? "bg-slate-800/60 border-slate-700/60 hover:bg-slate-800" 
+                                : "bg-slate-50 border-slate-200/50 hover:bg-slate-100"
+                            )}
                           >
                             <div className="flex items-center gap-2">
                               {isExpanded ? <ChevronUp className="w-4 h-4 text-indigo-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -1260,6 +1512,22 @@ export function Dashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {noticeShareData && (
+        <NoticeShareModal
+          isOpen={!!noticeShareData}
+          onClose={() => setNoticeShareData(null)}
+          recipientName={noticeShareData.recipientName}
+          recipientPhone={noticeShareData.recipientPhone}
+          title={noticeShareData.title}
+          subtitle={noticeShareData.subtitle}
+          items={noticeShareData.items}
+          totalAmount={noticeShareData.totalAmount}
+          statusLabel={noticeShareData.statusLabel}
+          paymentInstructions={noticeShareData.paymentInstructions}
+          type={noticeShareData.type}
+        />
+      )}
     </div>
   );
 }

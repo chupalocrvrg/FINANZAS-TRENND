@@ -76,6 +76,7 @@ export interface DigitalServiceItem {
 export function DigitalServices() {
   const { user, settings } = useAuth();
   const [services, setServices] = useState<DigitalServiceItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [wallets, setWallets] = useState<WalletType[]>([]);
@@ -116,7 +117,7 @@ export function DigitalServices() {
         { label: 'Clave / Password', value: service.password || '-' },
         { label: 'PIN / Pantalla', value: service.pin || 'General' },
         { label: 'Fecha Vence', value: service.expirationDate || '-' },
-        { label: 'Proveedor', value: service.supplierName || 'Varios/Directo' }
+        { label: 'Valor PVP', value: formatCurrency(service.revenue || 0) }
       ],
       paymentMethod: service.revenueWalletId ? 'Billetera Digital' : 'Efectivo/Directo'
     };
@@ -584,6 +585,18 @@ export function DigitalServices() {
     window.open(url, '_blank');
   };
 
+  // Filter digital services lists dynamically
+  const filteredServices = services.filter(service => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (service.name?.toLowerCase().includes(term)) ||
+           (service.clientName?.toLowerCase().includes(term)) ||
+           (service.email?.toLowerCase().includes(term)) ||
+           (service.category?.toLowerCase().includes(term)) ||
+           (service.supplierName?.toLowerCase().includes(term)) ||
+           (service.clientContact?.toLowerCase().includes(term));
+  });
+
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
@@ -610,6 +623,27 @@ export function DigitalServices() {
         </div>
       </div>
 
+      {/* Centered Search Bar */}
+      <div className="flex justify-center w-full">
+        <div className="relative w-full max-w-xl">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+            <Search className="w-5 h-5 animate-pulse text-indigo-500" />
+          </span>
+          <input
+            type="text"
+            placeholder="🔍 Búsqueda general de suscripciones (por cuenta, cliente, correo)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={cn(
+              "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
+              isDark 
+                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+            )}
+          />
+        </div>
+      </div>
+
       {loading ? (
         <div className="py-32 flex flex-col items-center justify-center gap-4 text-slate-500">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
@@ -618,36 +652,36 @@ export function DigitalServices() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
           <AnimatePresence mode="popLayout">
-            {services.map((service) => {
-              const expiring = isExpiringSoon(service.expirationDate);
-              const expired = service.status === 'expired' || (service.expirationDate && new Date(service.expirationDate) < new Date());
-              
-              return (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  key={service.id}
-                  className={cn(
-                    "p-5 rounded-3xl border transition-all flex flex-col justify-between group relative overflow-hidden",
-                    expired 
-                      ? (isDark ? "bg-rose-950/10 border-rose-900/40" : "bg-rose-50/30 border-rose-100") 
-                      : expiring 
-                        ? (isDark ? "bg-amber-950/10 border-amber-900/40" : "bg-amber-50/30 border-amber-100")
-                        : (isDark ? "bg-slate-900 border-slate-800 hover:border-indigo-900/50" : "bg-white border-slate-100 shadow-sm hover:shadow-md")
-                  )}
-                >
-                  <div>
-                    {/* Header card info */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0", 
-                          expired ? "bg-rose-500/10 text-rose-500" :
-                          expiring ? "bg-amber-500/10 text-amber-500" :
-                          isDark ? "bg-slate-800 text-indigo-400" : "bg-indigo-50 text-indigo-600"
-                        )}>
-                          {service.category === 'Streaming' && <Tv className="w-5 h-5" />}
+            {filteredServices.map((service) => {
+                const expiring = isExpiringSoon(service.expirationDate);
+                const expired = service.status === 'expired' || (service.expirationDate && new Date(service.expirationDate) < new Date());
+                
+                return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    key={service.id}
+                    className={cn(
+                      "p-5 rounded-3xl border transition-all flex flex-col justify-between group relative overflow-hidden",
+                      expired 
+                        ? (isDark ? "bg-rose-950/10 border-rose-900/40" : "bg-rose-50/30 border-rose-100") 
+                        : expiring 
+                          ? (isDark ? "bg-amber-950/10 border-amber-900/40" : "bg-amber-50/30 border-amber-100")
+                          : (isDark ? "bg-slate-900 border-slate-800 hover:border-indigo-900/50" : "bg-white border-slate-100 shadow-sm hover:shadow-md")
+                    )}
+                  >
+                    <div>
+                      {/* Header card info */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0", 
+                            expired ? "bg-rose-500/10 text-rose-500" :
+                            expiring ? "bg-amber-500/10 text-amber-500" :
+                            isDark ? "bg-slate-800 text-indigo-400" : "bg-indigo-50 text-indigo-600"
+                          )}>
+                            {service.category === 'Streaming' && <Tv className="w-5 h-5" />}
                           {service.category === 'Música' && <Smartphone className="w-5 h-5" />}
                           {service.category === 'Gaming' && <Gamepad2 className="w-5 h-5" />}
                           {['Software', 'Otros'].includes(service.category) && <ShoppingBag className="w-5 h-5" />}

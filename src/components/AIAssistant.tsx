@@ -1497,7 +1497,7 @@ export function AIAssistant() {
         finalClientName: data.finalClientName,
         warehouse: data.warehouse,
         billingDate: new Date().toISOString().split('T')[0],
-        baseCost: 5.0,
+        baseCost: 0,
         chargedRate: data.chargedRate,
         isPaid: false,
         status: 'pending',

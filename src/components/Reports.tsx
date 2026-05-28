@@ -15,7 +15,8 @@ import {
   BarChart3,
   CheckCircle,
   Clock,
-  Briefcase
+  Briefcase,
+  Search
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import jsPDF from 'jspdf';
@@ -27,6 +28,7 @@ type ReportModule = 'consolidated' | 'services' | 'updates' | 'ledger';
 export function Reports() {
   const { user, settings } = useAuth();
   const isDark = settings?.theme === 'dark';
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Filters state
   const [module, setModule] = useState<ReportModule>('consolidated');
@@ -347,6 +349,24 @@ export function Reports() {
     doc.save(`Reporte_Financiero_${module}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  const filteredServicesData = servicesData.filter(s => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (s.name?.toLowerCase().includes(term) || s.clientName?.toLowerCase().includes(term) || s.category?.toLowerCase().includes(term));
+  });
+
+  const filteredUpdatesData = updatesData.filter(u => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (u.warehouse?.toLowerCase().includes(term) || u.finalClientName?.toLowerCase().includes(term) || u.intermediaryName?.toLowerCase().includes(term));
+  });
+
+  const filteredLedgerData = ledgerData.filter(l => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (l.category?.toLowerCase().includes(term) || l.description?.toLowerCase().includes(term));
+  });
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 lg:px-8 py-6">
       {/* Visual Header card */}
@@ -491,10 +511,31 @@ export function Reports() {
       </div>
 
       {/* Main consolidated matching table */}
-      <div className={cn("p-6 rounded-3xl border overflow-hidden text-left", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+      <div className={cn("p-6 rounded-3xl border overflow-hidden text-left space-y-4", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+        {/* Centered Search Bar */}
+        <div className="flex justify-center w-full">
+          <div className="relative w-full max-w-xl">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+              <Search className="w-5 h-5 animate-pulse text-indigo-500" />
+            </span>
+            <input
+              type="text"
+              placeholder="🔍 Búsqueda general en reportes (por concepto, cliente, correo o detalle)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={cn(
+                "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
+                isDark 
+                  ? "border-slate-850 bg-slate-950/45 text-white placeholder-slate-500 focus:bg-slate-950" 
+                  : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:bg-white"
+              )}
+            />
+          </div>
+        </div>
+
         <div className="flex justify-between items-center mb-4 border-b border-slate-100/10 pb-3">
           <span className="text-xs font-black uppercase tracking-widest text-sky-500">
-            Registros Filtrados ({metrics.totalRecords})
+            Registros Coincidentes (Totales: {filteredServicesData.length + filteredUpdatesData.length + filteredLedgerData.length})
           </span>
           {loading && <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
         </div>
@@ -515,13 +556,13 @@ export function Reports() {
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-400">Sincronizando información de bases de datos...</td>
                 </tr>
-              ) : metrics.totalRecords === 0 ? (
+              ) : (filteredServicesData.length + filteredUpdatesData.length + filteredLedgerData.length) === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">Ningún registro coincide con el rango seleccionado.</td>
+                  <td colSpan={5} className="py-8 text-center text-slate-400">Ningún registro coincide con la búsqueda o el rango seleccionado.</td>
                 </tr>
               ) : (
                 <>
-                  {module === 'consolidated' || module === 'services' ? servicesData.map(s => (
+                  {(module === 'consolidated' || module === 'services') ? filteredServicesData.map(s => (
                     <tr key={s.id} className="hover:bg-slate-500/5 transition-colors">
                       <td className="py-3 text-slate-400">Servicios Digitales</td>
                       <td className="py-3 font-bold">{s.name}</td>
@@ -535,7 +576,7 @@ export function Reports() {
                     </tr>
                   )) : null}
 
-                  {module === 'consolidated' || module === 'updates' ? updatesData.map(u => (
+                  {(module === 'consolidated' || module === 'updates') ? filteredUpdatesData.map(u => (
                     <tr key={u.id} className="hover:bg-slate-500/5 transition-colors">
                       <td className="py-3 text-slate-400">Actualización (ANT)</td>
                       <td className="py-3 font-bold">{u.warehouse || 'Oficina / Almacén'}</td>
@@ -549,7 +590,7 @@ export function Reports() {
                     </tr>
                   )) : null}
 
-                  {module === 'consolidated' || module === 'ledger' ? ledgerData.map(l => (
+                  {(module === 'consolidated' || module === 'ledger') ? filteredLedgerData.map(l => (
                     <tr key={l.id} className="hover:bg-slate-500/5 transition-colors">
                       <td className="py-3 text-slate-400">Tesorería (Libro)</td>
                       <td className="py-3 font-bold">{l.category}</td>

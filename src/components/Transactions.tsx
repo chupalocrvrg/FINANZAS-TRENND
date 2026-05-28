@@ -12,9 +12,12 @@ import {
   Trash2,
   Wallet,
   Edit2,
-  Receipt
+  Receipt,
+  Share2,
+  Search
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
+import { NoticeShareModal } from './NoticeShareModal';
 import { Transaction, Entity, Wallet as WalletType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -25,8 +28,10 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 export function Transactions() {
   const { user, settings } = useAuth();
   const [selectedIntermediary, setSelectedIntermediary] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [intermediaries, setIntermediaries] = useState<Entity[]>([]);
+  const [updaters, setUpdaters] = useState<Entity[]>([]);
   const [wallets, setWallets] = useState<WalletType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,12 +80,17 @@ export function Transactions() {
   const [formData, setFormData] = useState({
     id: '',
     intermediaryId: '',
+    updaterId: '',
     finalClientName: '',
     warehouse: '',
     isPaid: false
   });
 
   const isDark = settings?.theme === 'dark';
+
+  // Selection and Multi-Format Notification states
+  const [selectedTxIds, setSelectedTxIds] = useState<string[]>([]);
+  const [noticeShareData, setNoticeShareData] = useState<any | null>(null);
 
   // Voucher Modal States
   const [activeVoucher, setActiveVoucher] = useState<VoucherData | null>(null);
@@ -118,10 +128,12 @@ export function Transactions() {
   useEffect(() => {
     if (!user) return;
     
-    // Fetch Intermediaries
-    const qEnt = query(collection(db, 'entities'), where('ownerId', '==', user.uid), where('type', '==', 'intermediary'));
+    // Fetch Intermediaries and Updaters
+    const qEnt = query(collection(db, 'entities'), where('ownerId', '==', user.uid));
     const unsubEnt = onSnapshot(qEnt, (snapshot) => {
-      setIntermediaries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entity)));
+      const allEnts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entity));
+      setIntermediaries(allEnts.filter(e => e.type === 'intermediary'));
+      setUpdaters(allEnts.filter(e => e.type === 'supplier' && e.isAntUpdater));
     });
 
     // Fetch Transactions
@@ -194,6 +206,10 @@ export function Transactions() {
     
     const intermediaryId = formData.intermediaryId;
     const intermediaryName = inter?.name || 'Unknown';
+    const updaterId = formData.updaterId;
+    const updater = updaters.find(u => u.id === updaterId);
+    const updaterName = updater?.name || '';
+    const baseCost = updater?.antUpdateCost || 0;
     const finalClientName = formData.finalClientName;
     const warehouse = formData.warehouse;
     const chargedRate = inter?.rate || 0;
@@ -201,7 +217,7 @@ export function Transactions() {
     // Reset UI state immediately
     setIsModalOpen(false);
     const editingId = formData.id;
-    setFormData({ id: '', intermediaryId: '', finalClientName: '', warehouse: '', isPaid: false });
+    setFormData({ id: '', intermediaryId: '', updaterId: '', finalClientName: '', warehouse: '', isPaid: false });
     setIsSubmitting(false);
 
     try {
@@ -209,6 +225,9 @@ export function Transactions() {
         await updateDoc(doc(db, 'transactions', editingId), {
           intermediaryId,
           intermediaryName,
+          updaterId,
+          updaterName,
+          baseCost,
           finalClientName,
           warehouse,
           chargedRate,
@@ -219,10 +238,12 @@ export function Transactions() {
         await addDoc(collection(db, 'transactions'), {
           intermediaryId,
           intermediaryName,
+          updaterId,
+          updaterName,
           finalClientName,
           warehouse,
           billingDate: new Date().toISOString().split('T')[0],
-          baseCost: 5.0,
+          baseCost,
           chargedRate,
           isPaid: formData.isPaid,
           status: 'pending',
@@ -319,6 +340,79 @@ export function Transactions() {
     }
   };
 
+  const visibleTransactions = transactions.filter(tx => {
+    const matchesIntermediary = selectedIntermediary === 'all' || tx.intermediaryId === selectedIntermediary;
+    if (!matchesIntermediary) return false;
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (tx.finalClientName?.toLowerCase().includes(term)) ||
+           (tx.warehouse?.toLowerCase().includes(term)) ||
+           (tx.intermediaryName?.toLowerCase().includes(term)) ||
+           (tx.updaterName?.toLowerCase().includes(term));
+  });
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedTxIds(visibleTransactions.map(t => t.id));
+    } else {
+      setSelectedTxIds([]);
+    }
+  };
+
+  const handleSelectRow = (txId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedTxIds(prev => [...prev, txId]);
+    } else {
+      setSelectedTxIds(prev => prev.filter(id => id !== txId));
+    }
+  };
+
+  const handleBulkMarkRealized = async () => {
+    if (selectedTxIds.length === 0) return;
+    try {
+      const promises = selectedTxIds.map(id => 
+        updateDoc(doc(db, 'transactions', id), { 
+          status: 'realized', 
+          updatedAt: new Date().toISOString() 
+        })
+      );
+      await Promise.all(promises);
+      alert(`${selectedTxIds.length} actualizaciones en lote marcadas como REALIZADAS con éxito ✅.`);
+      setSelectedTxIds([]);
+    } catch (error) {
+      console.error(error);
+      alert("Ocurrió un error al procesar las actualizaciones.");
+    }
+  };
+
+  const handleBulkNotify = () => {
+    if (selectedTxIds.length === 0) return;
+    const selectedTxs = transactions.filter(tx => selectedTxIds.includes(tx.id));
+    
+    const firstTx = selectedTxs[0];
+    const interName = selectedTxs.every(x => x.intermediaryName === firstTx.intermediaryName) 
+      ? firstTx.intermediaryName 
+      : "Varios Intermediarios";
+    
+    const inter = intermediaries.find(i => i.name === interName || i.id === firstTx.intermediaryId);
+    
+    setNoticeShareData({
+      recipientName: interName,
+      recipientPhone: inter?.contact || '',
+      title: "Actualizaciones ANT Listas",
+      subtitle: `${selectedTxs.length} revisiones ANT realizadas exitosamente`,
+      items: selectedTxs.map(tx => ({
+        concept: `ANT: ${tx.finalClientName} (${tx.warehouse})`,
+        reference: `Tarifa: ${formatCurrency(tx.chargedRate)}`,
+        amount: tx.chargedRate || 0
+      })),
+      totalAmount: selectedTxs.reduce((sum, tx) => sum + (tx.chargedRate || 0), 0),
+      statusLabel: "REALIZADO",
+      paymentInstructions: "Confirmamos la realización de tus trámites ANT en lote. ¡Gracias por preferirnos!",
+      type: "realized_update"
+    });
+  };
+
   const handleDelete = (id: string) => {
     triggerConfirm(
       "¿Eliminar actualización?",
@@ -340,7 +434,7 @@ export function Transactions() {
         </div>
         <button 
           onClick={() => {
-            setFormData({ id: '', intermediaryId: '', finalClientName: '', warehouse: '', isPaid: false });
+            setFormData({ id: '', intermediaryId: '', updaterId: '', finalClientName: '', warehouse: '', isPaid: false });
             setIsModalOpen(true);
           }}
           className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95"
@@ -348,6 +442,27 @@ export function Transactions() {
           <Plus className="w-5 h-5" />
           Nueva Actualización
         </button>
+      </div>
+
+      {/* Centered Search Bar */}
+      <div className="flex justify-center w-full">
+        <div className="relative w-full max-w-xl">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+            <Search className="w-5 h-5 animate-pulse text-indigo-500" />
+          </span>
+          <input
+            type="text"
+            placeholder="🔍 Búsqueda general de trámites (por cliente, bodega, intermediario o proveedor)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={cn(
+              "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
+              isDark 
+                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+            )}
+          />
+        </div>
       </div>
 
       <div className={cn("rounded-3xl border shadow-sm overflow-hidden", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
@@ -373,10 +488,58 @@ export function Transactions() {
           </button>
         </div>
 
+        {selectedTxIds.length > 0 && (
+          <div className={cn(
+            "p-4 px-6 border-b flex flex-col sm:flex-row justify-between items-center gap-4 transition-all animate-fadeIn",
+            isDark ? "bg-slate-950/60 border-slate-850" : "bg-indigo-50/50 border-indigo-105"
+          )}>
+            <div className="flex items-center gap-3">
+              <span className={cn("text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full", isDark ? "bg-slate-800 text-slate-300" : "bg-indigo-100 text-indigo-700")}>
+                {selectedTxIds.length} Seleccionados
+              </span>
+              <p className="text-xs text-slate-400 dark:text-slate-350 font-bold">Trámites ANT para operaciones en lote</p>
+            </div>
+            
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button 
+                onClick={handleBulkMarkRealized}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-md cursor-pointer"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Marcar Realizados
+              </button>
+
+              <button 
+                onClick={handleBulkNotify}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-md cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                Notificar Lote (Vía PDF/PNG/TXT)
+              </button>
+
+              <button 
+                onClick={() => setSelectedTxIds([])}
+                className="p-2 text-slate-400 hover:text-rose-500 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer transition-colors"
+                title="Limpiar Selección"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto overflow-y-hidden">
           <table className="w-full text-left min-w-[700px]">
             <thead>
               <tr className={cn("text-[10px] font-black uppercase tracking-widest border-b text-left", isDark ? "bg-slate-800/50 text-slate-500 border-slate-800" : "bg-slate-100 text-slate-400 border-slate-100")}>
+                <th className="px-4 py-4 text-center w-12">
+                  <input 
+                    type="checkbox"
+                    className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4"
+                    checked={visibleTransactions.length > 0 && selectedTxIds.length === visibleTransactions.length}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                </th>
                 <th className="px-6 lg:px-8 py-4">Referencia / Origen</th>
                 <th className="px-6 lg:px-8 py-4">Intermediario</th>
                 <th className="px-6 lg:px-8 py-4">Fecha</th>
@@ -389,12 +552,22 @@ export function Transactions() {
             <tbody className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">Cargando transacciones...</td>
+                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">Cargando transacciones...</td>
                 </tr>
-              ) : transactions
-                .filter(tx => selectedIntermediary === 'all' || tx.intermediaryId === selectedIntermediary)
-                .map((tx) => (
-                <tr key={tx.id} className={cn("hover:bg-slate-50/30 transition-colors group", isDark ? "hover:bg-slate-800/20 text-slate-400" : "text-slate-700")}>
+              ) : visibleTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">No hay registros para este filtro</td>
+                </tr>
+              ) : visibleTransactions.map((tx) => (
+                <tr key={tx.id} className={cn("hover:bg-slate-50/30 transition-colors group", isDark ? "hover:bg-slate-800/20 text-slate-400" : "text-slate-700", selectedTxIds.includes(tx.id) && (isDark ? "bg-slate-850" : "bg-indigo-50/30"))}>
+                  <td className="px-4 py-4 text-center w-12">
+                    <input 
+                      type="checkbox"
+                      className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4"
+                      checked={selectedTxIds.includes(tx.id)}
+                      onChange={(e) => handleSelectRow(tx.id, e.target.checked)}
+                    />
+                  </td>
                   <td className="px-6 lg:px-8 py-4">
                     <div className="flex flex-col">
                       <span className={cn("font-bold tracking-tight", isDark ? "text-slate-200" : "text-slate-800")}>{tx.finalClientName}</span>
@@ -402,9 +575,16 @@ export function Transactions() {
                     </div>
                   </td>
                   <td className="px-6 lg:px-8 py-4">
-                    <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", isDark ? "bg-slate-800 text-slate-400 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200")}>
-                      {tx.intermediaryName}
-                    </span>
+                    <div className="flex flex-col gap-1.5 items-start">
+                      <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", isDark ? "bg-slate-800 text-slate-400 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200")}>
+                        Vend: {tx.intermediaryName}
+                      </span>
+                      {tx.updaterName && (
+                        <span className={cn("px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border", isDark ? "bg-indigo-900/30 text-indigo-400 border-indigo-800/50" : "bg-indigo-50 text-indigo-600 border-indigo-100")}>
+                          Prov: {tx.updaterName} ({formatCurrency(tx.baseCost)})
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 lg:px-8 py-4 font-mono text-xs font-bold tracking-tighter text-slate-500">{tx.billingDate}</td>
                   <td className={cn("px-6 lg:px-8 py-4 text-right font-mono font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
@@ -470,6 +650,7 @@ export function Transactions() {
                           setFormData({
                             id: tx.id,
                             intermediaryId: tx.intermediaryId,
+                            updaterId: tx.updaterId || '',
                             finalClientName: tx.finalClientName,
                             warehouse: tx.warehouse,
                             isPaid: tx.isPaid
@@ -530,24 +711,37 @@ export function Transactions() {
                 </h3>
                 <button onClick={() => {
                   setIsModalOpen(false);
-                  setFormData({ id: '', intermediaryId: '', finalClientName: '', warehouse: '', isPaid: false });
+                  setFormData({ id: '', intermediaryId: '', updaterId: '', finalClientName: '', warehouse: '', isPaid: false });
                 }} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <X />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Intermediario</label>
-                  <select 
-                    required
-                    value={formData.intermediaryId}
-                    onChange={(e) => setFormData({...formData, intermediaryId: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
-                  >
-                    <option value="">Seleccione Intermediario...</option>
-                    {intermediaries.map(i => <option key={i.id} value={i.id}>{i.name} (${i.rate})</option>)}
-                  </select>
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Intermediario (Distribuidor)</label>
+                    <select 
+                      required
+                      value={formData.intermediaryId}
+                      onChange={(e) => setFormData({...formData, intermediaryId: e.target.value})}
+                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                    >
+                      <option value="">Seleccione Intermediario...</option>
+                      {intermediaries.map(i => <option key={i.id} value={i.id}>{i.name} (${i.rate})</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1">Actualizador ANT (Proveedor)</label>
+                    <select 
+                      value={formData.updaterId}
+                      onChange={(e) => setFormData({...formData, updaterId: e.target.value})}
+                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-indigo-900/20 border-indigo-800/30 text-indigo-100" : "bg-indigo-50/50 border-indigo-100 focus:bg-indigo-50")}
+                    >
+                      <option value="">Ninguno ($0.00)</option>
+                      {updaters.map(u => <option key={u.id} value={u.id}>{u.name} (Cobra ${u.antUpdateCost || 0})</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Nombre del Cliente Final</label>
@@ -687,6 +881,22 @@ export function Transactions() {
         onClose={() => setIsVoucherModalOpen(false)} 
         voucher={activeVoucher} 
       />
+
+      {noticeShareData && (
+        <NoticeShareModal
+          isOpen={!!noticeShareData}
+          onClose={() => setNoticeShareData(null)}
+          recipientName={noticeShareData.recipientName}
+          recipientPhone={noticeShareData.recipientPhone}
+          title={noticeShareData.title}
+          subtitle={noticeShareData.subtitle}
+          items={noticeShareData.items}
+          totalAmount={noticeShareData.totalAmount}
+          statusLabel={noticeShareData.statusLabel}
+          paymentInstructions={noticeShareData.paymentInstructions}
+          type={noticeShareData.type}
+        />
+      )}
     </div>
   );
 }

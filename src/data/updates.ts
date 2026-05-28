@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_4_0_0_unified_statements_batch_operations_and_sidebar_refinement",
+    version: "V4.0.0",
+    title: "V4.0.0 • Sistema de Notificaciones Multi-Canal (PDF/PNG/TXT), Comprobación Masiva de Trámites y Refinamiento Estético",
+    date: "28-Mayo-2026, 09:55:00",
+    description: "Gran evolución estructural: Integración de la pasarela de avisos en tres formatos (Texto plano, Imagen HD y Reporte PDF formal) para deudas individuales y grupales. Activación de casillas de verificación en Trámites ANT para marcados masivos en lote y descargas unificadas de liquidación. Generación automática de vales y recibos digitales tras abonos parciales o liquidaciones. Refinamiento estético eliminando bloques redundantes del dashboard, remoción del cuadrado flotante en Sidebar y corrección de contraste en el protocolo oscuro.",
+    type: "feature"
+  },
+  {
     id: "v_3_1_0_universal_excel_backups_and_cascading_privacy",
     version: "V3.1.0",
     title: "Módulo Excel Universal, Pestañas en Cascada y Purga Integrada en Privacidad",

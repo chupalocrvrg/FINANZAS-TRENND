@@ -10,6 +10,7 @@ import {
   Trash2,
   XCircle
 } from 'lucide-react';
+import { NoticeShareModal } from './NoticeShareModal';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
@@ -32,6 +33,7 @@ export function Alerts() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'expiration' | 'receivable'>('all');
   const [alerts, setAlerts] = useState<RealAlertItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noticeShareData, setNoticeShareData] = useState<any | null>(null);
   const isDark = settings?.theme === 'dark';
 
   useEffect(() => {
@@ -260,16 +262,28 @@ export function Alerts() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      const text = alert.type === 'expiration' 
-                        ? `Hola ${alert.customer}, te recordamos que tu servicio de ${alert.item} venció/vence el ${alert.date}. Valor de renovación: ${formatCurrency(alert.amount || 0)}. Confírmanos si deseas conservarlo.`
-                        : `Hola ${alert.customer}, cordial saludo. Tenemos pendiente de pago tu trámite de ${alert.item} por valor de ${formatCurrency(alert.amount || 0)}. Favor ayudarnos con el depósito para regularizar.`;
-                      
                       const cleanPhone = alert.contact.replace(/\D/g, '');
                       if (!cleanPhone) {
                         window.alert("No hay teléfono de WhatsApp válido guardado para este cliente. Por favor regístrelo en CRM o en el Servicio Digital para automatizar.");
                         return;
                       }
-                      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
+
+                      const amt = alert.amount || 0;
+                      setNoticeShareData({
+                        recipientName: alert.customer,
+                        recipientPhone: alert.contact,
+                        title: alert.type === 'expiration' ? "Aviso de Vencimiento de Suscripción" : "Notificación de Pago de Trámite",
+                        subtitle: alert.type === 'expiration' ? `Renovación de Servicio: ${alert.item}` : `Regulación de Trámite ANT: ${alert.item}`,
+                        items: [{
+                          concept: alert.item,
+                          reference: alert.date ? `Vence: ${alert.date}` : undefined,
+                          amount: amt
+                        }],
+                        totalAmount: amt,
+                        statusLabel: alert.type === 'expiration' ? "EXPIRA PRONTO" : "VENCIDO / MOROSO",
+                        paymentInstructions: alert.type === 'expiration' ? "Confírmanos si deseas conservar tu servicio de manera ininterrumpida." : "Por favor ayúdanos con el depósito para regularizar tus trámites.",
+                        type: alert.type === 'expiration' ? 'payable' : 'receivable'
+                      });
                     }}
                     className="bg-emerald-500 text-white px-4 py-2.5 rounded-2xl hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                   >
@@ -285,6 +299,22 @@ export function Alerts() {
             )}
           </AnimatePresence>
         </div>
+      )}
+
+      {noticeShareData && (
+        <NoticeShareModal
+          isOpen={!!noticeShareData}
+          onClose={() => setNoticeShareData(null)}
+          recipientName={noticeShareData.recipientName}
+          recipientPhone={noticeShareData.recipientPhone}
+          title={noticeShareData.title}
+          subtitle={noticeShareData.subtitle}
+          items={noticeShareData.items}
+          totalAmount={noticeShareData.totalAmount}
+          statusLabel={noticeShareData.statusLabel}
+          paymentInstructions={noticeShareData.paymentInstructions}
+          type={noticeShareData.type}
+        />
       )}
     </div>
   );

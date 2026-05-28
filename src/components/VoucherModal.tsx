@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Share2, FileText, Image as ImageIcon, Send, Copy, Check } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
+import { SYSTEM_UPDATES } from '../data/updates';
 import jsPDF from 'jspdf';
 
 export interface VoucherDetail {
@@ -149,9 +150,13 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     ctx.lineWidth = 1;
     ctx.strokeRect(35, currentY - 15, 330, 45);
 
+    const isDigital = v.subtitle?.toLowerCase().includes('digital') || 
+                      v.subtitle?.toLowerCase().includes('suscripción') || 
+                      v.title.toLowerCase().includes('venta:');
+
     ctx.fillStyle = '#475569';
     ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('TOTAL TRANSACCIÓN', 50, currentY + 12);
+    ctx.fillText(isDigital ? 'VALOR PVP' : 'TOTAL TRANSACCIÓN', 50, currentY + 12);
 
     ctx.fillStyle = v.status === 'paid' ? '#10b981' : '#f59e0b';
     ctx.font = 'bold 18px monospace';
@@ -182,15 +187,30 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     ctx.fillText('¡Gracias por su confianza! Sistema de Control de Caja.', 200, currentY + 45);
   };
 
+  const isDigitalService = voucher ? (voucher.subtitle?.toLowerCase().includes('digital') || 
+                                      voucher.subtitle?.toLowerCase().includes('suscripción') || 
+                                      voucher.title.toLowerCase().includes('venta:')) : false;
+
+  const filteredDetails = voucher && isDigitalService 
+    ? voucher.details.filter(d => {
+        const labelLower = d.label.toLowerCase();
+        const forbiddenWords = ['proveedor', 'ganancia', 'utilidad', 'costo', 'cost', 'supplier', 'profit', 'markup', 'provider', 'basecost', 'net'];
+        return !forbiddenWords.some(word => labelLower.includes(word));
+      })
+    : voucher?.details || [];
+
   useEffect(() => {
     if (isOpen && voucher && canvasRef.current) {
       setTimeout(() => {
         if (canvasRef.current) {
-          drawVoucherToCanvas(canvasRef.current, voucher);
+          drawVoucherToCanvas(canvasRef.current, {
+            ...voucher,
+            details: filteredDetails
+          });
         }
       }, 100);
     }
-  }, [isOpen, voucher]);
+  }, [isOpen, voucher, filteredDetails]);
 
   if (!voucher) return null;
 
@@ -213,6 +233,9 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     });
 
     const isPaid = voucher.status === 'paid';
+    const isDigital = voucher.subtitle?.toLowerCase().includes('digital') || 
+                      voucher.subtitle?.toLowerCase().includes('suscripción') || 
+                      voucher.title.toLowerCase().includes('venta:');
     
     // Aesthetic Ticket Border
     doc.setDrawColor(isPaid ? 16 : 244, isPaid ? 185 : 63, isPaid ? 129 : 94);
@@ -272,7 +295,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     writeField('Fecha', voucher.date);
     writeField('Cliente', voucher.clientName);
 
-    voucher.details.forEach(det => {
+    filteredDetails.forEach(det => {
       if (y < 120) {
         writeField(det.label, det.value);
       }
@@ -292,7 +315,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     doc.setTextColor(71, 85, 105);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8);
-    doc.text('TOTAL TRANSACCIÓN', 14, y + 7.5);
+    doc.text(isDigital ? 'VALOR PVP' : 'TOTAL TRANSACCIÓN', 14, y + 7.5);
 
     doc.setTextColor(isPaid ? 16 : 245, isPaid ? 185 : 158, isPaid ? 129 : 11);
     doc.setFont('Courier', 'bold');
@@ -312,8 +335,8 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
 
   // Prepares the WhatsApp content message
   const handleShareWhatsApp = () => {
-    const detailsTxt = voucher.details.map(d => `*${d.label}:* ${d.value}`).join('\n');
-    const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*Monto Total:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!`;
+    const detailsTxt = filteredDetails.map(d => `*${d.label}:* ${d.value}`).join('\n');
+    const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*${isDigitalService ? 'Valor PVP' : 'Monto Total'}:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!`;
     const encoded = encodeURIComponent(text);
     
     // Direct popup link to WA
@@ -323,8 +346,8 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
 
   // Copy text support
   const handleCopyText = () => {
-    const detailsTxt = voucher.details.map(d => `${d.label}: ${d.value}`).join('\n');
-    const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\nMonto Total: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}`;
+    const detailsTxt = filteredDetails.map(d => `${d.label}: ${d.value}`).join('\n');
+    const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n${isDigitalService ? 'Valor PVP' : 'Monto Total'}: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -392,7 +415,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
                 <div className={cn("p-4 rounded-2xl border text-xs space-y-1 bg-slate-50 dark:bg-slate-950/20", isDark ? "border-slate-800" : "border-slate-100")}>
                   <div className="flex justify-between font-bold"><span className="text-slate-450">Cliente:</span> <span className={isDark ? "text-slate-100" : "text-slate-800"}>{voucher.clientName}</span></div>
                   <div className="flex justify-between font-bold"><span className="text-slate-450">Servicio:</span> <span className="text-indigo-500 font-black">{voucher.title}</span></div>
-                  <div className="flex justify-between font-bold"><span className="text-slate-450">Total:</span> <span className="font-mono text-indigo-500 font-extrabold">{formatCurrency(voucher.amount)}</span></div>
+                  <div className="flex justify-between font-bold"><span className="text-slate-450">{isDigitalService ? 'Valor PVP:' : 'Total:'}</span> <span className="font-mono text-indigo-500 font-extrabold">{formatCurrency(voucher.amount)}</span></div>
                 </div>
               </div>
 
@@ -439,7 +462,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
               </div>
               
               <div className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider">
-                V3.0.5 • Control Digital
+                {SYSTEM_UPDATES[0]?.version || 'V4.0.0'} • Control Digital
               </div>
             </div>
           </motion.div>

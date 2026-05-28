@@ -73,8 +73,8 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         <div>
           <div className="flex items-center justify-between mb-8 border-b border-slate-800/50 pb-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center">
-                <div className="w-4 h-4 border-2 border-white"></div>
+              <div className="w-8 h-8 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <Activity className="w-4 h-4 text-white" />
               </div>
               <div className="overflow-hidden">
                 <h1 className="font-extrabold text-white text-base tracking-tighter uppercase whitespace-nowrap truncate">

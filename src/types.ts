@@ -14,6 +14,8 @@ export interface Entity {
   type: EntityType;
   contact?: string;
   rate?: number; // Fixed per-update rate for intermediaries
+  isAntUpdater?: boolean; // For suppliers
+  antUpdateCost?: number; // Cost per update for this provider
   createdAt: string;
 }
 
@@ -55,7 +57,9 @@ export interface Transaction {
   finalClientName: string;
   warehouse: string; // Almacén
   billingDate: string;
-  baseCost: number; // default $5.00
+  baseCost: number; // dynamically assigned based on Updater, default 0 if none
+  updaterId?: string; // Provider ID
+  updaterName?: string;
   chargedRate: number; // from intermediary.rate
   isPaid: boolean;
   status: 'pending' | 'realized';

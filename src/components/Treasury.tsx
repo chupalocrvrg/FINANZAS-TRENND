@@ -14,7 +14,8 @@ import {
   Loader2,
   Trash2,
   Edit2,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Search
 } from 'lucide-react';
 import { LedgerType, Wallet, LedgerEntry } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
@@ -28,6 +29,7 @@ export function Treasury() {
   const [activeType, setActiveType] = useState<LedgerType>('business');
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
@@ -313,7 +315,15 @@ export function Treasury() {
     );
   };
 
-  const filteredLedger = ledger.filter(l => l.type === activeType);
+  const filteredLedger = ledger.filter(l => {
+    const matchesType = l.type === activeType;
+    if (!matchesType) return false;
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (l.category?.toLowerCase().includes(term)) || 
+           (l.description?.toLowerCase().includes(term)) || 
+           (l.amount?.toString().includes(term));
+  });
 
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
@@ -345,6 +355,27 @@ export function Treasury() {
             <User className="w-4 h-4" />
             Personal
           </button>
+        </div>
+      </div>
+
+      {/* Centered Search Bar */}
+      <div className="flex justify-center w-full">
+        <div className="relative w-full max-w-xl">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+            <Search className="w-5 h-5 animate-pulse text-indigo-500" />
+          </span>
+          <input
+            type="text"
+            placeholder="🔍 Búsqueda general de transacciones de tesorería (por categoría, descripción, monto)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={cn(
+              "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
+              isDark 
+                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+            )}
+          />
         </div>
       </div>
 

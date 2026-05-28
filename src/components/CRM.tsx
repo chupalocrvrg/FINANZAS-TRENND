@@ -11,7 +11,8 @@ import {
   ExternalLink,
   X,
   Save,
-  Loader2
+  Loader2,
+  Search
 } from 'lucide-react';
 import { Entity, EntityType } from '../types';
 import { formatCurrency, generateWhatsAppUrl, cn } from '../lib/utils';
@@ -27,6 +28,7 @@ export function CRM() {
   const [activeTab, setActiveTab] = useState<EntityType>('client');
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
@@ -57,6 +59,8 @@ export function CRM() {
     name: '',
     contact: '',
     rate: '0',
+    isAntUpdater: false,
+    antUpdateCost: '0',
   });
 
   const isDark = settings?.theme === 'dark';
@@ -72,7 +76,14 @@ export function CRM() {
     return () => unsubscribe();
   }, [user]);
 
-  const filteredEntities = entities.filter(e => e.type === activeTab);
+  const filteredEntities = entities.filter(e => {
+    const matchesTab = e.type === activeTab;
+    if (!matchesTab) return false;
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (e.name?.toLowerCase().includes(term)) || 
+           (e.contact?.toLowerCase().includes(term));
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,13 +93,15 @@ export function CRM() {
     const name = formData.name;
     const contact = formData.contact;
     const rate = activeTab === 'intermediary' ? parseFloat(formData.rate) : 0;
+    const isAntUpdater = activeTab === 'supplier' ? formData.isAntUpdater : false;
+    const antUpdateCost = (activeTab === 'supplier' && isAntUpdater) ? parseFloat(formData.antUpdateCost) : 0;
     const isEditing = !!editingEntity;
     const editingId = editingEntity?.id;
 
     // Reset UI state immediately
     setIsModalOpen(false);
     setEditingEntity(null);
-    setFormData({ name: '', contact: '', rate: '0' });
+    setFormData({ name: '', contact: '', rate: '0', isAntUpdater: false, antUpdateCost: '0' });
     setIsSubmitting(false);
 
     try {
@@ -97,6 +110,8 @@ export function CRM() {
           name,
           contact,
           rate,
+          isAntUpdater,
+          antUpdateCost,
         }).catch(err => console.error("Error updates:", err));
       } else {
         addDoc(collection(db, 'entities'), {
@@ -104,6 +119,8 @@ export function CRM() {
           contact,
           type: activeTab,
           rate,
+          isAntUpdater,
+          antUpdateCost,
           ownerId: user.uid,
           createdAt: new Date().toISOString()
         }).catch(err => console.error("Error creating:", err));
@@ -120,6 +137,8 @@ export function CRM() {
       name: entity.name,
       contact: entity.contact || '',
       rate: entity.rate?.toString() || '0',
+      isAntUpdater: entity.isAntUpdater || false,
+      antUpdateCost: entity.antUpdateCost?.toString() || '0',
     });
     setIsModalOpen(true);
   };
@@ -151,7 +170,7 @@ export function CRM() {
         <button 
           onClick={() => {
             setEditingEntity(null);
-            setFormData({ name: '', contact: '', rate: '0' });
+            setFormData({ name: '', contact: '', rate: '0', isAntUpdater: false, antUpdateCost: '0' });
             setIsModalOpen(true);
           }}
           className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95"
@@ -159,6 +178,27 @@ export function CRM() {
           <Plus className="w-5 h-5" />
           {t('crm.add_client', 'Añadir Entidad')}
         </button>
+      </div>
+
+      {/* Centered Search Bar */}
+      <div className="flex justify-center w-full">
+        <div className="relative w-full max-w-xl">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+            <Search className="w-5 h-5 animate-pulse text-indigo-500" />
+          </span>
+          <input
+            type="text"
+            placeholder="🔍 Búsqueda general en CRM (por nombre o contacto)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={cn(
+              "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
+              isDark 
+                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+            )}
+          />
+        </div>
       </div>
 
       <div className={cn("flex flex-wrap gap-2 p-1 rounded-2xl w-fit", isDark ? "bg-slate-900 border border-slate-800" : "bg-slate-100")}>
@@ -221,6 +261,12 @@ export function CRM() {
                   <div className={cn("flex items-center justify-between p-4 rounded-lg border mb-6 font-bold tracking-tight", isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50 border-slate-100")}>
                     <span className="text-slate-500 text-[10px] uppercase tracking-widest">Tasa de Actualización</span>
                     <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-slate-900")}>{formatCurrency(entity.rate || 0)}</span>
+                  </div>
+                )}
+                {entity.type === 'supplier' && entity.isAntUpdater && (
+                  <div className={cn("flex items-center justify-between p-4 rounded-lg border mb-6 font-bold tracking-tight", isDark ? "bg-indigo-900/20 border-indigo-800/30" : "bg-indigo-50 border-indigo-100")}>
+                    <span className="text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-widest">Actualizador ANT (Costo)</span>
+                    <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-indigo-900")}>{formatCurrency(entity.antUpdateCost || 0)}</span>
                   </div>
                 )}
 
@@ -318,6 +364,32 @@ export function CRM() {
                       onChange={(e) => setFormData({...formData, rate: e.target.value})}
                       className={cn("w-full p-4 rounded-xl border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-700" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500 shadow-inner")}
                     />
+                  </div>
+                )}
+                {activeTab === 'supplier' && (
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border text-sm font-bold transition-all outline-none hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <input
+                        type="checkbox"
+                        checked={formData.isAntUpdater}
+                        onChange={(e) => setFormData({...formData, isAntUpdater: e.target.checked})}
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Es un Actualizador ANT</span>
+                    </label>
+                    
+                    {formData.isAntUpdater && (
+                      <div className="space-y-1.5 p-4 rounded-xl border bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-800/30">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 px-1">Costo por Actualización (USD) cobrado por este Proveedor</label>
+                        <input 
+                          type="number"
+                          step="0.01"
+                          value={formData.antUpdateCost}
+                          onChange={(e) => setFormData({...formData, antUpdateCost: e.target.value})}
+                          className={cn("w-full p-3 rounded-lg border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-indigo-500/20 text-white focus:bg-slate-700" : "bg-white border-indigo-200 focus:border-indigo-500")}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
