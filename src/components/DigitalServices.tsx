@@ -864,44 +864,49 @@ export function DigitalServices() {
                     </div>
 
                     {/* Quick Core Actions row */}
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <button 
-                        onClick={() => handleEdit(service)}
-                        title="Editar suscripción"
-                        className={cn("flex-1 p-2 border rounded-xl hover:bg-slate-50 transition-colors flex justify-center text-slate-500 hover:text-indigo-600 cursor-pointer", isDark ? "border-slate-800 hover:bg-slate-800/40" : "border-slate-200 bg-white shadow-xs")}
-                      >
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Editar</span>
-                      </button>
-                      <button 
-                        onClick={() => handleRenewService(service)}
-                        title="Extender 30 días adicionales de renovación"
-                        className="flex-1 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex justify-center cursor-pointer shadow-sm text-[10px] font-bold uppercase tracking-widest"
-                      >
-                        Renovar
-                      </button>
-                      {service.clientContact && (
+                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-800/10 mt-3">
+                      <div className="flex items-center gap-1.5">
                         <button 
-                          onClick={(e) => handleWhatsAppAlert(service, e)}
-                          title="Enviar cobro por WhatsApp"
-                          className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-colors flex items-center justify-center cursor-pointer shadow-sm"
+                          onClick={() => handleEdit(service)}
+                          title="Editar suscripción"
+                          className={cn("flex-1 p-2 border rounded-xl hover:bg-slate-50 transition-colors flex justify-center text-slate-500 hover:text-indigo-600 cursor-pointer", isDark ? "border-slate-800 hover:bg-slate-800/40" : "border-slate-200 bg-white shadow-xs")}
                         >
-                          <MessageCircle className="w-4 h-4" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Editar</span>
                         </button>
-                      )}
-                      <button 
-                        onClick={() => handleOpenVoucher(service)}
-                        title="Emitir Comprobante"
-                        className="p-2 border border-indigo-200 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl transition-all cursor-pointer"
-                      >
-                        <Receipt className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={(e) => handleDelete(service.id, e)}
-                        title="Eliminar registro"
-                        className="p-2 border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <button 
+                          onClick={() => handleRenewService(service)}
+                          title="Extender 30 días adicionales de renovación"
+                          className="flex-1 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex justify-center cursor-pointer shadow-sm text-[10px] font-bold uppercase tracking-widest"
+                        >
+                          Renovar
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {service.clientContact && (
+                          <button 
+                            onClick={(e) => handleWhatsAppAlert(service, e)}
+                            title="Enviar cobro por WhatsApp"
+                            className="p-2 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-colors flex items-center justify-center cursor-pointer shadow-sm"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => handleOpenVoucher(service)}
+                          title="Emitir Comprobante"
+                          className="p-2 py-2.5 border border-indigo-200 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl transition-all cursor-pointer"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => handleDelete(service.id, e)}
+                          title="Eliminar suscripción"
+                          className="flex-1 py-1.5 px-3 border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Eliminar Suscripción</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

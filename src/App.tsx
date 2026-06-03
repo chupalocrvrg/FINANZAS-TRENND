@@ -347,7 +347,10 @@ export default function App() {
                 
                 <AnimatePresence>
                   {isNotificationsOpen && (
-                    <NotificationsPopover onClose={() => setIsNotificationsOpen(false)} />
+                    <NotificationsPopover 
+                      onClose={() => setIsNotificationsOpen(false)} 
+                      onNavigate={(tab) => setActiveTab(tab)}
+                    />
                   )}
                 </AnimatePresence>
               </div>

@@ -8,6 +8,7 @@ import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 
 
 interface NotificationsPopoverProps {
   onClose: () => void;
+  onNavigate: (tab: string) => void;
 }
 
 interface RealNotifItem {
@@ -21,7 +22,7 @@ interface RealNotifItem {
   contact: string;
 }
 
-export function NotificationsPopover({ onClose }: NotificationsPopoverProps) {
+export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopoverProps) {
   const { user, settings } = useAuth();
   const [alerts, setAlerts] = useState<RealNotifItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +149,15 @@ export function NotificationsPopover({ onClose }: NotificationsPopoverProps) {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  const handleItemClick = (alert: RealNotifItem) => {
+    if (alert.type === 'expiration') {
+      onNavigate('services');
+    } else if (alert.type === 'receivable') {
+      onNavigate('alerts');
+    }
+    onClose();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -181,8 +191,9 @@ export function NotificationsPopover({ onClose }: NotificationsPopoverProps) {
           alerts.map((alert) => (
             <div 
               key={alert.id} 
+              onClick={() => handleItemClick(alert)}
               className={cn(
-                "p-4 hover:bg-indigo-500/5 transition-colors group/item relative text-left",
+                "p-4 hover:bg-indigo-500/5 transition-colors group/item relative text-left cursor-pointer",
                 isDark ? "hover:bg-slate-800/50" : "hover:bg-slate-50/50"
               )}
             >

@@ -48,7 +48,7 @@ service cloud.firestore {
              data.keys().size() <= 8 &&
              data.ownerId == request.auth.uid &&
              data.name is string && data.name.size() <= 100 &&
-             data.type in ['client', 'intermediary', 'supplier'] &&
+             data.type in ['client', 'reseller', 'intermediary', 'supplier'] &&
              (!('contact' in data) || (data.contact is string && data.contact.size() <= 150)) &&
              (!('rate' in data) || data.rate is number);
     }
