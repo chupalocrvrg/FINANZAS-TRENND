@@ -1719,7 +1719,7 @@ export function Dashboard() {
       )}
 
       {/* BOTÓN FLOTANTE REGISTRO RÁPIDO */}
-      <div className="fixed bottom-6 right-24 z-40 flex flex-col items-end">
+      <div className="fixed bottom-20 lg:bottom-8 right-24 lg:right-28 z-40 flex flex-col items-end">
         <AnimatePresence>
           {isFabOpen && (
             <motion.div

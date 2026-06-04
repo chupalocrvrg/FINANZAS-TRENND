@@ -1863,7 +1863,7 @@ export function AIAssistant() {
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 w-14 h-14 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 hover:scale-105 transition-transform z-40 cursor-pointer"
+        className="fixed bottom-20 lg:bottom-8 right-6 lg:right-8 w-14 h-14 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 hover:scale-105 transition-transform z-40 cursor-pointer"
       >
         <Sparkles className="w-6 h-6" />
       </button>
@@ -1875,7 +1875,7 @@ export function AIAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             className={cn(
-              "fixed bottom-24 right-4 lg:bottom-28 lg:right-8 w-[calc(100vw-32px)] lg:w-98 h-[570px] max-h-[80vh] rounded-2xl flex flex-col shadow-2xl border z-50 overflow-hidden transition-all duration-300",
+              "fixed bottom-36 lg:bottom-28 right-4 lg:right-8 w-[calc(100vw-32px)] lg:w-98 h-[570px] max-h-[70vh] lg:max-h-[80vh] rounded-2xl flex flex-col shadow-2xl border z-50 overflow-hidden transition-all duration-300",
               isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
             )}
           >
