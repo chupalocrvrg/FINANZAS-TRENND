@@ -239,7 +239,12 @@ export function DigitalServices() {
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
         // Deletes if expired and more than 3 waiting days elapsed (meaning diffDays > 3)
-        return diffDays > 3;
+        // EXCLUSION: If the subscription has pending accounts receivable (isPaid === false)
+        // or pending accounts payable (isCostPaid === false), preserve it to avoid deleting debt logs.
+        const isPendingReceivable = service.isPaid === false;
+        const isPendingPayable = service.isCostPaid === false;
+
+        return diffDays > 3 && !isPendingReceivable && !isPendingPayable;
       });
 
       if (toDelete.length === 0) return;
