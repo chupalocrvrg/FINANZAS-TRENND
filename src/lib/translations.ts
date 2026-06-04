@@ -13,6 +13,9 @@ export const TRANSLATIONS_DICT = {
     'nav.admin_modules': 'Módulos Administrativos',
     'nav.config_alerts': 'Configuración y Alertas',
     'nav.user': 'Usuario',
+    'nav.commerce': 'Comercio',
+    'nav.finance': 'Finanzas',
+    'nav.reports': 'Reportes y Balances',
 
     // Common / Dashboard
     'dash.cash_balance': 'Saldo de Caja General',
@@ -85,6 +88,9 @@ export const TRANSLATIONS_DICT = {
     'nav.admin_modules': 'Administrative Modules',
     'nav.config_alerts': 'Config & Alerts',
     'nav.user': 'User Profile',
+    'nav.commerce': 'Commerce',
+    'nav.finance': 'Finance',
+    'nav.reports': 'Reports & Balances',
 
     // Common / Dashboard
     'dash.cash_balance': 'Total General Cash Balance',

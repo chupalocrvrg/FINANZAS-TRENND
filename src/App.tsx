@@ -23,7 +23,21 @@ import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
 import { requestNotificationPermission, setupMessageListener, sendLocalPushNotification } from './lib/notifications';
-import { Bell, Menu, X, ChevronDown } from 'lucide-react';
+import { 
+  Bell, 
+  Menu, 
+  X, 
+  ChevronDown, 
+  LayoutDashboard, 
+  ShoppingBag, 
+  Coins, 
+  Users, 
+  Settings as SettingsIcon, 
+  Activity, 
+  Wallet, 
+  AlertCircle, 
+  BarChart3 
+} from 'lucide-react';
 import { cn } from './lib/utils';
 import { db } from './lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -40,6 +54,7 @@ export default function App() {
   const [serAlertCount, setSerAlertCount] = useState(0);
   const [isLocked, setIsLocked] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<'comercio' | 'finanzas' | null>(null);
 
   // Monitor dynamic network connection state
   useEffect(() => {
@@ -259,24 +274,10 @@ export default function App() {
   return (
     <div className={`flex min-h-screen ${settings?.theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} ${fontClass} overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-900`}>
       {accentStyles && <style dangerouslySetInnerHTML={{ __html: accentStyles }} />}
-      {/* Mobile Backdrop */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-      )}>
-        <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); }} />
+      
+      {/* Desktop Sidebar, hidden on mobile */}
+      <div className="hidden lg:block lg:relative w-72 shrink-0 border-r border-slate-800/20 dark:border-slate-800/80">
+        <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); }} />
         <p className="absolute bottom-18 left-0 right-0 text-center pointer-events-none select-none text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500/85 z-[100]">
           {SYSTEM_UPDATES[0]?.version || 'V4.0.0'} By Trennd
         </p>
@@ -289,12 +290,6 @@ export default function App() {
           settings?.theme === 'dark' ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200"
         )}>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
             <h1 className="text-lg lg:text-xl font-bold tracking-tight truncate max-w-[150px] lg:max-w-none">
               {settings?.companyName || 'Control Financiero'}
             </h1>
@@ -374,7 +369,7 @@ export default function App() {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 pb-12">
+        <div className="flex-1 pb-24 lg:pb-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -400,6 +395,230 @@ export default function App() {
         <WelcomeUpdateModal theme={settings?.theme} />
         <TutorialModal />
       </main>
+
+      {/* Mobile Floating Submenus */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Click-outside backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(null)}
+              className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 lg:hidden"
+            />
+            
+            {/* Submenu Drawer content */}
+            <motion.div
+              initial={{ opacity: 0, y: 15, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 15, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                "fixed bottom-18 left-4 right-4 rounded-2xl p-4 z-40 lg:hidden shadow-[0_-8px_32px_rgba(0,0,0,0.3)] border flex flex-col gap-1.5",
+                settings?.theme === 'dark' 
+                  ? "bg-slate-900 border-slate-800 text-slate-100" 
+                  : "bg-white border-slate-200 text-slate-900"
+              )}
+            >
+              <div className="flex items-center justify-between pb-2 mb-1 border-b border-slate-800/10 dark:border-slate-800/80">
+                <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500">
+                  {mobileMenuOpen === 'comercio' ? 'Módulo Comercio' : 'Módulo Finanzas'}
+                </h3>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Seleccionar</span>
+              </div>
+              
+              {mobileMenuOpen === 'comercio' ? (
+                <div className="grid grid-cols-1 gap-1">
+                  {!settings?.disabledFeatures?.includes('crm') && (
+                    <button
+                      onClick={() => { setActiveTab('crm'); setMobileMenuOpen(null); }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
+                        activeTab === 'crm' 
+                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
+                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
+                      )}
+                    >
+                      <Users className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm">CRM Relaciones</span>
+                        <span className="text-[10px] text-slate-400 truncate">Contactos y clientes registrados</span>
+                      </div>
+                    </button>
+                  )}
+                  {!settings?.disabledFeatures?.includes('services') && (
+                    <button
+                      onClick={() => { setActiveTab('services'); setMobileMenuOpen(null); }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
+                        activeTab === 'services' 
+                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
+                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
+                      )}
+                    >
+                      <SettingsIcon className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm">Servicios Digitales</span>
+                        <span className="text-[10px] text-slate-400 truncate">Suscripciones, fechas y cortes</span>
+                      </div>
+                    </button>
+                  )}
+                  {!settings?.disabledFeatures?.includes('updates') && (
+                    <button
+                      onClick={() => { setActiveTab('updates'); setMobileMenuOpen(null); }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
+                        activeTab === 'updates' 
+                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
+                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
+                      )}
+                    >
+                      <Activity className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm">Actualizaciones ANT</span>
+                        <span className="text-[10px] text-slate-400 truncate">Movimientos de cuentas y cobros</span>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-1">
+                  {!settings?.disabledFeatures?.includes('treasury') && (
+                    <button
+                      onClick={() => { setActiveTab('treasury'); setMobileMenuOpen(null); }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
+                        activeTab === 'treasury' 
+                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
+                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
+                      )}
+                    >
+                      <Wallet className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm">Tesorería</span>
+                        <span className="text-[10px] text-slate-400 truncate">Caja general y billeteras</span>
+                      </div>
+                    </button>
+                  )}
+                  {!settings?.disabledFeatures?.includes('reports') && (
+                    <button
+                      onClick={() => { setActiveTab('reports'); setMobileMenuOpen(null); }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
+                        activeTab === 'reports' 
+                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
+                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
+                      )}
+                    >
+                      <BarChart3 className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm">Reportes y Balances</span>
+                        <span className="text-[10px] text-slate-400 truncate">Gráficos de pérdidas y balances</span>
+                      </div>
+                    </button>
+                  )}
+                  {!settings?.disabledFeatures?.includes('alerts') && (
+                    <button
+                      onClick={() => { setActiveTab('alerts'); setMobileMenuOpen(null); }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
+                        activeTab === 'alerts' 
+                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
+                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
+                      )}
+                    >
+                      <AlertCircle className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm">Alertas y Cobro</span>
+                        <span className="text-[10px] text-slate-400 truncate">Cuentas por cobrar y notificaciones</span>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-2 z-40 lg:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.15)] pb-safe",
+        settings?.theme === 'dark' ? "bg-slate-900/95 border-slate-800/80 text-slate-300" : "bg-white/95 border-slate-200 text-slate-600"
+      )}>
+        {/* Inicio Tab */}
+        <button
+          onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(null); }}
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-none",
+            activeTab === 'dashboard' ? "text-indigo-500 font-bold" : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <LayoutDashboard className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="text-[9px] font-bold tracking-tight">Inicio</span>
+        </button>
+
+        {/* Comercio Tab */}
+        <button
+          onClick={() => setMobileMenuOpen(mobileMenuOpen === 'comercio' ? null : 'comercio')}
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors relative focus:outline-none",
+            ['crm', 'services', 'updates'].includes(activeTab) || mobileMenuOpen === 'comercio'
+              ? "text-indigo-500 font-semibold" 
+              : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <ShoppingBag className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="text-[9px] font-bold tracking-tight">Comercio</span>
+          {['crm', 'services', 'updates'].includes(activeTab) && (
+            <span className="absolute bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+          )}
+        </button>
+
+        {/* Finanzas Tab */}
+        <button
+          onClick={() => setMobileMenuOpen(mobileMenuOpen === 'finanzas' ? null : 'finanzas')}
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors relative focus:outline-none",
+            ['treasury', 'reports', 'alerts'].includes(activeTab) || mobileMenuOpen === 'finanzas'
+              ? "text-indigo-500 font-semibold" 
+              : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <Coins className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="text-[9px] font-bold tracking-tight">Finanzas</span>
+          {['treasury', 'reports', 'alerts'].includes(activeTab) && (
+            <span className="absolute bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+          )}
+        </button>
+
+        {/* Perfil Tab */}
+        <button
+          onClick={() => { setActiveTab('settings'); setMobileMenuOpen(null); }}
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-none",
+            activeTab === 'settings' ? "text-indigo-500 font-bold" : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <div className={cn(
+            "w-6 h-6 rounded-full overflow-hidden flex items-center justify-center border mb-0.5 shrink-0 transition-colors",
+            activeTab === 'settings' ? "border-indigo-500" : "border-slate-700/60"
+          )}>
+            {settings?.useGoogleAvatar && user?.photoURL ? (
+              <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : settings?.customProfilePic ? (
+              <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full bg-indigo-100 flex items-center justify-center text-[10px] font-black text-indigo-700 shrink-0 capitalize">
+                {settings?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </div>
+            )}
+          </div>
+          <span className="text-[9px] font-bold tracking-tight">Perfil</span>
+        </button>
+      </div>
     </div>
   );
 }
