@@ -16,6 +16,7 @@ import { Reports } from './components/Reports';
 import { Login } from './components/Login';
 import { Onboarding } from './components/Onboarding';
 import { AIAssistant } from './components/AIAssistant';
+import { QuickAddFAB } from './components/QuickAddFAB';
 import { LockScreen } from './components/LockScreen';
 import { WelcomeUpdateModal } from './components/WelcomeUpdateModal';
 import { TutorialModal } from './components/TutorialModal';
@@ -276,11 +277,8 @@ export default function App() {
       {accentStyles && <style dangerouslySetInnerHTML={{ __html: accentStyles }} />}
       
       {/* Desktop Sidebar, hidden on mobile */}
-      <div className="hidden lg:block lg:relative w-72 shrink-0 border-r border-slate-800/20 dark:border-slate-800/80">
+      <div className="hidden lg:block lg:relative w-60 shrink-0 border-r border-slate-800/20 dark:border-slate-800/80">
         <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); }} />
-        <p className="absolute bottom-18 left-0 right-0 text-center pointer-events-none select-none text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500/85 z-[100]">
-          {SYSTEM_UPDATES[0]?.version || 'V4.0.0'} By Trennd
-        </p>
       </div>
       
       <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen">
@@ -392,6 +390,7 @@ export default function App() {
           </AnimatePresence>
         </div>
         {!settings?.disabledFeatures?.includes('ai_assistant') && <AIAssistant />}
+        <QuickAddFAB />
         <WelcomeUpdateModal theme={settings?.theme} />
         <TutorialModal />
       </main>
