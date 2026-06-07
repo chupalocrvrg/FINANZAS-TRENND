@@ -56,6 +56,7 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<'comercio' | 'finanzas' | null>(null);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
   // Monitor dynamic network connection state
   useEffect(() => {
@@ -277,8 +278,15 @@ export default function App() {
       {accentStyles && <style dangerouslySetInnerHTML={{ __html: accentStyles }} />}
       
       {/* Desktop Sidebar, hidden on mobile */}
-      <div className="hidden lg:block lg:relative w-60 shrink-0 border-r border-slate-800/20 dark:border-slate-800/80">
-        <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); }} />
+      <div 
+        onMouseEnter={() => setIsSidebarHovered(true)}
+        onMouseLeave={() => setIsSidebarHovered(false)}
+        className={cn(
+          "hidden lg:block lg:relative shrink-0 border-r border-slate-800/20 dark:border-slate-800/80 transition-all duration-300 ease-in-out z-30",
+          isSidebarHovered ? "w-60" : "w-16"
+        )}
+      >
+        <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); }} isHovered={isSidebarHovered} />
       </div>
       
       <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen">

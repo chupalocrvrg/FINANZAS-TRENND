@@ -28,18 +28,21 @@ interface NavItemProps {
   active: boolean;
   onClick: () => void;
   isDark: boolean;
+  isSidebarHovered: boolean;
 }
 
-function NavItem({ icon: Icon, label, active, onClick, isDark }: NavItemProps) {
+function NavItem({ icon: Icon, label, active, onClick, isDark, isSidebarHovered }: NavItemProps) {
   return (
     <button
       onClick={onClick}
+      title={isSidebarHovered ? undefined : label}
       className={cn(
-        "flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 group w-full text-left focus:outline-none cursor-pointer",
+        "flex items-center rounded-xl transition-all duration-300 group w-full focus:outline-none cursor-pointer",
+        isSidebarHovered ? "gap-2.5 px-3 py-2 text-left" : "justify-center p-2.5",
         active 
           ? "bg-indigo-600/10 text-indigo-500 dark:text-indigo-400 font-bold" 
           : isDark 
-            ? "text-slate-405 hover:bg-slate-800/60 hover:text-slate-200"
+            ? "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       )}
     >
@@ -51,7 +54,11 @@ function NavItem({ icon: Icon, label, active, onClick, isDark }: NavItemProps) {
             ? "text-slate-500 group-hover:text-slate-300" 
             : "text-slate-400 group-hover:text-slate-700"
       )} />
-      <span className="text-xs font-semibold truncate leading-tight">{label}</span>
+      {isSidebarHovered && (
+        <span className="text-xs font-semibold truncate leading-tight block pr-1 animate-fade-in">
+          {label}
+        </span>
+      )}
     </button>
   );
 }
@@ -59,9 +66,10 @@ function NavItem({ icon: Icon, label, active, onClick, isDark }: NavItemProps) {
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  isHovered?: boolean;
 }
 
-export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+export function Sidebar({ activeTab, setActiveTab, isHovered = true }: SidebarProps) {
   const { settings, user } = useAuth();
   const { t } = useTranslation();
   const disabledFeatures = settings?.disabledFeatures || [];
@@ -86,39 +94,44 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
   return (
     <aside className={cn(
-      "w-60 flex flex-col h-[calc(100vh-2rem)] lg:h-screen lg:rounded-none rounded-2xl my-4 ml-4 lg:my-0 lg:ml-0 sticky top-4 lg:top-0 border lg:border-none lg:border-r overflow-y-auto scrollbar-hide text-left shadow-2xl lg:shadow-none z-50 transition-colors duration-200",
+      "w-full flex flex-col h-[calc(100vh-2rem)] lg:h-screen lg:rounded-none rounded-2xl my-4 ml-4 lg:my-0 lg:ml-0 sticky top-4 lg:top-0 border lg:border-none lg:border-r overflow-y-auto scrollbar-hide text-left shadow-2xl lg:shadow-none z-50 transition-all duration-300 ease-in-out",
       isDark 
         ? "bg-slate-950/90 lg:bg-slate-900 border-slate-850 text-slate-300" 
-        : "bg-white border-slate-200 text-slate-700"
+        : "bg-white border-slate-200 text-slate-707"
     )}>
       <div className="p-4 flex-1 flex flex-col justify-between h-full min-h-0">
         <div>
           {/* Logo & Company Name */}
           <div className={cn(
             "flex items-center justify-between mb-6 pb-4 border-b",
-            isDark ? "border-slate-800/60" : "border-slate-100"
+            isDark ? "border-slate-800/60" : "border-slate-100",
+            isHovered ? "px-1" : "justify-center"
           )}>
             <div className="flex items-center gap-2 px-1 min-w-0">
               <div className="w-8 h-8 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/10">
                 <Activity className="w-4 h-4 text-white" />
               </div>
-              <div className="overflow-hidden min-w-0">
-                <h1 className={cn(
-                  "font-black text-xs tracking-tight uppercase whitespace-nowrap truncate",
-                  isDark ? "text-white" : "text-slate-900"
-                )}>
-                  {settings?.companyName || 'Control Financiero'}
-                </h1>
-              </div>
+              {isHovered && (
+                <div className="overflow-hidden min-w-0">
+                  <h1 className={cn(
+                    "font-black text-xs tracking-tight uppercase whitespace-nowrap truncate",
+                    isDark ? "text-white" : "text-slate-900"
+                  )}>
+                    {settings?.companyName || 'Control Financiero'}
+                  </h1>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className={cn(
-            "text-[9px] font-black uppercase tracking-[0.2em] px-2.5 mb-3",
-            isDark ? "text-indigo-400/80" : "text-indigo-600"
-          )}>
-            {t('nav.admin_modules', 'Módulos')}
-          </div>
+          {isHovered && (
+            <div className={cn(
+              "text-[9px] font-black uppercase tracking-[0.2em] px-2.5 mb-3",
+              isDark ? "text-indigo-400/80" : "text-indigo-600"
+            )}>
+              {t('nav.admin_modules', 'Módulos')}
+            </div>
+          )}
           
           <nav className="space-y-1">
             {/* Panel Principal */}
@@ -128,14 +141,20 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
               active={activeTab === 'dashboard'}
               onClick={() => setActiveTab('dashboard')}
               isDark={isDark}
+              isSidebarHovered={isHovered}
             />
 
             {/* Comercio Collapsible Menu Group */}
             <div className="space-y-0.5">
               <button
-                onClick={() => setIsComercioOpen(!isComercioOpen)}
+                onClick={() => {
+                  if (!isHovered) return;
+                  setIsComercioOpen(!isComercioOpen);
+                }}
+                title={isHovered ? undefined : t('nav.commerce', 'Comercio')}
                 className={cn(
-                  "flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 group w-full text-left focus:outline-none cursor-pointer",
+                  "flex items-center transition-all duration-200 group w-full focus:outline-none cursor-pointer",
+                  isHovered ? "justify-between px-3 py-2 rounded-xl text-left" : "justify-center p-2.5 rounded-xl",
                   ['crm', 'services', 'updates'].includes(activeTab)
                     ? "bg-indigo-600/10 text-indigo-500 dark:text-indigo-405 font-bold"
                     : isDark 
@@ -150,16 +169,20 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                       ? "text-indigo-500 dark:text-indigo-405"
                       : isDark ? "text-slate-500 group-hover:text-slate-300" : "text-slate-400 group-hover:text-slate-700"
                   )} />
-                  <span className="text-xs font-semibold leading-none truncate">{t('nav.commerce', 'Comercio')}</span>
+                  {isHovered && (
+                    <span className="text-xs font-semibold leading-none truncate">{t('nav.commerce', 'Comercio')}</span>
+                  )}
                 </div>
-                <ChevronDown className={cn(
-                  "w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 shrink-0", 
-                  isComercioOpen ? "rotate-0" : "-rotate-90"
-                )} />
+                {isHovered && (
+                  <ChevronDown className={cn(
+                    "w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 shrink-0", 
+                    isComercioOpen ? "rotate-0" : "-rotate-90"
+                  )} />
+                )}
               </button>
 
               <AnimatePresence initial={false}>
-                {isComercioOpen && (
+                {isHovered && isComercioOpen && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -177,6 +200,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                         active={activeTab === 'crm'}
                         onClick={() => setActiveTab('crm')}
                         isDark={isDark}
+                        isSidebarHovered={isHovered}
                       />
                     )}
                     {!disabledFeatures.includes('services') && (
@@ -186,6 +210,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                         active={activeTab === 'services'}
                         onClick={() => setActiveTab('services')}
                         isDark={isDark}
+                        isSidebarHovered={isHovered}
                       />
                     )}
                     {!disabledFeatures.includes('updates') && (
@@ -195,6 +220,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                         active={activeTab === 'updates'}
                         onClick={() => setActiveTab('updates')}
                         isDark={isDark}
+                        isSidebarHovered={isHovered}
                       />
                     )}
                   </motion.div>
@@ -205,9 +231,14 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             {/* Finanzas Collapsible Menu Group */}
             <div className="space-y-0.5">
               <button
-                onClick={() => setIsFinanzasOpen(!isFinanzasOpen)}
+                onClick={() => {
+                  if (!isHovered) return;
+                  setIsFinanzasOpen(!isFinanzasOpen);
+                }}
+                title={isHovered ? undefined : t('nav.finance', 'Finanzas')}
                 className={cn(
-                  "flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 group w-full text-left focus:outline-none cursor-pointer",
+                  "flex items-center transition-all duration-200 group w-full focus:outline-none cursor-pointer",
+                  isHovered ? "justify-between px-3 py-2 rounded-xl text-left" : "justify-center p-2.5 rounded-xl",
                   ['treasury', 'reports', 'alerts'].includes(activeTab)
                     ? "bg-indigo-600/10 text-indigo-500 dark:text-indigo-405 font-bold"
                     : isDark 
@@ -222,16 +253,20 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                       ? "text-indigo-500 dark:text-indigo-405"
                       : isDark ? "text-slate-500 group-hover:text-slate-300" : "text-slate-400 group-hover:text-slate-700"
                   )} />
-                  <span className="text-xs font-semibold leading-none truncate">{t('nav.finance', 'Finanzas')}</span>
+                  {isHovered && (
+                    <span className="text-xs font-semibold leading-none truncate">{t('nav.finance', 'Finanzas')}</span>
+                  )}
                 </div>
-                <ChevronDown className={cn(
-                  "w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 shrink-0", 
-                  isFinanzasOpen ? "rotate-0" : "-rotate-90"
-                )} />
+                {isHovered && (
+                  <ChevronDown className={cn(
+                    "w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-200 shrink-0", 
+                    isFinanzasOpen ? "rotate-0" : "-rotate-90"
+                  )} />
+                )}
               </button>
 
               <AnimatePresence initial={false}>
-                {isFinanzasOpen && (
+                {isHovered && isFinanzasOpen && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -249,6 +284,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                         active={activeTab === 'treasury'}
                         onClick={() => setActiveTab('treasury')}
                         isDark={isDark}
+                        isSidebarHovered={isHovered}
                       />
                     )}
                     {!disabledFeatures.includes('reports') && (
@@ -258,6 +294,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                         active={activeTab === 'reports'}
                         onClick={() => setActiveTab('reports')}
                         isDark={isDark}
+                        isSidebarHovered={isHovered}
                       />
                     )}
                     {!disabledFeatures.includes('alerts') && (
@@ -267,6 +304,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                         active={activeTab === 'alerts'}
                         onClick={() => setActiveTab('alerts')}
                         isDark={isDark}
+                        isSidebarHovered={isHovered}
                       />
                     )}
                   </motion.div>
@@ -280,8 +318,10 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         <div className="mt-6 space-y-2">
           <button 
             onClick={() => setActiveTab('settings')}
+            title={isHovered ? undefined : settings?.displayName || 'Usuario'}
             className={cn(
-              "w-full text-left border rounded-xl p-2.5 flex items-center space-x-2.5 transition-all duration-200 cursor-pointer group",
+              "w-full border rounded-xl flex items-center transition-all duration-200 cursor-pointer group",
+              isHovered ? "p-2.5 space-x-2.5 text-left" : "p-1 justify-center",
               isDark 
                 ? "bg-slate-900/60 border-slate-800/80 hover:bg-slate-850 hover:border-slate-700" 
                 : "bg-slate-50 border-slate-200/80 hover:bg-slate-100 hover:border-slate-300"
@@ -301,31 +341,35 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                 </div>
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className={cn(
-                "text-xs font-bold truncate transition-colors",
-                isDark ? "text-white group-hover:text-indigo-400" : "text-slate-800 group-hover:text-indigo-600"
-              )}>
-                {settings?.displayName || 'Usuario'}
+            {isHovered && (
+              <div className="min-w-0 flex-1">
+                <div className={cn(
+                  "text-xs font-bold truncate transition-colors",
+                  isDark ? "text-white group-hover:text-indigo-400" : "text-slate-800 group-hover:text-indigo-600"
+                )}>
+                  {settings?.displayName || 'Usuario'}
+                </div>
+                <div className={cn(
+                  "text-[9px] font-bold uppercase tracking-wider truncate",
+                  isDark ? "text-slate-500" : "text-slate-400"
+                )}>
+                  {settings?.companyName || 'Global Ops'}
+                </div>
               </div>
-              <div className={cn(
-                "text-[9px] font-bold uppercase tracking-wider truncate",
-                isDark ? "text-slate-500" : "text-slate-400"
-              )}>
-                {settings?.companyName || 'Global Ops'}
-              </div>
-            </div>
+            )}
           </button>
           
           {/* Active visible Version block instead of the absolute background text */}
-          <div className={cn(
-            "text-center text-[9px] font-black uppercase tracking-[0.22em] select-none py-1 border-t transition-colors",
-            isDark 
-              ? "text-slate-500 border-slate-850" 
-              : "text-slate-400 border-slate-100"
-          )}>
-            {SYSTEM_UPDATES[0]?.version || 'V4.3.0'} • By Trennd
-          </div>
+          {isHovered && (
+            <div className={cn(
+              "text-center text-[9px] font-black uppercase tracking-[0.22em] select-none py-1 border-t transition-colors",
+              isDark 
+                ? "text-slate-500 border-slate-850" 
+                : "text-slate-400 border-slate-100"
+            )}>
+              {SYSTEM_UPDATES[0]?.version || 'V4.3.0'} • By Trennd
+            </div>
+          )}
         </div>
       </div>
     </aside>

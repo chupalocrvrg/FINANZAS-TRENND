@@ -22,7 +22,7 @@ import { VoucherModal, VoucherData } from './VoucherModal';
 import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
 import { Wallet as WalletType } from '../types';
 import { sendLocalPushNotification } from '../lib/notifications';
 import { ConfirmModal } from './ConfirmModal';
@@ -78,6 +78,7 @@ export function DigitalServices() {
   const { user, settings } = useAuth();
   const [services, setServices] = useState<DigitalServiceItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [wallets, setWallets] = useState<WalletType[]>([]);
@@ -647,6 +648,164 @@ export function DigitalServices() {
     window.open(url, '_blank');
   };
 
+  // ACCIONES MASIVAS (MEJORA 3)
+  const handleBulkRenew = async () => {
+    if (selectedItemIds.length === 0) return;
+    triggerConfirm(
+      "Renovación en lote",
+      `¿Está seguro de que desea renovar (extender por 30 días) las ${selectedItemIds.length} suscripciones seleccionadas?`,
+      async () => {
+        try {
+          const batch = writeBatch(db);
+          selectedItemIds.forEach(id => {
+            const service = services.find(s => s.id === id);
+            if (service) {
+              let newDateStr = '';
+              const fallbackDate = new Date();
+              fallbackDate.setDate(fallbackDate.getDate() + 30);
+              
+              if (service.expirationDate) {
+                const curr = new Date(service.expirationDate);
+                const start = isNaN(curr.getTime()) || curr < new Date() ? new Date() : curr;
+                start.setDate(start.getDate() + 30);
+                newDateStr = start.toISOString().split('T')[0];
+              } else {
+                newDateStr = fallbackDate.toISOString().split('T')[0];
+              }
+              
+              batch.update(doc(db, 'digital_services', id), {
+                status: 'active',
+                expirationDate: newDateStr,
+                updatedAt: new Date().toISOString()
+              });
+            }
+          });
+          await batch.commit();
+          await sendLocalPushNotification('Renovaciones Listas ✅', `Se han renovado con éxito ${selectedItemIds.length} suscripciones.`);
+          setSelectedItemIds([]);
+        } catch (err) {
+          console.error("Error renovando en lote:", err);
+        }
+      }
+    );
+  };
+
+  const handleBulkMarkPaid = async () => {
+    if (selectedItemIds.length === 0) return;
+    const defaultWallet = wallets[0]?.id || '';
+    
+    triggerConfirm(
+      "Cobrar seleccionadas",
+      `¿Desea registrar el recaudo completo de las ${selectedItemIds.length} suscripciones seleccionadas como pagadas?`,
+      async () => {
+        try {
+          const batch = writeBatch(db);
+          for (const id of selectedItemIds) {
+            const s = services.find(item => item.id === id);
+            if (s && !s.isPaid) {
+              const pendingAmt = s.revenue - (s.amountPaid || 0);
+              
+              batch.update(doc(db, 'digital_services', id), {
+                isPaid: true,
+                amountPaid: s.revenue,
+                status: 'active',
+                updatedAt: new Date().toISOString()
+              });
+              
+              if (defaultWallet && pendingAmt > 0) {
+                await addDoc(collection(db, 'ledger'), {
+                  amount: pendingAmt,
+                  category: 'Recaudo de Servicio Digital',
+                  description: `Pago completo masivo de suscripción para ${s.clientName || 'Cliente'}: ${s.name}`,
+                  date: new Date().toISOString().split('T')[0],
+                  walletId: defaultWallet,
+                  ownerId: user!.uid,
+                  createdAt: new Date().toISOString()
+                });
+                
+                await updateDoc(doc(db, 'wallets', defaultWallet), {
+                  balance: increment(pendingAmt)
+                });
+              }
+            }
+          }
+          await batch.commit();
+          await sendLocalPushNotification('Cobros Registrados ✅', `Se marcaron como pagas ${selectedItemIds.length} suscripciones.`);
+          setSelectedItemIds([]);
+        } catch (err) {
+          console.error("Error en cobro masivo:", err);
+        }
+      }
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItemIds.length === 0) return;
+    triggerConfirm(
+      "¿Eliminar selección masiva?",
+      `¿Está absolutamente seguro de que desea eliminar permanentemente las ${selectedItemIds.length} suscripciones seleccionadas? Esta acción es irreversible.`,
+      async () => {
+        try {
+          const batch = writeBatch(db);
+          selectedItemIds.forEach(id => {
+            batch.delete(doc(db, 'digital_services', id));
+          });
+          await batch.commit();
+          await sendLocalPushNotification('Borrado Exitoso 🗑️', 'Suscripciones eliminadas permanentemente.');
+          setSelectedItemIds([]);
+        } catch (err) {
+          console.error("Error borrando en lote:", err);
+        }
+      }
+    );
+  };
+
+  const handleBulkWhatsAppAlert = () => {
+    if (selectedItemIds.length === 0) return;
+    const groupedByClient: { [key: string]: { clientName: string; clientContact: string; services: any[] } } = {};
+    
+    selectedItemIds.forEach(id => {
+      const s = services.find(item => item.id === id);
+      if (s) {
+        const key = s.clientContact || s.clientName || 'Cliente Temporal';
+        if (!groupedByClient[key]) {
+          groupedByClient[key] = {
+            clientName: s.clientName || 'Cliente',
+            clientContact: s.clientContact || '',
+            services: []
+          };
+        }
+        groupedByClient[key].services.push(s);
+      }
+    });
+
+    const clientsWithPhones = Object.values(groupedByClient).filter(c => c.clientContact);
+    
+    if (clientsWithPhones.length === 0) {
+      alert("No se encontraron números de teléfono registrados para las suscripciones seleccionadas.");
+      return;
+    }
+
+    const client = clientsWithPhones[0];
+    let msg = `Hola *${client.clientName}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nTe recordamos amablemente el estado de tus suscripciones digitales:\n`;
+    let totalDue = 0;
+    
+    client.services.forEach(s => {
+      const pending = s.revenue - (s.amountPaid || 0);
+      msg += `\n• *${s.name}* \n  📅 Vence: *${s.expirationDate || 'N/A'}*\n  💵 Saldo: *${formatCurrency(pending)}* (${s.isPaid ? 'Pagado' : 'Pendiente'})\n`;
+      totalDue += pending;
+    });
+
+    if (totalDue > 0) {
+      msg += `\n*Suma Total Pendiente:* *${formatCurrency(totalDue)}*\n`;
+    }
+    msg += `\nPor favor, confírmanos si deseas renovar o realizar el pago correspondiente. ¡Muchas gracias!`;
+    
+    const phone = client.clientContact;
+    const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
   // Filter digital services lists dynamically
   const filteredServices = services.filter(service => {
     if (!searchTerm) return true;
@@ -706,6 +865,32 @@ export function DigitalServices() {
         </div>
       </div>
 
+      {/* Selection Control Panel (Mejora 3) */}
+      {!loading && filteredServices.length > 0 && (
+        <div className="flex justify-between items-center px-2 py-1 text-xs">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (selectedItemIds.length === filteredServices.length) {
+                  setSelectedItemIds([]);
+                } else {
+                  setSelectedItemIds(filteredServices.map(s => s.id));
+                }
+              }}
+              className={cn("px-3 py-1.5 rounded-xl border font-bold uppercase tracking-wider transition-all cursor-pointer text-[9px] select-none", 
+                isDark ? "border-slate-800 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50")}
+            >
+              {selectedItemIds.length === filteredServices.length ? 'Desmarcar Todos' : 'Seleccionar Todos'}
+            </button>
+            {selectedItemIds.length > 0 && (
+              <span className="text-indigo-500 font-extrabold uppercase tracking-widest text-[9px]">
+                {selectedItemIds.length} Seleccionados
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="py-32 flex flex-col items-center justify-center gap-4 text-slate-500">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
@@ -726,7 +911,7 @@ export function DigitalServices() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     key={service.id}
                     className={cn(
-                      "p-5 rounded-3xl border transition-all flex flex-col justify-between group relative overflow-hidden",
+                      "p-5 pt-8 rounded-3xl border transition-all flex flex-col justify-between group relative overflow-hidden",
                       expired 
                         ? (isDark ? "bg-rose-950/10 border-rose-900/40" : "bg-rose-50/30 border-rose-100") 
                         : expiring 
@@ -734,38 +919,53 @@ export function DigitalServices() {
                           : (isDark ? "bg-slate-900 border-slate-800 hover:border-indigo-900/50" : "bg-white border-slate-100 shadow-sm hover:shadow-md")
                     )}
                   >
+                    {/* Checkbox for Bulk operations (Mejora 3) */}
+                    <div className="absolute top-3 left-3 z-10 flex items-center justify-center">
+                      <input 
+                        type="checkbox"
+                        checked={selectedItemIds.includes(service.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          if (selectedItemIds.includes(service.id)) {
+                            setSelectedItemIds(prev => prev.filter(id => id !== service.id));
+                          } else {
+                            setSelectedItemIds(prev => [...prev, service.id]);
+                          }
+                        }}
+                        className="w-4 h-4 rounded-lg border-2 border-indigo-400 cursor-pointer accent-indigo-600 transition-transform hover:scale-110"
+                      />
+                    </div>
+
+                    {/* Status badge - Absolutely positioned at top-right for premium alignment */}
+                    <span className={cn(
+                      "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full absolute top-3 right-3 z-10",
+                      expired ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
+                      expiring ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
+                      "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                    )}>
+                      {expired ? 'Cortar / Vencido' : expiring ? 'Próximo Cortar' : 'Activo'}
+                    </span>
+
                     <div>
                       {/* Header card info */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0", 
-                            expired ? "bg-rose-500/10 text-rose-500" :
-                            expiring ? "bg-amber-500/10 text-amber-500" :
-                            isDark ? "bg-slate-800 text-indigo-400" : "bg-indigo-50 text-indigo-600"
-                          )}>
-                            {service.category === 'Streaming' && <Tv className="w-5 h-5" />}
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0", 
+                          expired ? "bg-rose-500/10 text-rose-500" :
+                          expiring ? "bg-amber-500/10 text-amber-500" :
+                          isDark ? "bg-slate-800 text-indigo-400" : "bg-indigo-50 text-indigo-600"
+                        )}>
+                          {service.category === 'Streaming' && <Tv className="w-5 h-5" />}
                           {service.category === 'Música' && <Smartphone className="w-5 h-5" />}
                           {service.category === 'Gaming' && <Gamepad2 className="w-5 h-5" />}
                           {['Software', 'Otros'].includes(service.category) && <ShoppingBag className="w-5 h-5" />}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 block">{service.category}</span>
                           <h4 className={cn("text-sm font-bold tracking-tight truncate", isDark ? "text-white" : "text-slate-900")} title={service.name}>
                             {service.name}
                           </h4>
                         </div>
                       </div>
-                      
-                      {/* Status badge */}
-                      <span className={cn(
-                        "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0",
-                        expired ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
-                        expiring ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
-                        "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                      )}>
-                        {expired ? 'Cortar / Vencido' : expiring ? 'Próximo Cortar' : 'Activo'}
-                      </span>
-                    </div>
 
                     {/* Cliente Info */}
                     {service.clientName && (
@@ -1792,6 +1992,61 @@ export function DigitalServices() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Toolbar for Bulk Operations (Mejora 3) */}
+      <AnimatePresence>
+        {selectedItemIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className="fixed bottom-6 right-6 left-6 md:left-[270px] z-50 bg-slate-900 dark:bg-indigo-950 border border-slate-800 dark:border-indigo-900 text-slate-100 dark:text-indigo-100 rounded-3xl p-4 shadow-2xl flex flex-col sm:flex-row justify-between items-center gap-4 border-l-4 border-l-indigo-500 animate-pulse-slow"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-black text-sm">
+                {selectedItemIds.length}
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-black uppercase tracking-wider text-white">Acciones en Lote</p>
+                <p className="text-[10px] text-slate-400 font-semibold">Aplique cambios masivos a las suscripciones seleccionadas.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-end w-full sm:w-auto">
+              <button
+                onClick={handleBulkRenew}
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none outline-none"
+              >
+                🔄 Renovar 30d
+              </button>
+              <button
+                onClick={handleBulkMarkPaid}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none outline-none"
+              >
+                💵 Cobrar (Lote)
+              </button>
+              <button
+                onClick={handleBulkWhatsAppAlert}
+                className="flex items-center gap-1.5 px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none outline-none"
+              >
+                💬 WhatsApp (Lote)
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-705 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none outline-none"
+              >
+                🗑️ Eliminar
+              </button>
+              <button
+                onClick={() => setSelectedItemIds([])}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border border-slate-700 outline-none"
+              >
+                Cerrar
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

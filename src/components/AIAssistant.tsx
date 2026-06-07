@@ -22,7 +22,7 @@ import {
   Key,
   Camera
 } from 'lucide-react';
-import { cn, calculateServiceExpirationDate } from '../lib/utils';
+import { cn, calculateServiceExpirationDate, getGMT5DateString } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
@@ -1113,6 +1113,8 @@ async function callGeminiClientSide(
     normalizedContents = [{ role: 'user', parts: [{ text: "Hola" }] }];
   }
 
+  const todayStr = getGMT5DateString();
+
   const systemInstruction = `Eres un asistente experto para este sistema financiero llamado Control Financiero. Tu objetivo es ayudar al usuario a registrar transacciones, productos digitales y ver balances.
 
 REGLA CRÍTICA PRIMORDIAL DE NO-ASUNCIÓN (MUY IMPORTANTE):
@@ -1131,7 +1133,7 @@ REGLA CRÍTICA PRIMORDIAL DE NO-ASUNCIÓN (MUY IMPORTANTE):
      * Correo electrónico de la cuenta ("email")
      * Contraseña ("password")
      * PIN o perfil registrado ("pin")
-     * Fecha de vencimiento ("expirationDate" en formato YYYY-MM-DD. Si se indica "30 días" o similar, calcúlala sumando 30 días a la fecha de hoy, que es 2026-05-23)
+     * Fecha de vencimiento ("expirationDate" en formato YYYY-MM-DD. Si se indica "30 días" o similar, calcúlala sumando 30 días a la fecha de hoy, que es ${todayStr})
      * Costo del proveedor ("cost")
      * Precio sugerido o real de venta ("revenue" / precio de venta)
      * Nombre e ID del Proveedor ("supplierId" y "supplierName")
@@ -1159,7 +1161,7 @@ Si es un caso de Venta de Cuenta/Servicio Digital (de proveedor o chat de entreg
 - Indica amablemente que has detectado una cuenta digital y enumera los campos extraídos: Producto, Correo, Clave, PIN, Fecha de Vencimiento, Costo, y Venta.
 - Intenta emparejar el producto con la lista del 'Catálogo' suministrado. Si coincide, usa ese nombre exacto de producto, su costo y su precio de venta sugerido.
 - Intenta emparejar el proveedor con la lista de 'Proveedores' (por nombre o aproximación).
-- DEBES incluir al final un bloque \`\`\`json-action con el siguiente formato EXACTO, calculando la fecha de vencimiento adecuadamente si es relativa (la fecha actual es 2026-05-25):
+- DEBES incluir al final un bloque \`\`\`json-action con el siguiente formato EXACTO, calculando la fecha de vencimiento adecuadamente si es relativa (la fecha actual es ${todayStr}):
 \`\`\`json-action
 {
   "type": "add_digital_service",

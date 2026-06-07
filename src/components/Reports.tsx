@@ -349,6 +349,47 @@ export function Reports() {
     doc.save(`Reporte_Financiero_${module}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  const calculateMarginsByCategory = () => {
+    const categoryMap: { [key: string]: { revenue: number; cost: number } } = {};
+
+    // Digital Services Margins
+    servicesData.forEach(item => {
+      const cat = item.category || 'Otros Streaming';
+      const revenue = parseFloat(item.revenue || '0');
+      const cost = parseFloat(item.cost || '0');
+      if (!categoryMap[cat]) categoryMap[cat] = { revenue: 0, cost: 0 };
+      categoryMap[cat].revenue += revenue;
+      categoryMap[cat].cost += cost;
+    });
+
+    // Updates ANT Margins
+    if (updatesData.length > 0) {
+      const cat = 'Trámites ANT';
+      if (!categoryMap[cat]) categoryMap[cat] = { revenue: 0, cost: 0 };
+      updatesData.forEach(item => {
+        categoryMap[cat].revenue += parseFloat(item.chargedRate || '0');
+      });
+    }
+
+    const list = Object.keys(categoryMap).map(key => {
+      const rev = categoryMap[key].revenue;
+      const cst = categoryMap[key].cost;
+      const profit = rev - cst;
+      const margin = rev > 0 ? (profit / rev) * 100 : 0;
+      return {
+        name: key,
+        revenue: rev,
+        cost: cst,
+        profit,
+        margin
+      };
+    }).sort((a, b) => b.profit - a.profit);
+
+    return list;
+  };
+
+  const categoryMargins = calculateMarginsByCategory();
+
   const filteredServicesData = servicesData.filter(s => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -508,6 +549,96 @@ export function Reports() {
             <div className="text-lg font-mono font-bold text-amber-500">{formatCurrency(metrics.pendingPayments)}</div>
           </div>
         </div>
+      </div>
+
+      {/* MEJORA 2: Analizador de Márgenes de Utilidad y Rendimiento */}
+      <div className={cn("p-6 rounded-3xl border text-left space-y-6", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+        <div>
+          <h3 className={cn("text-base font-black uppercase tracking-wider flex items-center gap-2", isDark ? "text-white" : "text-slate-900")}>
+            📊 Rendimiento de Categorías y Márgenes de Ganancia
+          </h3>
+          <p className="text-slate-500 text-xs font-semibold mt-1">
+            Análisis detallado de rentabilidad por línea de negocio, calculando ingresos vs. costos reales.
+          </p>
+        </div>
+
+        {categoryMargins.length === 0 ? (
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center py-4">No hay datos de operaciones en el rango especificado.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className={cn("text-xs font-black uppercase tracking-wider text-indigo-500", isDark ? "text-slate-300" : "text-slate-650")}>
+                Participación en Utilidades y Márgenes
+              </h4>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                {categoryMargins.map((item, idx) => {
+                  const colors = [
+                    'from-indigo-500 to-indigo-600 bg-indigo-500',
+                    'from-emerald-500 to-emerald-600 bg-emerald-500',
+                    'from-sky-500 to-sky-600 bg-sky-500',
+                    'from-purple-500 to-purple-600 bg-purple-500',
+                    'from-amber-500 to-amber-600 bg-amber-500'
+                  ];
+                  const activeColor = colors[idx % colors.length];
+                  return (
+                    <div key={item.name} className="space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-extrabold text-slate-500 uppercase tracking-wide">{item.name}</span>
+                        <div className="flex items-center gap-2 font-mono font-bold text-slate-400">
+                          <span>Ganancia:</span>
+                          <span className={cn(item.profit >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                            {formatCurrency(item.profit)}
+                          </span>
+                          <span className={cn("px-1.5 py-0.2 rounded text-[10px] font-black font-sans bg-slate-500/10", item.margin >= 50 ? "text-emerald-500" : "text-indigo-400")}>
+                            {item.margin.toFixed(0)}% Margen
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-3.5 w-full bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden relative border border-slate-550/10">
+                        <div 
+                          style={{ width: `${Math.max(0, Math.min(100, item.margin))}%` }}
+                          className={cn("h-full rounded-full transition-all duration-1000 bg-gradient-to-r", activeColor)} 
+                        />
+                      </div>
+                      <div className="flex justify-between text-[9px] font-bold text-slate-400 font-mono">
+                        <span>Costo: {formatCurrency(item.cost)}</span>
+                        <span>Ingreso Total: {formatCurrency(item.revenue)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className={cn("p-5 rounded-2xl border flex flex-col justify-between space-y-4", isDark ? "bg-slate-950/40 border-slate-850" : "bg-slate-50 border-slate-100")}>
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Diagnóstico de Salud Financiera</span>
+                <h4 className={cn("text-sm font-black uppercase tracking-tight", isDark ? "text-white" : "text-slate-800")}>
+                  EFICIENCIA GLOBAL DE OPERACIONES
+                </h4>
+                <p className="text-slate-500 text-xs font-semibold leading-relaxed">
+                  El margen consolidado del negocio es de <strong className={cn("font-extrabold font-mono", metrics.totalIncome > 0 ? "text-emerald-500" : "text-slate-400")}>{metrics.totalIncome > 0 ? `${((metrics.netProfit / metrics.totalIncome) * 100).toFixed(1)}%` : '0%'}</strong>. 
+                  Un margen superior al 30% en servicios digitales indica una excelente asignación de precios. Procure optimizar negociaciones con proveedores con baja utilidad neta.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t border-dashed border-slate-500/10 pt-4">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-black uppercase text-slate-400">Canal Estrella</span>
+                  <div className="text-xs font-black uppercase tracking-tight text-indigo-500 truncate">
+                    {categoryMargins[0]?.name || 'Ninguno'}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] font-black uppercase text-slate-400">Eficiencia Máxima</span>
+                  <div className="text-xs font-bold font-mono text-emerald-500">
+                    {categoryMargins[0] ? `${categoryMargins[0].margin.toFixed(1)}%` : '0.0%'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main consolidated matching table */}
