@@ -42,11 +42,11 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
   useEffect(() => {
     const bImg = new Image();
     bImg.crossOrigin = "anonymous";
-    bImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1')}`;
+    bImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&color=ca8a04&data=${encodeURIComponent('https://app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1')}`;
 
     const pImg = new Image();
     pImg.crossOrigin = "anonymous";
-    pImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://paypal.me/trennd07')}`;
+    pImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&color=003087&data=${encodeURIComponent('https://paypal.me/trennd07')}`;
 
     let loadedCount = 0;
     const handleLoad = () => {
@@ -216,8 +216,8 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     ctx.fillText('• Ahorros Pichincha: 2203066545', 45, currentY + 25);
     ctx.fillText('• Ahorros Guayaquil: 0032481285', 45, currentY + 38);
     ctx.fillText('• Ahorros Coop JEP: 406002489704', 45, currentY + 51);
-    ctx.fillText('• Binance ID: 717956622 (Enlace: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1)', 45, currentY + 64);
-    ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com (Enlace: paypal.me/trennd07)', 45, currentY + 77);
+    ctx.fillText('• Binance ID: 717956622', 45, currentY + 64);
+    ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com', 45, currentY + 77);
 
     ctx.font = 'bold italic 7.5px sans-serif';
     ctx.fillStyle = '#0f172a';
@@ -227,16 +227,16 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     if (binanceImgRef.current && qrImagesLoaded) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(80, currentY + 101, 55, 55);
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(80, currentY + 101, 55, 55);
       try {
         ctx.drawImage(binanceImgRef.current, 82, currentY + 103, 51, 51);
       } catch (err) {
         console.error("Canvas drawImage Binance error:", err);
       }
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 7px sans-serif';
+      ctx.fillStyle = '#ca8a04';
+      ctx.font = 'bold 7.5px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('QR BINANCE PAY', 107, currentY + 167);
     }
@@ -244,42 +244,50 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     if (paypalImgRef.current && qrImagesLoaded) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(260, currentY + 101, 55, 55);
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#003087';
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(260, currentY + 101, 55, 55);
       try {
         ctx.drawImage(paypalImgRef.current, 262, currentY + 103, 51, 51);
       } catch (err) {
         console.error("Canvas drawImage PayPal error:", err);
       }
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 7px sans-serif';
+      ctx.fillStyle = '#003087';
+      ctx.font = 'bold 7.5px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('QR PAYPAL ME', 287, currentY + 167);
     }
 
     // Barcode rendering footer (simulated)
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#334155';
-    currentY += 190;
+    currentY += 195;
     
-    // Draw vertical barcode lines
+    // Draw vertical barcode lines nicely centered
     ctx.fillStyle = '#000000';
-    let startX = 135;
     const codePattern = [2, 1, 3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 1, 4, 2, 1, 2, 3, 1, 2];
+    const itemStep = 2.5; 
+    const barHeight = 28; 
+    
+    let barcodeTotalWidth = 0;
+    codePattern.forEach((w) => {
+      barcodeTotalWidth += w * itemStep;
+    });
+    
+    let startX = (400 - barcodeTotalWidth) / 2;
+    
     codePattern.forEach((width, index) => {
       if (index % 2 === 0) {
-        ctx.fillRect(startX, currentY, width * 1.5, 20);
+        ctx.fillRect(startX, currentY, width * 1.8, barHeight);
       }
-      startX += width * 2;
+      startX += width * itemStep;
     });
 
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 8px monospace';
-    ctx.fillText(`*${v.id.toUpperCase()}*`, 200, currentY + 25);
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(`*${v.id.toUpperCase()}*`, 200, currentY + barHeight + 11);
 
-    ctx.font = 'italic 9px sans-serif';
-    ctx.fillText('¡Gracias por su confianza! Sistema de Control de Caja.', 200, currentY + 38);
+    ctx.font = 'italic 9.5px sans-serif';
+    ctx.fillText('¡Gracias por su confianza! Sistema de Control de Caja.', 200, currentY + barHeight + 26);
   };
 
   const isDigitalService = voucher ? (voucher.subtitle?.toLowerCase().includes('digital') || 
@@ -439,8 +447,8 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     doc.text('• Pichincha Ahorros: 2203066545', 14, y + 15);
     doc.text('• Guayaquil Ahorros: 0032481285', 14, y + 20);
     doc.text('• Coop JEP Ahorros: 406002489704', 14, y + 25);
-    doc.text('• Binance ID: 717956622 (Enlace: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1)', 14, y + 30);
-    doc.text('• PayPal ID: marcelogutama3eroa@gmail.com (Enlace: paypal.me/trennd07)', 14, y + 35);
+    doc.text('• Binance ID: 717956622', 14, y + 30);
+    doc.text('• PayPal ID: marcelogutama3eroa@gmail.com', 14, y + 35);
     doc.setFont('Helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
     doc.text('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 14, y + 41);
@@ -451,7 +459,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
         doc.addImage(binanceImgRef.current, 'PNG', 20, y + 44, 11, 11);
         doc.setFontSize(4.5);
         doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
+        doc.setTextColor(202, 138, 4); // Clear gold color for Binance Pay
         doc.text('QR BINANCE PAY', 25.5, y + 57, { align: 'center' });
       } catch (err) {
         console.error("Error drawing PDF QR Binance:", err);
@@ -462,7 +470,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
         doc.addImage(paypalImgRef.current, 'PNG', 58, y + 44, 11, 11);
         doc.setFontSize(4.5);
         doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
+        doc.setTextColor(0, 48, 135); // Classic deep blue for PayPal me
         doc.text('QR PAYPAL ME', 63.5, y + 57, { align: 'center' });
       } catch (err) {
         console.error("Error drawing PDF QR PayPal:", err);

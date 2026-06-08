@@ -49,11 +49,11 @@ export function NoticeShareModal({
   useEffect(() => {
     const bImg = new Image();
     bImg.crossOrigin = "anonymous";
-    bImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1')}`;
+    bImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&color=ca8a04&data=${encodeURIComponent('https://app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1')}`;
 
     const pImg = new Image();
     pImg.crossOrigin = "anonymous";
-    pImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://paypal.me/trennd07')}`;
+    pImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&color=003087&data=${encodeURIComponent('https://paypal.me/trennd07')}`;
 
     let loadedCount = 0;
     const handleLoad = () => {
@@ -275,8 +275,8 @@ export function NoticeShareModal({
     ctx.fillText('• Ahorros Pichincha: 2203066545', 35, currentY + 40);
     ctx.fillText('• Ahorros Guayaquil: 0032481285', 35, currentY + 51);
     ctx.fillText('• Ahorros Coop JEP: 406002489704', 35, currentY + 62);
-    ctx.fillText('• Binance ID: 717956622 (Enlace: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1)', 35, currentY + 73);
-    ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com (Enlace: paypal.me/trennd07)', 35, currentY + 84);
+    ctx.fillText('• Binance ID: 717956622', 35, currentY + 73);
+    ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com', 35, currentY + 84);
 
     ctx.font = 'bold italic 7.5px sans-serif';
     ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
@@ -286,16 +286,16 @@ export function NoticeShareModal({
     if (binanceImgRef.current && qrImagesLoaded) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(80, currentY + 106, 55, 55);
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(80, currentY + 106, 55, 55);
       try {
         ctx.drawImage(binanceImgRef.current, 82, currentY + 108, 51, 51);
       } catch (err) {
         console.error("Canvas drawImage Binance error:", err);
       }
-      ctx.fillStyle = isDark ? '#cbd5e1' : '#475569';
-      ctx.font = 'bold 7px sans-serif';
+      ctx.fillStyle = '#ca8a04';
+      ctx.font = 'bold 7.5px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('QR BINANCE PAY', 107, currentY + 172);
     }
@@ -303,16 +303,16 @@ export function NoticeShareModal({
     if (paypalImgRef.current && qrImagesLoaded) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(260, currentY + 106, 55, 55);
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#003087';
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(260, currentY + 106, 55, 55);
       try {
         ctx.drawImage(paypalImgRef.current, 262, currentY + 108, 51, 51);
       } catch (err) {
         console.error("Canvas drawImage PayPal error:", err);
       }
-      ctx.fillStyle = isDark ? '#cbd5e1' : '#475569';
-      ctx.font = 'bold 7px sans-serif';
+      ctx.fillStyle = '#003087';
+      ctx.font = 'bold 7.5px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('QR PAYPAL ME', 287, currentY + 172);
     }
@@ -474,8 +474,8 @@ export function NoticeShareModal({
     doc.text('• Pichincha Ahorros: 2203066545', 14, startY + 37);
     doc.text('• Guayaquil Ahorros: 0032481285', 14, startY + 42);
     doc.text('• Coop JEP Ahorros: 406002489704', 14, startY + 47);
-    doc.text('• Binance ID: 717956622 (Enlace: app.binance.com/qr/dplke9604c57f8c442e889ccb770899aa0e1)', 14, startY + 52);
-    doc.text('• PayPal ID: marcelogutama3eroa@gmail.com (Enlace: paypal.me/trennd07)', 14, startY + 57);
+    doc.text('• Binance ID: 717956622', 14, startY + 52);
+    doc.text('• PayPal ID: marcelogutama3eroa@gmail.com', 14, startY + 57);
 
     doc.setFont('Helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
@@ -487,7 +487,7 @@ export function NoticeShareModal({
         doc.addImage(binanceImgRef.current, 'PNG', 20, startY + 66, 11, 11);
         doc.setFontSize(4.5);
         doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
+        doc.setTextColor(202, 138, 4); // Binance Pay Golden Yellow
         doc.text('QR BINANCE PAY', 25.5, startY + 79, { align: 'center' });
       } catch (err) {
         console.error("Error drawing PDF QR Binance:", err);
@@ -498,7 +498,7 @@ export function NoticeShareModal({
         doc.addImage(paypalImgRef.current, 'PNG', 62, startY + 66, 11, 11);
         doc.setFontSize(4.5);
         doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
+        doc.setTextColor(0, 48, 135); // PayPal Deep Blue
         doc.text('QR PAYPAL ME', 67.5, startY + 79, { align: 'center' });
       } catch (err) {
         console.error("Error drawing PDF QR PayPal:", err);
