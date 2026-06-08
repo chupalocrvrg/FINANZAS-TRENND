@@ -9,12 +9,12 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
-    id: "v_5_2_1_super_admin_module",
+    id: "v_5_2_1_updates_panel",
     version: "V5.2.1",
-    title: "V5.2.1 • Módulo de Super-Administración y Simulación de Cuentas de Clientes",
-    date: "08-Junio-2026, 03:25:00",
-    description: "Habilitación del panel de Super-Administrador exclusivo para marcelogutama3eroa@gmail.com. Permite buscar, filtrar, visualizar, registrar nuevas cuentas, editar parámetros generales (Empresa, RUC, Teléfono/WhatsApp, PIN de desbloqueo) y eliminar cuentas del sistema. Incorpora la opción 'Acceder' / Impersonar para interactuar directamente con los datos de cualquier cuenta sin necesidad de credenciales de Google Auth. Actualización de firestore.rules con un modelo Zero-Trust adaptado.",
-    type: "security"
+    title: "V5.2.1 • Recuperación de PIN, Panel de Vencimientos, Rentabilidad y MRR Recurrente",
+    date: "08-Junio-2026, 03:45:00",
+    description: "Inclusión de la recuperación segura de PIN de bloqueo en pantalla a través de la cuenta verificada del propietario. Activación de un panel dinámico de filtros interactivos por categorías de vencimiento, que agrupa y resalta servicios según su gravedad temporal (Expirado, Por Vencer, Al Día). Integración de una métrica avanzada de rentabilidad operativa en tiempo real que calcula márgenes detallados contra costos de proveedores, junto con la estimación automatizada de Ingresos Recurrentes Mensuales (MRR) de la cartera comercial para un control financiero de nivel superior.",
+    type: "feature"
   },
   {
     id: "v_4_2_0_automated_durations_and_expired_cleanup",
