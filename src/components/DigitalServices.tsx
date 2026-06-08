@@ -16,7 +16,10 @@ import {
   CheckCircle2,
   Wallet,
   Receipt,
-  FileText
+  FileText,
+  TrendingUp,
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
 import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate } from '../lib/utils';
@@ -160,6 +163,9 @@ export function DigitalServices() {
 
   // Success Message
   const [successMsg, setSuccessMsg] = useState<{show: boolean, phone: string, text: string, service?: any}>({show: false, phone: '', text: ''});
+
+  // Expiration / status filter for contract management
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired'>('all');
 
   const [formData, setFormData] = useState({
     id: '', // for edit mode
@@ -808,8 +814,18 @@ export function DigitalServices() {
     window.open(url, '_blank');
   };
 
-  // Filter digital services lists dynamically
+  // Filter digital services lists dynamically (Mejora: Status/Expiration tab categorization and Search combined)
   const filteredServices = services.filter(service => {
+    // 1. Apply status filter
+    const expiring = isExpiringSoon(service.expirationDate);
+    const expired = service.status === 'expired' || (service.expirationDate && new Date(service.expirationDate) < new Date());
+    const isActive = !expired && service.status === 'active';
+
+    if (statusFilter === 'active' && !isActive) return false;
+    if (statusFilter === 'expiring' && !expiring) return false;
+    if (statusFilter === 'expired' && !expired) return false;
+
+    // 2. Apply search filter
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (service.name?.toLowerCase().includes(term)) ||
@@ -819,6 +835,25 @@ export function DigitalServices() {
            (service.supplierName?.toLowerCase().includes(term)) ||
            (service.clientContact?.toLowerCase().includes(term));
   });
+
+  // Calculate dynamic stats for metrics preview (Mejora: Predictabilidad de Rentabilidad)
+  const activeServices = services.filter(s => {
+    const expired = s.status === 'expired' || (s.expirationDate && new Date(s.expirationDate) < new Date());
+    return !expired && s.status === 'active';
+  });
+  const activeRevenueMonth = activeServices.reduce((sum, s) => sum + (s.revenue || 0), 0);
+  const activeCostMonth = activeServices.reduce((sum, s) => sum + (s.cost || 0), 0);
+  const activeProfitMonth = activeRevenueMonth - activeCostMonth;
+  const marginPercentDisplay = activeRevenueMonth > 0 ? Math.round((activeProfitMonth / activeRevenueMonth) * 100) : 0;
+
+  // Calculate counts dynamically for tab pills
+  const totalCounts = services.length;
+  const activeCounts = services.filter(s => {
+    const expired = s.status === 'expired' || (s.expirationDate && new Date(s.expirationDate) < new Date());
+    return !expired && s.status === 'active';
+  }).length;
+  const expiringCounts = services.filter(s => isExpiringSoon(s.expirationDate)).length;
+  const expiredCounts = services.filter(s => s.status === 'expired' || (s.expirationDate && new Date(s.expirationDate) < new Date())).length;
 
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
@@ -846,25 +881,147 @@ export function DigitalServices() {
         </div>
       </div>
 
-      {/* Centered Search Bar */}
-      <div className="flex justify-center w-full">
-        <div className="relative w-full max-w-xl">
+      {/* Metrics Row (Mejora: Predictive Profitability Analytics Row) */}
+      {!loading && services.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-850" : "bg-white border-slate-200")}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Facturación Activa (MRR)</span>
+              <div className="w-7 h-7 bg-indigo-500/10 text-indigo-500 flex items-center justify-center rounded-xl">
+                <Wallet className="w-4 h-4" />
+              </div>
+            </div>
+            <div>
+              <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                {formatCurrency(activeRevenueMonth)}
+              </p>
+              <p className="text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Ingreso total estimado por cuentas activas</p>
+            </div>
+          </div>
+
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-850" : "bg-white border-slate-200")}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Coste de Proveedores</span>
+              <div className="w-7 h-7 bg-rose-500/10 text-rose-500 flex items-center justify-center rounded-xl">
+                <Receipt className="w-4 h-4" />
+              </div>
+            </div>
+            <div>
+              <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight", isDark ? "text-rose-400" : "text-rose-600")}>
+                {formatCurrency(activeCostMonth)}
+              </p>
+              <p className="text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Costo invertido en las suscripciones activas</p>
+            </div>
+          </div>
+
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm ring-2 ring-indigo-500/10", isDark ? "bg-indigo-950/20 border-indigo-500/20" : "bg-indigo-50/50 border-indigo-150")}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-500 font-extrabold">Ganancia Estimada</span>
+              <div className="w-7 h-7 bg-indigo-500 text-white flex items-center justify-center rounded-xl shadow-md">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex justify-between items-end">
+              <div>
+                <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight text-indigo-600 dark:text-indigo-400")}>
+                  {formatCurrency(activeProfitMonth)}
+                </p>
+                <p className="text-[9px] text-indigo-500/80 mt-0.5 font-black uppercase tracking-wider">Ganancia libre recurrente mensual</p>
+              </div>
+              <div className="bg-indigo-550 text-white font-extrabold uppercase tracking-widest text-[8px] px-2 py-1 rounded-lg shadow-sm">
+                +{marginPercentDisplay}% Margen
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Centered Search & Expiration Tabs Controller */}
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center w-full">
+        <div className="relative w-full md:max-w-md">
           <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
-            <Search className="w-5 h-5 animate-pulse text-indigo-500" />
+            <Search className="w-5 h-5 text-indigo-500" />
           </span>
           <input
             type="text"
-            placeholder="🔍 Búsqueda general de suscripciones (por cuenta, cliente, correo)..."
+            placeholder="🔍 Buscar por convenio, perfil de cliente, correo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={cn(
-              "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
+              "w-full pl-11 pr-4 py-3 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner",
               isDark 
                 ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
                 : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
             )}
           />
         </div>
+
+        {/* Dynamic Categorization Filter Tabs */}
+        {!loading && (
+          <div className={cn("flex items-center gap-1.5 p-1 rounded-2xl border w-full md:w-auto overflow-x-auto", isDark ? "bg-slate-900/60 border-slate-850" : "bg-slate-100/70 border-slate-205")}>
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+                statusFilter === 'all'
+                  ? (isDark ? "bg-slate-800 text-white shadow-md font-extrabold" : "bg-white text-slate-900 shadow-sm border border-black/5")
+                  : "text-slate-500 hover:text-slate-705"
+              )}
+            >
+              Todos
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'all' ? "bg-indigo-500 text-white" : "bg-slate-200/50 text-slate-500 dark:bg-slate-800")}>
+                {totalCounts}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('active')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+                statusFilter === 'active'
+                  ? (isDark ? "bg-slate-800 text-emerald-400 shadow-md font-extrabold" : "bg-white text-emerald-600 shadow-sm border border-emerald-500/10")
+                  : "text-slate-500 hover:text-slate-705"
+              )}
+            >
+              Activos
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'active' ? "bg-emerald-500 text-white" : "bg-slate-200/50 text-slate-505 dark:bg-slate-800")}>
+                {activeCounts}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('expiring')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+                statusFilter === 'expiring'
+                  ? (isDark ? "bg-slate-800 text-amber-400 shadow-md font-extrabold" : "bg-white text-amber-600 shadow-sm border border-amber-500/10")
+                  : "text-slate-500 hover:text-slate-705"
+              )}
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-500" />
+              Vencen Pronto
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'expiring' ? "bg-amber-500 text-white" : "bg-slate-200/50 text-slate-505 dark:bg-slate-800")}>
+                {expiringCounts}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('expired')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+                statusFilter === 'expired'
+                  ? (isDark ? "bg-slate-800 text-rose-400 shadow-md font-extrabold" : "bg-white text-rose-600 shadow-sm border border-rose-500/10")
+                  : "text-slate-500 hover:text-slate-705"
+              )}
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+              Vencidos
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'expired' ? "bg-rose-500 text-white" : "bg-slate-200/50 text-slate-505 dark:bg-slate-800")}>
+                {expiredCounts}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Selection Control Panel (Mejora 3) */}

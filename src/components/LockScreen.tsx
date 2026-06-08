@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Fingerprint, Lock, CheckCircle, AlertOctagon, LogOut } from 'lucide-react';
-import { logout } from '../lib/firebase';
+import { Shield, Fingerprint, Lock, CheckCircle, AlertOctagon, LogOut, KeyRound, Check } from 'lucide-react';
+import { logout, signInWithGoogle } from '../lib/firebase';
+import { useAuth } from '../lib/AuthContext';
 
 interface LockScreenProps {
   settings: any;
@@ -9,11 +10,17 @@ interface LockScreenProps {
 }
 
 export function LockScreen({ settings, onUnlock }: LockScreenProps) {
+  const { updateSettings } = useAuth();
   const [pin, setPin] = useState('');
   const [errorCount, setErrorCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [biometricStatus, setBiometricStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
   const [scanProgress, setScanProgress] = useState(0);
+
+  // Recovery States
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [newPinStep, setNewPinStep] = useState(false);
+  const [tempPin, setTempPin] = useState('');
 
   // Auto trigger biometrics on mount if enabled
   useEffect(() => {
@@ -106,7 +113,38 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
     }
   };
 
+  const handleRecoverPin = async () => {
+    setIsRecovering(true);
+    setErrorMessage('');
+    try {
+      const result = await signInWithGoogle();
+      if (result && result.user) {
+        if (result.user.uid === settings?.uid) {
+          setNewPinStep(true);
+        } else {
+          setErrorMessage("Google Auth: La cuenta no corresponde al dueño actual.");
+        }
+      }
+    } catch (e: any) {
+      console.error("Error durante recuperación de PIN:", e);
+      setErrorMessage("No se pudo verificar tu cuenta de Google.");
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
+  const handleNewPinSubmit = async (newPinVal: string) => {
+    try {
+      await updateSettings({ securityPin: newPinVal });
+      onUnlock();
+    } catch (err) {
+      console.error("Error al guardar nuevo PIN:", err);
+      setErrorMessage("Error al guardar el nuevo PIN.");
+    }
+  };
+
   const handleKeyPress = (e: KeyboardEvent) => {
+    if (newPinStep) return;
     if (e.key >= '0' && e.key <= '9') {
       handlePinInput(parseInt(e.key));
     } else if (e.key === 'Backspace') {
@@ -114,12 +152,141 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
     }
   };
 
+  const handleTempKeyPress = (e: KeyboardEvent) => {
+    if (!newPinStep) return;
+    if (e.key >= '0' && e.key <= '9') {
+      if (tempPin.length < 4) {
+        const nextPin = tempPin + e.key;
+        setTempPin(nextPin);
+        if (nextPin.length === 4) {
+          setTimeout(() => handleNewPinSubmit(nextPin), 300);
+        }
+      }
+    } else if (e.key === 'Backspace') {
+      setTempPin((prev) => prev.slice(0, -1));
+    }
+  };
+
   useEffect(() => {
+    if (newPinStep) return;
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [pin]);
+  }, [pin, newPinStep]);
+
+  useEffect(() => {
+    if (!newPinStep) return;
+    window.addEventListener('keydown', handleTempKeyPress);
+    return () => window.removeEventListener('keydown', handleTempKeyPress);
+  }, [tempPin, newPinStep]);
 
   const isDark = settings?.theme === 'dark';
+
+  if (newPinStep) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-4 bg-slate-950 text-white select-none">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full blur-3xl opacity-30" />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative w-full max-w-sm flex flex-col items-center justify-center"
+        >
+          <div className="relative mb-6">
+            <div className="w-16 h-16 bg-slate-900 border border-emerald-500/30 rounded-2xl flex items-center justify-center shadow-xl text-emerald-400">
+              <KeyRound className="w-7 h-7" />
+            </div>
+            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-950 rounded-full animate-ping" />
+          </div>
+
+          <h2 className="text-xl font-extrabold uppercase tracking-tight text-white mb-1">
+            Nuevo PIN de Seguridad
+          </h2>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 block mb-6 text-center">
+            Verificación exitosa • Configura tu PIN
+          </span>
+
+          <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 text-center max-w-xs mb-6">
+            Ingresa un nuevo PIN de 4 dígitos para acceder en este dispositivo.
+          </p>
+
+          <div className="flex gap-4 justify-center mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div 
+                key={i} 
+                className={`w-11 h-11 rounded-2xl border-2 flex items-center justify-center text-lg font-bold transition-all ${
+                  tempPin.length > i 
+                    ? 'border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                    : 'border-slate-800 bg-slate-900 text-slate-500'
+                }`}
+              >
+                {tempPin[i] ? '*' : ''}
+              </div>
+            ))}
+          </div>
+
+          {/* Interactive Numeric Keypad for setting new PIN */}
+          <div className="grid grid-cols-3 gap-3 w-full px-4 mb-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <button 
+                key={num}
+                type="button"
+                onClick={() => {
+                  if (tempPin.length < 4) {
+                    const nextPin = tempPin + num;
+                    setTempPin(nextPin);
+                    if (nextPin.length === 4) {
+                      setTimeout(() => handleNewPinSubmit(nextPin), 300);
+                    }
+                  }
+                }}
+                className="h-14 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/60 active:scale-95 rounded-2xl font-bold transition-all text-sm tracking-widest flex items-center justify-center cursor-pointer"
+              >
+                {num}
+              </button>
+            ))}
+            
+            <div className="h-14" />
+
+            <button 
+              type="button"
+              onClick={() => {
+                if (tempPin.length < 4) {
+                  const nextPin = tempPin + '0';
+                  setTempPin(nextPin);
+                  if (nextPin.length === 4) {
+                    setTimeout(() => handleNewPinSubmit(nextPin), 300);
+                  }
+                }
+              }}
+              className="h-14 bg-slate-900/60 hover:bg-slate-900 border border-slate-800/60 rounded-2xl font-bold transition-all text-sm tracking-widest flex items-center justify-center cursor-pointer"
+            >
+              0
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => setTempPin((prev) => prev.slice(0, -1))}
+              className="h-14 bg-slate-900/40 hover:bg-slate-900/80 border border-slate-800/60 rounded-2xl font-bold tracking-widest text-[9px] uppercase hover:text-rose-450 transition-colors cursor-pointer flex items-center justify-center"
+            >
+              Borrar
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              setNewPinStep(false);
+              setTempPin('');
+            }}
+            className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-400 transition-colors mx-auto cursor-pointer"
+          >
+            Cancelar y volver
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-4 bg-slate-950 text-white select-none">
@@ -276,17 +443,28 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
         </AnimatePresence>
 
         {/* Security Disclaimers / Recover options */}
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-3.5">
           <p className="text-[9px] text-slate-500 uppercase tracking-widest">
             {settings?.biometricEnabled ? 'Desbloqueo Biométrico Habilitado' : 'PIN requerido obligatoriamente'}
           </p>
           
-          <button 
-            onClick={() => logout()}
-            className="mt-4 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-400 transition-colors mx-auto cursor-pointer"
-          >
-            <LogOut className="w-3 h-3" /> Cerrar sesión actual
-          </button>
+          <div className="flex flex-col items-center gap-2">
+            <button 
+              type="button"
+              onClick={handleRecoverPin}
+              disabled={isRecovering}
+              className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer bg-indigo-500/5 hover:bg-indigo-500/10 px-4 py-1.5 border border-indigo-500/10 rounded-xl"
+            >
+              {isRecovering ? 'Iniciando Google Auth...' : '¿Olvidaste tu PIN? Recuperar con Google'}
+            </button>
+
+            <button 
+              onClick={() => logout()}
+              className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-400 transition-colors cursor-pointer pt-1"
+            >
+              <LogOut className="w-3 h-3" /> Cerrar sesión actual
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
