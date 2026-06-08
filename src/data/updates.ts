@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_5_2_1_super_admin_module",
+    version: "V5.2.1",
+    title: "V5.2.1 • Módulo de Super-Administración y Simulación de Cuentas de Clientes",
+    date: "08-Junio-2026, 03:25:00",
+    description: "Habilitación del panel de Super-Administrador exclusivo para marcelogutama3eroa@gmail.com. Permite buscar, filtrar, visualizar, registrar nuevas cuentas, editar parámetros generales (Empresa, RUC, Teléfono/WhatsApp, PIN de desbloqueo) y eliminar cuentas del sistema. Incorpora la opción 'Acceder' / Impersonar para interactuar directamente con los datos de cualquier cuenta sin necesidad de credenciales de Google Auth. Actualización de firestore.rules con un modelo Zero-Trust adaptado.",
+    type: "security"
+  },
+  {
     id: "v_4_2_0_automated_durations_and_expired_cleanup",
     version: "V4.2.0 (2.4.1)",
     title: "V4.2.0 (2.4.1) • Asignación Autónoma de Vigencias y Purga de Cuentas Overdue sin Afectación de Clientes",
