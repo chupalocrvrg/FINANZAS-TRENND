@@ -190,6 +190,19 @@ export function DigitalServices() {
 
   const isDark = settings?.theme === 'dark';
 
+  const [gridCols, setGridCols] = useState<1 | 2 | 3 | 4>(() => {
+    const saved = localStorage.getItem('digital_services_grid_cols');
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if ([1, 2, 3, 4].includes(parsed)) return parsed as any;
+    }
+    return 3; // default to a balanced 3 columns
+  });
+
+  useEffect(() => {
+    localStorage.setItem('digital_services_grid_cols', gridCols.toString());
+  }, [gridCols]);
+
   useEffect(() => {
     if (!user) return;
     const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
@@ -1026,7 +1039,7 @@ export function DigitalServices() {
 
       {/* Selection Control Panel (Mejora 3) */}
       {!loading && filteredServices.length > 0 && (
-        <div className="flex justify-between items-center px-2 py-1 text-xs">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-2 py-2 gap-3 text-xs">
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -1047,6 +1060,31 @@ export function DigitalServices() {
               </span>
             )}
           </div>
+
+          {/* Grid columns selector for accessibility / visually impaired users */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <span className={cn("text-[9px] font-black uppercase tracking-widest hidden sm:inline-block", isDark ? "text-slate-400" : "text-slate-500")}>
+              👁️ Ver por Fila:
+            </span>
+            <div className={cn("flex items-center gap-1 p-1 rounded-xl border w-full md:w-auto overflow-x-auto", isDark ? "bg-slate-900/80 border-slate-850" : "bg-slate-50 border-slate-200")}>
+              {[1, 2, 3, 4].map((cols) => (
+                <button
+                  key={cols}
+                  type="button"
+                  onClick={() => setGridCols(cols as any)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-none",
+                    gridCols === cols
+                      ? (isDark ? "bg-indigo-650 text-white shadow font-black" : "bg-white text-indigo-600 shadow-sm border border-black/5 font-black")
+                      : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")
+                  )}
+                  title={cols === 1 ? "1 Tarjeta Grande (ideal para problemas de vista)" : `${cols} Tarjetas`}
+                >
+                  {cols === 1 ? '1 Fila (Grande ♿)' : `${cols} Cols`}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1056,7 +1094,13 @@ export function DigitalServices() {
           <p className="font-bold uppercase tracking-widest text-[10px]">Sincronizando Servicios...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+        <div className={cn(
+          "grid gap-4 lg:gap-6",
+          gridCols === 1 && "grid-cols-1 max-w-2xl mx-auto",
+          gridCols === 2 && "grid-cols-1 md:grid-cols-2",
+          gridCols === 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+          gridCols === 4 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        )}>
           <AnimatePresence mode="popLayout">
             {filteredServices.map((service) => {
                 const expiring = isExpiringSoon(service.expirationDate);
@@ -1070,7 +1114,8 @@ export function DigitalServices() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     key={service.id}
                     className={cn(
-                      "p-5 pt-8 rounded-3xl border transition-all flex flex-col justify-between group relative overflow-hidden",
+                      "border transition-all flex flex-col justify-between group relative overflow-hidden",
+                      gridCols === 1 ? "p-7 pt-10 rounded-[2rem]" : gridCols === 2 ? "p-6 pt-9 rounded-3xl" : "p-5 pt-8 rounded-3xl",
                       expired 
                         ? (isDark ? "bg-rose-950/10 border-rose-900/40" : "bg-rose-50/30 border-rose-100") 
                         : expiring 
@@ -1079,7 +1124,7 @@ export function DigitalServices() {
                     )}
                   >
                     {/* Checkbox for Bulk operations (Mejora 3) */}
-                    <div className="absolute top-3 left-3 z-10 flex items-center justify-center">
+                    <div className={cn("absolute z-10 flex items-center justify-center", gridCols === 1 ? "top-4.5 left-4.5" : "top-3 left-3")}>
                       <input 
                         type="checkbox"
                         checked={selectedItemIds.includes(service.id)}
@@ -1091,13 +1136,16 @@ export function DigitalServices() {
                             setSelectedItemIds(prev => [...prev, service.id]);
                           }
                         }}
-                        className="w-4 h-4 rounded-lg border-2 border-indigo-400 cursor-pointer accent-indigo-600 transition-transform hover:scale-110"
+                        className={cn("cursor-pointer accent-indigo-600 transition-transform hover:scale-110",
+                          gridCols === 1 ? "w-6 h-6 rounded-xl border-indigo-400" : gridCols === 2 ? "w-5 h-5 rounded-lg border-indigo-400" : "w-4 h-4 rounded-lg border border-indigo-400"
+                        )}
                       />
                     </div>
 
                     {/* Status badge - Absolutely positioned at top-right for premium alignment */}
                     <span className={cn(
-                      "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full absolute top-3 right-3 z-10",
+                      "font-black uppercase tracking-widest absolute z-10 rounded-full",
+                      gridCols === 1 ? "text-xs px-3.5 py-1.5 top-4.5 right-4.5" : gridCols === 2 ? "text-[10px] px-2.5 py-1 top-3.5 right-3.5" : "text-[8px] px-2 py-0.5 top-3 right-3",
                       expired ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
                       expiring ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
                       "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
@@ -1107,20 +1155,26 @@ export function DigitalServices() {
 
                     <div>
                       {/* Header card info */}
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0", 
+                      <div className={cn("flex items-center mb-4", gridCols === 1 ? "gap-4 mb-6" : gridCols === 2 ? "gap-3 mb-5" : "gap-2.5 mb-4")}>
+                        <div className={cn("rounded-2xl flex items-center justify-center shrink-0 transition-all", 
+                          gridCols === 1 ? "w-14 h-14 rounded-3xl" : gridCols === 2 ? "w-12 h-12 rounded-2xl" : "w-10 h-10 rounded-2xl",
                           expired ? "bg-rose-500/10 text-rose-500" :
                           expiring ? "bg-amber-500/10 text-amber-500" :
                           isDark ? "bg-slate-800 text-indigo-400" : "bg-indigo-50 text-indigo-600"
                         )}>
-                          {service.category === 'Streaming' && <Tv className="w-5 h-5" />}
-                          {service.category === 'Música' && <Smartphone className="w-5 h-5" />}
-                          {service.category === 'Gaming' && <Gamepad2 className="w-5 h-5" />}
-                          {['Software', 'Otros'].includes(service.category) && <ShoppingBag className="w-5 h-5" />}
+                          {service.category === 'Streaming' && <Tv className={cn(gridCols === 1 ? "w-7 h-7" : gridCols === 2 ? "w-6 h-6" : "w-5 h-5")} />}
+                          {service.category === 'Música' && <Smartphone className={cn(gridCols === 1 ? "w-7 h-7" : gridCols === 2 ? "w-6 h-6" : "w-5 h-5")} />}
+                          {service.category === 'Gaming' && <Gamepad2 className={cn(gridCols === 1 ? "w-7 h-7" : gridCols === 2 ? "w-6 h-6" : "w-5 h-5")} />}
+                          {['Software', 'Otros'].includes(service.category) && <ShoppingBag className={cn(gridCols === 1 ? "w-7 h-7" : gridCols === 2 ? "w-6 h-6" : "w-5 h-5")} />}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 block">{service.category}</span>
-                          <h4 className={cn("text-sm font-bold tracking-tight truncate", isDark ? "text-white" : "text-slate-900")} title={service.name}>
+                          <span className={cn("font-black uppercase tracking-widest text-slate-500 block",
+                            gridCols === 1 ? "text-xs mb-0.5" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
+                          )}>{service.category}</span>
+                          <h4 className={cn("font-bold tracking-tight truncate", 
+                            gridCols === 1 ? "text-xl md:text-2xl font-black" : gridCols === 2 ? "text-base md:text-lg" : "text-sm",
+                            isDark ? "text-white" : "text-slate-900"
+                          )} title={service.name}>
                             {service.name}
                           </h4>
                         </div>
@@ -1128,12 +1182,19 @@ export function DigitalServices() {
 
                     {/* Cliente Info */}
                     {service.clientName && (
-                      <div className={cn("p-2.5 rounded-xl text-xs mb-3 flex flex-col gap-0.5", isDark ? "bg-slate-950/40" : "bg-slate-50")}>
-                        <div className="flex items-center justify-between">
-                          <p className={cn("font-bold truncate", isDark ? "text-slate-300" : "text-slate-800")}>
-                            👤 {service.clientName}
+                      <div className={cn(
+                        "mb-3.5 flex flex-col gap-0.5", 
+                        gridCols === 1 ? "p-5 rounded-2xl mb-5 text-sm md:text-base gap-2" : gridCols === 2 ? "p-3.5 rounded-xl mb-4 text-xs md:text-sm gap-1" : "p-2.5 rounded-xl text-xs mb-3 gap-0.5",
+                        isDark ? "bg-slate-950/45" : "bg-slate-50"
+                      )}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <p className={cn("font-bold truncate flex items-center gap-1.5", 
+                            gridCols === 1 ? "text-base md:text-lg font-black" : gridCols === 2 ? "text-sm md:text-base" : "text-xs",
+                            isDark ? "text-slate-250" : "text-slate-800"
+                          )}>
+                            <span>👤</span> <span>{service.clientName}</span>
                           </p>
-                          <div className="flex flex-col gap-1 items-end shrink-0">
+                          <div className="flex flex-row sm:flex-col gap-1 items-start sm:items-end shrink-0">
                             <button 
                               onClick={(e) => {
                                  e.stopPropagation();
@@ -1145,11 +1206,12 @@ export function DigitalServices() {
                               }}
                               disabled={service.isPaid}
                               className={cn(
-                              "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full outline-none transition-colors",
-                              service.isPaid
-                                ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                                : "bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 cursor-pointer"
-                            )}>
+                                "font-black uppercase tracking-widest outline-none transition-colors",
+                                gridCols === 1 ? "text-xs px-3 py-1.5 rounded-lg" : gridCols === 2 ? "text-[10px] px-2.5 py-1 rounded-md" : "text-[8px] px-2 py-0.5 rounded-full",
+                                service.isPaid
+                                  ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                                  : "bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 cursor-pointer"
+                              )}>
                               {service.isPaid ? 'Cobrado' : 'Cobrar (CxC)'}
                             </button>
                             <button 
@@ -1163,23 +1225,29 @@ export function DigitalServices() {
                               }}
                               disabled={service.isCostPaid !== false}
                               className={cn(
-                              "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full outline-none transition-colors",
-                              service.isCostPaid !== false
-                                ? "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
-                                : "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 cursor-pointer"
-                            )}>
+                                "font-black uppercase tracking-widest outline-none transition-colors",
+                                gridCols === 1 ? "text-xs px-3 py-1.5 rounded-lg" : gridCols === 2 ? "text-[10px] px-2.5 py-1 rounded-md" : "text-[8px] px-2 py-0.5 rounded-full",
+                                service.isCostPaid !== false
+                                  ? "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
+                                  : "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 cursor-pointer"
+                              )}>
                               {service.isCostPaid !== false ? 'Costo Pago' : 'Pagar Costo'}
                             </button>
                           </div>
                         </div>
                         {service.clientContact && (
-                          <p className="text-[10px] text-slate-500 font-mono">
-                            📞 {service.clientContact}
+                          <p className={cn("font-mono text-slate-500 flex items-center gap-1.5", 
+                            gridCols === 1 ? "text-sm mt-1" : gridCols === 2 ? "text-xs" : "text-[10px]"
+                          )}>
+                            <span>📞</span> <span>{service.clientContact}</span>
                           </p>
                         )}
                         {service.expirationDate && (
-                          <p className={cn("text-[10px] font-bold mt-1", expired ? "text-rose-500" : expiring ? "text-amber-500" : "text-slate-500")}>
-                            📅 Expira: {service.expirationDate}
+                          <p className={cn("font-bold flex items-center gap-1.5", 
+                            gridCols === 1 ? "text-sm mt-2" : gridCols === 2 ? "text-xs mt-1" : "text-[10px]",
+                            expired ? "text-rose-500" : expiring ? "text-amber-500" : "text-slate-500"
+                          )}>
+                            <span>📅 Expira:</span> <span>{service.expirationDate}</span>
                           </p>
                         )}
                       </div>
@@ -1187,23 +1255,28 @@ export function DigitalServices() {
 
                     {/* Cuenta credenciales ocultas/visibles */}
                     {(service.email || service.password || service.pin) && (
-                      <div className="border border-dashed border-slate-100/10 p-2.5 rounded-xl text-[10px] mb-4 space-y-1 font-medium bg-slate-950/10">
+                      <div className={cn(
+                        "border border-dashed border-slate-500/10 font-medium bg-slate-950/10 tracking-wide",
+                        gridCols === 1 ? "p-5 rounded-2xl text-base mb-6 space-y-2.5" : gridCols === 2 ? "p-3.5 rounded-xl text-sm mb-4 space-y-2" : "p-2.5 rounded-xl text-[10px] mb-4 space-y-1"
+                      )}>
                         {service.email && (
-                          <div className="flex justify-between items-center truncate">
-                            <span className="text-slate-400">User:</span>
-                            <span className={cn("font-bold select-all", isDark ? "text-indigo-200" : "text-slate-700")}>{service.email}</span>
+                          <div className="flex justify-between items-center gap-4 truncate">
+                            <span className="text-slate-400 font-semibold">User:</span>
+                            <span className={cn("font-bold select-all truncate", isDark ? "text-indigo-200" : "text-slate-700")}>{service.email}</span>
                           </div>
                         )}
                         {service.password && (
-                          <div className="flex justify-between items-center truncate">
-                            <span className="text-slate-400">Clave:</span>
-                            <span className={cn("font-bold select-all font-mono", isDark ? "text-indigo-300" : "text-slate-800")}>{service.password}</span>
+                          <div className="flex justify-between items-center gap-4 truncate">
+                            <span className="text-slate-400 font-semibold">Clave:</span>
+                            <span className={cn("font-black select-all font-mono tracking-wider", isDark ? "text-indigo-350 dark:text-indigo-300" : "text-slate-800")}>{service.password}</span>
                           </div>
                         )}
                         {service.pin && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-400">PIN / Pantalla:</span>
-                            <span className="font-bold bg-indigo-500/10 text-indigo-500 px-1 py-0.2 rounded font-mono">{service.pin}</span>
+                          <div className="flex justify-between items-center gap-4">
+                            <span className="text-slate-400 font-semibold">PIN / Pantalla:</span>
+                            <span className={cn("font-bold bg-indigo-500/10 text-indigo-500 rounded font-mono",
+                              gridCols === 1 ? "px-2.5 py-0.5 text-base" : gridCols === 2 ? "px-1.5 py-0.3 text-sm" : "px-1 py-0.2"
+                            )}>{service.pin}</span>
                           </div>
                         )}
                       </div>
@@ -1212,35 +1285,57 @@ export function DigitalServices() {
 
                   {/* Profit margins */}
                   <div>
-                    <div className="flex items-center justify-between py-2 border-t border-slate-800/10 mb-4">
+                    <div className={cn(
+                      "flex items-center justify-between border-t border-slate-800/10",
+                      gridCols === 1 ? "py-4 mb-5" : gridCols === 2 ? "py-3 mb-4" : "py-2 mb-4"
+                    )}>
                       <div>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Costo</p>
-                        <p className="text-xs font-black font-mono text-rose-500">{formatCurrency(service.cost || 0)}</p>
+                        <p className={cn("font-bold text-slate-500 uppercase tracking-widest",
+                          gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
+                        )}>Costo</p>
+                        <p className={cn("font-black font-mono text-rose-500",
+                          gridCols === 1 ? "text-base md:text-lg" : gridCols === 2 ? "text-sm" : "text-xs"
+                        )}>{formatCurrency(service.cost || 0)}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">PVP</p>
-                        <p className="text-xs font-black font-mono text-emerald-500">{formatCurrency(service.revenue)}</p>
+                        <p className={cn("font-bold text-slate-500 uppercase tracking-widest",
+                          gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
+                        )}>PVP</p>
+                        <p className={cn("font-black font-mono text-emerald-500",
+                          gridCols === 1 ? "text-base md:text-lg" : gridCols === 2 ? "text-sm" : "text-xs"
+                        )}>{formatCurrency(service.revenue)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Rentabilidad</p>
-                        <p className="text-xs font-black font-mono text-indigo-500">{formatCurrency(service.revenue - (service.cost || 0))}</p>
+                        <p className={cn("font-bold text-slate-500 uppercase tracking-widest",
+                          gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
+                        )}>Rentabilidad</p>
+                        <p className={cn("font-black font-mono text-indigo-500",
+                          gridCols === 1 ? "text-base md:text-lg" : gridCols === 2 ? "text-sm" : "text-xs"
+                        )}>{formatCurrency(service.revenue - (service.cost || 0))}</p>
                       </div>
                     </div>
 
                     {/* Quick Core Actions row */}
-                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-800/10 mt-3">
+                    <div className={cn("flex flex-col gap-2 pt-2 border-t border-slate-800/10", gridCols === 1 ? "mt-4 gap-3 pt-4" : "mt-3")}>
                       <div className="flex items-center gap-1.5">
                         <button 
                           onClick={() => handleEdit(service)}
                           title="Editar suscripción"
-                          className={cn("flex-1 p-2 border rounded-xl hover:bg-slate-50 transition-colors flex justify-center text-slate-500 hover:text-indigo-600 cursor-pointer", isDark ? "border-slate-800 hover:bg-slate-800/40" : "border-slate-200 bg-white shadow-xs")}
+                          className={cn(
+                            "flex-1 border hover:bg-slate-50 transition-colors flex justify-center text-slate-500 hover:text-indigo-600 cursor-pointer items-center", 
+                            gridCols === 1 ? "p-3.5 rounded-2xl text-xs md:text-sm h-12" : gridCols === 2 ? "p-2.5 rounded-xl text-xs h-10" : "p-2 rounded-xl text-[10px] h-9",
+                            isDark ? "border-slate-800 hover:bg-slate-800/40" : "border-slate-200 bg-white shadow-xs"
+                          )}
                         >
-                          <span className="text-[10px] font-bold uppercase tracking-widest">Editar</span>
+                          <span className="font-bold uppercase tracking-widest">Editar</span>
                         </button>
                         <button 
                           onClick={() => setRenewalService(service)}
                           title="Extender y procesar renovación con ingresos y costes"
-                          className="flex-1 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex justify-center cursor-pointer shadow-sm text-[10px] font-bold uppercase tracking-widest"
+                          className={cn(
+                            "flex-1 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center justify-center cursor-pointer shadow-sm font-bold uppercase tracking-widest",
+                            gridCols === 1 ? "p-3.5 rounded-2xl text-xs sm:text-sm h-12" : gridCols === 2 ? "p-2.5 rounded-xl text-xs h-10" : "p-2 rounded-xl text-[10px] h-9"
+                          )}
                         >
                           Renovar
                         </button>
@@ -1250,25 +1345,34 @@ export function DigitalServices() {
                           <button 
                             onClick={(e) => handleWhatsAppAlert(service, e)}
                             title="Enviar cobro por WhatsApp"
-                            className="p-2 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-colors flex items-center justify-center cursor-pointer shadow-sm"
+                            className={cn(
+                              "bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-colors flex items-center justify-center cursor-pointer shadow-sm shrink-0",
+                              gridCols === 1 ? "w-12 h-12" : gridCols === 2 ? "w-10 h-10" : "w-9 h-9"
+                            )}
                           >
-                            <MessageCircle className="w-4 h-4" />
+                            <MessageCircle className={cn(gridCols === 1 ? "w-5.5 h-5.5" : "w-4.5 h-4.5")} />
                           </button>
                         )}
                         <button 
                           onClick={() => handleOpenVoucher(service)}
                           title="Emitir Comprobante"
-                          className="p-2 py-2.5 border border-indigo-200 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl transition-all cursor-pointer"
+                          className={cn(
+                            "border border-indigo-200 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0",
+                            gridCols === 1 ? "w-12 h-12 rounded-2xl" : gridCols === 2 ? "w-10 h-10 rounded-xl" : "w-9 h-9 rounded-xl"
+                          )}
                         >
-                          <Receipt className="w-4 h-4" />
+                          <Receipt className={cn(gridCols === 1 ? "w-5.5 h-5.5" : "w-4.5 h-4.5")} />
                         </button>
                         <button 
                           onClick={(e) => handleDelete(service.id, e)}
                           title="Eliminar suscripción"
-                          className="flex-1 py-1.5 px-3 border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest"
+                          className={cn(
+                            "flex-1 border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 font-black uppercase tracking-widest",
+                            gridCols === 1 ? "p-3 rounded-2xl text-xs h-12" : gridCols === 2 ? "p-2.5 rounded-xl text-[10px] h-10" : "p-1.5 rounded-xl text-[10px] h-9"
+                          )}
                         >
                           <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>Eliminar Suscripción</span>
+                          <span>Eliminar</span>
                         </button>
                       </div>
                     </div>
