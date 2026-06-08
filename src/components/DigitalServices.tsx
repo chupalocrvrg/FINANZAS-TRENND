@@ -26,6 +26,7 @@ import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc
 import { Wallet as WalletType } from '../types';
 import { sendLocalPushNotification } from '../lib/notifications';
 import { ConfirmModal } from './ConfirmModal';
+import { ServiceRenewalModal } from './ServiceRenewalModal';
 
 interface Entity {
   id: string;
@@ -151,6 +152,7 @@ export function DigitalServices() {
 
   // Payment processing state
   const [paymentService, setPaymentService] = useState<DigitalServiceItem | null>(null);
+  const [renewalService, setRenewalService] = useState<any>(null);
   const [paymentType, setPaymentType] = useState<'revenue' | 'cost'>('revenue');
   const [targetWalletId, setTargetWalletId] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -1079,8 +1081,8 @@ export function DigitalServices() {
                           <span className="text-[10px] font-bold uppercase tracking-widest">Editar</span>
                         </button>
                         <button 
-                          onClick={() => handleRenewService(service)}
-                          title="Extender 30 días adicionales de renovación"
+                          onClick={() => setRenewalService(service)}
+                          title="Extender y procesar renovación con ingresos y costes"
                           className="flex-1 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex justify-center cursor-pointer shadow-sm text-[10px] font-bold uppercase tracking-widest"
                         >
                           Renovar
@@ -2064,6 +2066,20 @@ export function DigitalServices() {
         onClose={() => setIsVoucherModalOpen(false)} 
         voucher={activeVoucher} 
       />
+
+      {renewalService && (
+        <ServiceRenewalModal
+          isOpen={!!renewalService}
+          onClose={() => setRenewalService(null)}
+          service={renewalService}
+          wallets={wallets}
+          user={user}
+          onSuccess={() => {
+            // Success handler
+          }}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 }

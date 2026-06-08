@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { jsPDF } from 'jspdf';
 import { NoticeShareModal } from './NoticeShareModal';
+import { ServiceRenewalModal } from './ServiceRenewalModal';
 import 'jspdf-autotable';
 import { 
   TrendingUp, 
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, cn, getGMT5DateString } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
+import { sendLocalPushNotification } from '../lib/notifications';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useTranslation } from '../lib/translations';
@@ -103,7 +105,18 @@ export function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [digitalServices, setDigitalServices] = useState<any[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
-  const [activeModal, setActiveModal] = useState<'wallets' | 'receivables' | 'payables' | 'entities' | null>(null);
+  const [activeModal, setActiveModal] = useState<'wallets' | 'credit_cards' | 'receivables' | 'payables' | 'entities' | null>(null);
+
+  // Calendar inline payment details
+  const [inlinePayTarget, setInlinePayTarget] = useState<{ 
+    id: string; 
+    type: 'ledger' | 'service'; 
+    amount: number; 
+    name: string; 
+    item: any;
+  } | null>(null);
+  const [inlineWalletId, setInlineWalletId] = useState<string>('');
+  const [inlineAmount, setInlineAmount] = useState<string>('');
   
   // Custom Filters and Categorization state
   const [filterType, setFilterType] = useState<'all' | 'client' | 'reseller' | 'intermediary' | 'supplier'>('all');
@@ -119,6 +132,7 @@ export function Dashboard() {
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState<Date>(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [renewalService, setRenewalService] = useState<any>(null);
 
   // --- STATE FOR QUICK ADD FAB CONTEXT MENU ---
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -792,6 +806,130 @@ export function Dashboard() {
     }
   };
 
+  const logServiceHistory = async (serviceId: string, action: string, details: any) => {
+    try {
+      const { addDoc, collection } = await import('firebase/firestore');
+      await addDoc(collection(db, 'digital_services', serviceId, 'service_history'), {
+        action,
+        details,
+        userId: user?.uid,
+        createdAt: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error("Error logging service history:", e);
+    }
+  };
+
+  const handleInlineConfirmPayment = async () => {
+    if (!inlinePayTarget || !inlineWalletId) {
+      alert("Por favor, selecciona una billetera / caja.");
+      return;
+    }
+    const amountToPay = parseFloat(inlineAmount);
+    if (isNaN(amountToPay) || amountToPay <= 0) {
+      alert("Monto inválido.");
+      return;
+    }
+
+    const { doc, updateDoc, addDoc, collection, increment } = await import('firebase/firestore');
+
+    try {
+      if (inlinePayTarget.type === 'service') {
+        const s = inlinePayTarget.item;
+        const currentAmountPaid = s.amountPaid || 0;
+        const maxRevenue = s.revenue || s.retailPrice || 0;
+        const newAmtPaid = currentAmountPaid + amountToPay;
+        const isFullyPaid = newAmtPaid >= maxRevenue - 0.005;
+
+        // Update service
+        await updateDoc(doc(db, 'digital_services', s.id), {
+          isPaid: isFullyPaid,
+          amountPaid: newAmtPaid,
+          status: 'active',
+          updatedAt: new Date().toISOString()
+        });
+
+        // Log history
+        await logServiceHistory(s.id, 'paid_from_calendar', { amount: amountToPay });
+
+        // Update Wallet
+        await updateDoc(doc(db, 'wallets', inlineWalletId), {
+          balance: increment(amountToPay)
+        });
+
+        // Add Ledger
+        await addDoc(collection(db, 'ledger'), {
+          amount: amountToPay,
+          category: 'Recaudo de Servicio Digital',
+          description: `Cobro adelantado vía Calendario: ${s.name} - ${s.clientName}`,
+          date: new Date().toISOString().split('T')[0],
+          walletId: inlineWalletId,
+          isExpense: false,
+          ownerId: user!.uid,
+          createdAt: new Date().toISOString()
+        });
+
+        // Push notification
+        await sendLocalPushNotification('Cobro Exitoso ✅', `Se cobró ${formatCurrency(amountToPay)} de la cuenta ${s.name} de ${s.clientName}`);
+      } else {
+        const entry = inlinePayTarget.item;
+        // Update pending ledger entry
+        await updateDoc(doc(db, 'ledger', entry.id), {
+          isPending: false,
+          walletId: inlineWalletId,
+          description: `${entry.description || ''} (Saldado vía Calendario)`,
+          updatedAt: new Date().toISOString()
+        });
+
+        // Update Wallet balance
+        // Since entry.amount is negative (e.g. basic services is expense), adding compiles correctly
+        await updateDoc(doc(db, 'wallets', inlineWalletId), {
+          balance: increment(entry.amount)
+        });
+
+        await sendLocalPushNotification('Pago Exitoso ✅', `Se saldó la cuenta de ${entry.category} por ${formatCurrency(Math.abs(entry.amount))}`);
+      }
+
+      setInlinePayTarget(null);
+      setInlineWalletId('');
+      setInlineAmount('');
+    } catch (e) {
+      console.error("Error executing inline payment from calendar:", e);
+      alert("Ocurrió un error al procesar el pago.");
+    }
+  };
+
+  const handleInlineRenewService = async (service: any) => {
+    try {
+      let newDateStr = '';
+      const fallbackDate = new Date();
+      fallbackDate.setDate(fallbackDate.getDate() + 30);
+      
+      if (service.expirationDate) {
+        const curr = new Date(service.expirationDate);
+        // If expired or invalid date, take today, else add 30 to current expiration date
+        const start = isNaN(curr.getTime()) || curr < new Date() ? new Date() : curr;
+        start.setDate(start.getDate() + 30);
+        newDateStr = start.toISOString().split('T')[0];
+      } else {
+        newDateStr = fallbackDate.toISOString().split('T')[0];
+      }
+
+      const { updateDoc, doc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'digital_services', service.id), {
+        status: 'active',
+        expirationDate: newDateStr,
+        updatedAt: new Date().toISOString()
+      });
+      
+      await logServiceHistory(service.id, 'renewed_from_calendar', { oldExpiration: service.expirationDate, newExpiration: newDateStr });
+      await sendLocalPushNotification('Renovación Exitosa ✅', `Se extendió la cuenta de ${service.clientName} (${service.name}) hasta el ${newDateStr}.`);
+    } catch (e) {
+      console.error("Error renewing service inline from calendar:", e);
+      alert("Error al renovar servicio.");
+    }
+  };
+
   // Calendar helper calculations
   const calendarMonths = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -864,25 +1002,30 @@ export function Dashboard() {
   }
 
   const getDayFinancials = (dateStr: string) => {
-    const dayEntries = ledgerEntries.filter(e => {
-      return e.date === dateStr || e.dueDate === dateStr;
-    });
+    // Real settled ledger movements on this day
+    const movements = ledgerEntries.filter(e => !e.isPending && e.date === dateStr);
+    // Pending ledger payments due on this day (credit cards, basic services, etc.)
+    const pendingLedger = ledgerEntries.filter(e => e.isPending && e.dueDate === dateStr);
+    // Digital services expiring/cutting on this day
+    const expiringServices = digitalServices.filter(s => s.expirationDate === dateStr);
 
     let realIncome = 0;
     let realExpense = 0;
-    let pendingPaymentsCount = 0;
-    let pendingPaymentsTotal = 0;
 
-    dayEntries.forEach(e => {
-      if (e.isPending) {
-        pendingPaymentsCount++;
-        pendingPaymentsTotal += Math.abs(e.amount);
+    movements.forEach(e => {
+      if (e.amount > 0) {
+        realIncome += e.amount;
       } else {
-        if (e.amount > 0) {
-          realIncome += e.amount;
-        } else {
-          realExpense += Math.abs(e.amount);
-        }
+        realExpense += Math.abs(e.amount);
+      }
+    });
+
+    const pendingPaymentsCount = pendingLedger.length + expiringServices.filter(s => !s.isPaid).length;
+    let pendingPaymentsTotal = pendingLedger.reduce((sum, e) => sum + Math.abs(e.amount), 0);
+    // Add expiring services retailPrice to pending if they are not paid
+    expiringServices.forEach(s => {
+      if (!s.isPaid) {
+        pendingPaymentsTotal += (s.retailPrice || s.revenue || 0);
       }
     });
 
@@ -891,7 +1034,9 @@ export function Dashboard() {
       realExpense,
       pendingPaymentsCount,
       pendingPaymentsTotal,
-      entries: dayEntries
+      movements,
+      pendingLedger,
+      expiringServices
     };
   };
 
@@ -921,7 +1066,7 @@ export function Dashboard() {
           icon={CreditCard} 
           trend={t('dash.cc_details', 'Cupo Tarjetas Crédito')} 
           trendUp={true} 
-          onClick={() => setActiveModal('wallets')}
+          onClick={() => setActiveModal('credit_cards')}
         />
         <StatCard 
           label={t('dash.receivables', 'Cuentas por Cobrar (AR)')} 
@@ -1089,48 +1234,207 @@ export function Dashboard() {
                 </button>
               </div>
 
-              {selectedDayData.entries.length === 0 ? (
+              {selectedDayData.movements.length === 0 && selectedDayData.pendingLedger.length === 0 && selectedDayData.expiringServices.length === 0 ? (
                 <div className="text-center py-6 text-slate-550 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                  No hay transacciones guardadas ni pagos programados para este día.
+                  No hay transacciones guardadas, pagos programados ni cuentas venciendo este día.
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[250px] overflow-y-auto">
-                  {selectedDayData.entries.map((entry) => (
-                    <div 
-                      key={entry.id} 
-                      className={cn(
-                        "p-3 rounded-xl border flex justify-between items-center gap-4 transition-all hover:translate-x-0.5",
-                        entry.isPending 
-                          ? (isDark ? "bg-amber-950/15 border-amber-900/30 text-amber-500" : "bg-amber-50 border-amber-100 text-amber-700")
-                          : entry.amount > 0
-                            ? (isDark ? "bg-emerald-950/15 border-emerald-900/30 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-700")
-                            : (isDark ? "bg-rose-950/15 border-rose-900/30 text-rose-400" : "bg-rose-50 border-rose-100 text-rose-700")
-                      )}
+                <div className="space-y-6 max-h-[450px] overflow-y-auto pr-1">
+                  
+                  {/* Inline Active Form Panel */}
+                  {inlinePayTarget && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="p-4 rounded-xl border border-dashed border-indigo-400 bg-indigo-50/10 dark:bg-slate-900/40"
                     >
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-black uppercase tracking-widest block truncate">
-                          {entry.category}
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-black uppercase tracking-wider text-indigo-400">
+                          Recaudar / Registrar Pago para {inlinePayTarget.name}
                         </span>
-                        <span className={cn("text-[10px] uppercase font-bold text-slate-400 mt-0.5 block truncate", isDark ? "text-slate-500" : "text-slate-400")}>
-                          {entry.description || "Sin descripción"}
-                        </span>
-                        {entry.isPending && entry.dueDate && (
-                          <span className="text-[9px] font-black tracking-widest text-amber-600 block mt-0.5 uppercase">
-                            ⚠️ Programado para Vencer: {entry.dueDate}
-                          </span>
-                        )}
+                        <button 
+                          onClick={() => {
+                            setInlinePayTarget(null);
+                            setInlineWalletId('');
+                            setInlineAmount('');
+                          }} 
+                          className="text-[10px] uppercase font-bold text-rose-500 hover:underline cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
                       </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div>
+                          <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Monto a Transaccionar</label>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={inlineAmount}
+                            onChange={(e) => setInlineAmount(e.target.value)}
+                            className="w-full text-xs font-bold p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Destinar a Caja/Billetera</label>
+                          <select 
+                            value={inlineWalletId}
+                            onChange={(e) => setInlineWalletId(e.target.value)}
+                            className="w-full text-xs font-bold p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                          >
+                            <option value="">-- Seleccionar Cuenta --</option>
+                            {wallets.map(w => (
+                              <option key={w.id} value={w.id}>
+                                {w.name} (Saldo: {formatCurrency(w.balance || 0)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleInlineConfirmPayment}
+                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+                      >
+                        Confirmar Transacción y Sincronizar Caja
+                      </button>
+                    </motion.div>
+                  )}
 
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-black font-mono tracking-tight block">
-                          {entry.amount > 0 ? "+" : ""}{formatCurrency(entry.amount)}
-                        </span>
-                        <span className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">
-                          {entry.isPending ? "Pendiente" : "Asentado"}
-                        </span>
+                  {/* 1. SECTION: Cuentas a Cortar / Servicios que Expiren este día */}
+                  {selectedDayData.expiringServices.length > 0 && (
+                    <div className="space-y-2 text-left">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-violet-400 mb-1 border-b border-violet-500/10 pb-0.5">
+                        📡 Cuentas a Cortar / Suscripciones Digitales ({selectedDayData.expiringServices.length})
                       </div>
+                      {selectedDayData.expiringServices.map((service) => {
+                        const isSvcPaid = service.isPaid;
+                        const outstanding = service.revenue - (service.amountPaid || 0);
+                        return (
+                          <div 
+                            key={service.id}
+                            className={cn(
+                              "p-3 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 transition-colors",
+                              isSvcPaid 
+                                ? (isDark ? "bg-emerald-950/10 border-emerald-900/30 text-emerald-400" : "bg-emerald-50/50 border-emerald-100 text-emerald-700")
+                                : (isDark ? "bg-violet-950/10 border-violet-900/20 text-violet-400" : "bg-violet-50/40 border-violet-100 text-violet-800")
+                            )}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <span className="text-xs font-black uppercase tracking-wider block">
+                                {service.name} • {service.clientName}
+                              </span>
+                              <span className="text-[9px] uppercase font-black text-slate-450 block mt-0.5">
+                                Ref/User: {service.email || 'S/N'} • PIN: {service.pin || 'S/N'}  • Proveedor: {service.supplierName || service.supplier || 'N/A'}
+                              </span>
+                              {!isSvcPaid && outstanding > 0 ? (
+                                <span className="text-[9px] font-black text-amber-500 uppercase tracking-wider block mt-0.5">
+                                  ⚠️ Saldo Pendiente de Cobro: {formatCurrency(outstanding)}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mt-0.5">
+                                  ✅ Cobro Completado
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-2 w-full sm:w-auto self-stretch sm:self-auto sm:shrink-0 justify-end">
+                              {!isSvcPaid && outstanding > 0 && (
+                                <button 
+                                  onClick={() => {
+                                    setInlinePayTarget({ id: service.id, type: 'service', amount: outstanding, name: `${service.name} (${service.clientName})`, item: service });
+                                    setInlineAmount(outstanding.toString());
+                                  }}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer"
+                                >
+                                  Cobrar
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => setRenewalService(service)}
+                                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer"
+                              >
+                                Renovar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  )}
+
+                  {/* 2. SECTION: Cuentas y Gastos Programados / Ledger pendientes */}
+                  {selectedDayData.pendingLedger.length > 0 && (
+                    <div className="space-y-2 text-left">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1 border-b border-amber-500/10 pb-0.5">
+                        ⚠️ Cuentas y Gastos Programados fijos o de tarjetas ({selectedDayData.pendingLedger.length})
+                      </div>
+                      {selectedDayData.pendingLedger.map((entry) => (
+                        <div 
+                          key={entry.id}
+                          className={cn(
+                            "p-3 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-amber-950/10 border-amber-900/20 text-amber-500"
+                          )}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-black uppercase tracking-wider block">
+                              {entry.category}
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-slate-400 mt-0.5 block">
+                              {entry.description || "Sin descripción"}
+                            </span>
+                            <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider block mt-0.5">
+                              Valor a Pagar: {formatCurrency(Math.abs(entry.amount))}
+                            </span>
+                          </div>
+                          <div className="flex gap-2 w-full sm:w-auto self-stretch sm:self-auto sm:shrink-0 justify-end">
+                            <button 
+                              onClick={() => {
+                                setInlinePayTarget({ id: entry.id, type: 'ledger', amount: Math.abs(entry.amount), name: entry.category, item: entry });
+                                setInlineAmount(Math.abs(entry.amount).toString());
+                              }}
+                              className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Saldar Pago
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 3. SECTION: Movimientos Realizados de Caja */}
+                  {selectedDayData.movements.length > 0 && (
+                    <div className="space-y-2 text-left">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-1 border-b border-indigo-500/10 pb-0.5">
+                        💸 Movimientos Realizados de Caja ({selectedDayData.movements.length})
+                      </div>
+                      {selectedDayData.movements.map((entry) => (
+                        <div 
+                          key={entry.id}
+                          className={cn(
+                            "p-3 rounded-xl border flex justify-between items-center gap-4 transition-colors",
+                            entry.amount > 0
+                              ? (isDark ? "bg-emerald-950/10 border-emerald-900/20 text-emerald-400" : "bg-emerald-50/30 border-emerald-100 text-emerald-700")
+                              : (isDark ? "bg-rose-950/10 border-rose-900/20 text-rose-450" : "bg-rose-50/30 border-rose-100 text-rose-700")
+                          )}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-black uppercase tracking-wider block truncate">
+                              {entry.category}
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-slate-400 mt-0.5 block truncate">
+                              {entry.description || "Sin descripción"}
+                            </span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-xs font-black font-mono tracking-tight block">
+                              {entry.amount > 0 ? "+" : ""}{formatCurrency(entry.amount)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                 </div>
               )}
             </motion.div>
@@ -1391,13 +1695,17 @@ export function Dashboard() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
 
+                  {activeModal === 'credit_cards' && (
+                    <div className="space-y-6 pt-2">
                       <div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-2 border-b border-violet-500/10 pb-1 text-left">
-                          Tarjetas de Crédito (No sumado a efectivo)
+                          Tarjetas de Crédito
                         </div>
                         {wallets.filter(w => w.type === 'credit_card').length === 0 ? (
-                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">No hay tarjetas de crédito registradas.</div>
+                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-250 dark:border-slate-800 rounded-xl">No hay tarjetas de crédito registradas.</div>
                         ) : wallets.filter(w => w.type === 'credit_card').map(w => (
                           <div key={w.id} className="py-2.5 flex justify-between items-center border-b border-slate-100 dark:border-slate-800/40 last:border-0">
                             <div className="min-w-0 pr-4 text-left font-bold">
@@ -1715,6 +2023,21 @@ export function Dashboard() {
           statusLabel={noticeShareData.statusLabel}
           paymentInstructions={noticeShareData.paymentInstructions}
           type={noticeShareData.type}
+        />
+      )}
+
+      {renewalService && (
+        <ServiceRenewalModal
+          isOpen={!!renewalService}
+          onClose={() => setRenewalService(null)}
+          service={renewalService}
+          wallets={wallets}
+          user={user}
+          onSuccess={() => {
+            // Unselect from active calendar details if needed
+            setSelectedDay(null);
+          }}
+          isDark={isDark}
         />
       )}
     </div>
