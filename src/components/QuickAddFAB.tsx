@@ -61,6 +61,8 @@ export function QuickAddFAB() {
   const [fabDsEmail, setFabDsEmail] = useState('');
   const [fabDsPassword, setFabDsPassword] = useState('');
   const [fabDsPin, setFabDsPin] = useState('');
+  const [fabDsServiceType, setFabDsServiceType] = useState<'completa' | 'pantalla'>('completa');
+  const [fabDsProfileName, setFabDsProfileName] = useState('');
 
   // ANT Update Form states
   const [fabAntIntermediaryId, setFabAntIntermediaryId] = useState('');
@@ -123,6 +125,8 @@ export function QuickAddFAB() {
     setFabDsEmail('');
     setFabDsPassword('');
     setFabDsPin('');
+    setFabDsServiceType('completa');
+    setFabDsProfileName('');
 
     setFabAntIntermediaryId('');
     setFabAntUpdaterId('');
@@ -164,6 +168,31 @@ export function QuickAddFAB() {
         const expDate = new Date();
         expDate.setDate(expDate.getDate() + parseInt(fabDsDurationDays || '30'));
 
+        // Check duplicates
+        const { getDocs } = await import('firebase/firestore');
+        const q = query(
+          collection(db, 'digital_services'),
+          where('ownerId', '==', user.uid),
+          where('email', '==', fabDsEmail.trim())
+        );
+        const querySnapshot = await getDocs(q);
+        const duplicate = querySnapshot.docs.find(docSnap => {
+          const s = docSnap.data();
+          return (
+            s.email?.trim().toLowerCase() === fabDsEmail.trim().toLowerCase() &&
+            s.password === fabDsPassword &&
+            s.pin === fabDsPin &&
+            (s.profileName || '') === fabDsProfileName &&
+            s.name?.trim().toLowerCase() === fabDsName.trim().toLowerCase()
+          );
+        });
+
+        if (duplicate) {
+          alert("¡Error de duplicado! Ya existe una venta de servicio digital registrada exactamente con la misma cuenta, correo, clave, pin y nombre de perfil.");
+          setFabSubmitting(false);
+          return;
+        }
+
         await addDoc(collection(db, 'digital_services'), {
           name: fabDsName,
           category: fabDsCategory,
@@ -174,6 +203,8 @@ export function QuickAddFAB() {
           email: fabDsEmail,
           password: fabDsPassword,
           pin: fabDsPin,
+          serviceType: fabDsServiceType,
+          profileName: fabDsProfileName,
           status: 'active',
           isPaid: false,
           isCostPaid: false,
@@ -495,7 +526,7 @@ export function QuickAddFAB() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.55">
+                    <div className="grid grid-cols-3 gap-1.5">
                       <div className="space-y-1">
                         <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Costo (USD)</label>
                         <input
@@ -526,38 +557,98 @@ export function QuickAddFAB() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-slate-500/10">
+                    
+                    {/* Tipo de Acceso */}
+                    <div className="space-y-1 pt-1.5 border-t border-slate-500/10">
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-indigo-500">Tipo de Acceso de Venta</label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setFabDsServiceType('completa')}
+                          className={cn("py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1",
+                            fabDsServiceType === 'completa'
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                              : (isDark ? "bg-slate-800 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                          )}
+                        >
+                          👤 Completa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFabDsServiceType('pantalla')}
+                          className={cn("py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1",
+                            fabDsServiceType === 'pantalla'
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                              : (isDark ? "bg-slate-800 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                          )}
+                        >
+                          📺 Pantalla
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Email y Contraseña */}
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <label className="text-[8px] font-bold uppercase tracking-tight text-slate-400">Email Acceso</label>
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Email Acceso</label>
                         <input
                           type="text"
                           value={fabDsEmail}
                           onChange={(e) => setFabDsEmail(e.target.value)}
-                          className={cn("w-full p-2 rounded-lg border text-[11px] font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55")}
+                          className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
                           placeholder="ejemplo@test.com"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[8px] font-bold uppercase tracking-tight text-slate-400">Contraseña</label>
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Contraseña</label>
                         <input
                           type="text"
                           value={fabDsPassword}
                           onChange={(e) => setFabDsPassword(e.target.value)}
-                          className={cn("w-full p-2 rounded-lg border text-[11px] font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55")}
-                          placeholder="password"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] font-bold uppercase tracking-tight text-slate-400">Pines / Perfil</label>
-                        <input
-                          type="text"
-                          value={fabDsPin}
-                          onChange={(e) => setFabDsPin(e.target.value)}
-                          className={cn("w-full p-2 rounded-lg border text-[11px] font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55")}
-                          placeholder="Pines"
+                          className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
+                          placeholder="Contraseña"
                         />
                       </div>
                     </div>
+
+                    {/* Perfil y PIN */}
+                    {fabDsServiceType === 'pantalla' ? (
+                      <div className="grid grid-cols-2 gap-2 animate-in fade-in duration-200">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">Nombre Perfil</label>
+                          <input
+                            type="text"
+                            required={fabDsServiceType === 'pantalla'}
+                            value={fabDsProfileName}
+                            placeholder="Ej. Perfil 1"
+                            onChange={(e) => setFabDsProfileName(e.target.value)}
+                            className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none border-indigo-500/20 shadow-inner text-left", isDark ? "bg-slate-800 text-white" : "bg-indigo-50/20 focus:bg-white")}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">PIN Acceso</label>
+                          <input
+                            type="text"
+                            required={fabDsServiceType === 'pantalla'}
+                            value={fabDsPin}
+                            placeholder="Ej. 1234"
+                            onChange={(e) => setFabDsPin(e.target.value)}
+                            className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none border-indigo-500/20 shadow-inner text-left", isDark ? "bg-slate-800 text-white" : "bg-indigo-50/20 focus:bg-white")}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 animate-in fade-in duration-200">
+                        <label className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">PIN / Acceso (Opcional)</label>
+                        <input
+                          type="text"
+                          value={fabDsPin}
+                          placeholder="Ej. General, PIN (Opcional)"
+                          onChange={(e) => setFabDsPin(e.target.value)}
+                          className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
