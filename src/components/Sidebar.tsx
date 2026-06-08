@@ -15,7 +15,8 @@ import {
   BarChart3,
   ChevronDown,
   ShoppingBag,
-  Coins
+  Coins,
+  Shield
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -70,7 +71,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, setActiveTab, isHovered = true }: SidebarProps) {
-  const { settings, user } = useAuth();
+  const { settings, user, impersonatedBy } = useAuth();
+  const originalUser = impersonatedBy || user;
+  const isSuperAdmin = originalUser?.email === 'marcelogutama3eroa@gmail.com';
   const { t } = useTranslation();
   const disabledFeatures = settings?.disabledFeatures || [];
   const isDark = settings?.theme === 'dark';
@@ -143,6 +146,18 @@ export function Sidebar({ activeTab, setActiveTab, isHovered = true }: SidebarPr
               isDark={isDark}
               isSidebarHovered={isHovered}
             />
+
+            {/* Administrador */}
+            {isSuperAdmin && (
+              <NavItem
+                icon={Shield}
+                label="Administrador"
+                active={activeTab === 'admin'}
+                onClick={() => setActiveTab('admin')}
+                isDark={isDark}
+                isSidebarHovered={isHovered}
+              />
+            )}
 
             {/* Comercio Collapsible Menu Group */}
             <div className="space-y-0.5">

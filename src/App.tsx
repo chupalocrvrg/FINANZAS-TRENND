@@ -43,9 +43,10 @@ import { cn } from './lib/utils';
 import { db } from './lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { SYSTEM_UPDATES } from './data/updates';
+import { Admin } from './components/Admin';
 
 export default function App() {
-  const { user, settings, loading, onboarding } = useAuth();
+  const { user, settings, loading, onboarding, impersonatedUser, impersonatedBy, impersonateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -290,6 +291,23 @@ export default function App() {
       </div>
       
       <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen">
+        {impersonatedUser && (
+          <div className="bg-amber-500 text-slate-950 font-bold px-4 py-2 text-xs flex items-center justify-between shadow-md shrink-0 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-slate-950 animate-ping"></span>
+              <span>
+                Simulación Activa: Interactuando con los datos de <strong className="underline">{impersonatedUser.displayName}</strong> ({impersonatedUser.email})
+              </span>
+            </div>
+            <button
+              onClick={() => impersonateUser(null)}
+              className="bg-slate-950 hover:bg-slate-900 text-white font-black px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Salir de Cuenta
+            </button>
+          </div>
+        )}
+        
         {/* Top Navigation Bar */}
         <header className={cn(
           "h-16 border-b px-4 lg:px-8 flex items-center justify-between sticky top-0 z-20 shrink-0",
@@ -394,6 +412,7 @@ export default function App() {
               {activeTab === 'treasury' && <Treasury />}
               {activeTab === 'alerts' && <Alerts />}
               {activeTab === 'settings' && <Settings />}
+              {activeTab === 'admin' && <Admin />}
             </motion.div>
           </AnimatePresence>
         </div>

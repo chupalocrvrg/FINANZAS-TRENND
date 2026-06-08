@@ -23,6 +23,16 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function isAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email == 'marcelogutama3eroa@gmail.com' && 
+             request.auth.token.email_verified == true;
+    }
+    
+    function isOwnerOrAdmin(ownerId) {
+      return isOwner(ownerId) || isAdmin();
+    }
+
     // ---- ATTRIBUTE-BASED VALIDATION HELPERS ----
     
     function isValidUser(data) {
@@ -157,60 +167,60 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().uid == existing().uid;
-      allow delete: if isOwner(userId);
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isOwner(userId) || isAdmin();
+      allow create: if (isOwner(userId) && isValidUser(incoming())) || isAdmin();
+      allow update: if (isOwner(userId) && isValidUser(incoming()) && incoming().uid == existing().uid) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
     
     match /entities/{entityId} {
-      allow get, delete: if isValidId(entityId) && isOwner(resource.data.ownerId);
-      allow list: if isOwner(resource.data.ownerId);
-      allow create: if isValidId(entityId) && incoming().ownerId == request.auth.uid && isValidEntity(incoming());
-      allow update: if isValidId(entityId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidEntity(incoming());
+      allow get, delete: if isValidId(entityId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(entityId) && isOwnerOrAdmin(incoming().ownerId) && (isValidEntity(incoming()) || isAdmin());
+      allow update: if isValidId(entityId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidEntity(incoming()) || isAdmin());
     }
     
     match /transactions/{txId} {
-      allow get, delete: if isValidId(txId) && isOwner(resource.data.ownerId);
-      allow list: if isOwner(resource.data.ownerId);
-      allow create: if isValidId(txId) && incoming().ownerId == request.auth.uid && isValidTransaction(incoming());
-      allow update: if isValidId(txId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidTransaction(incoming());
+      allow get, delete: if isValidId(txId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(txId) && isOwnerOrAdmin(incoming().ownerId) && (isValidTransaction(incoming()) || isAdmin());
+      allow update: if isValidId(txId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidTransaction(incoming()) || isAdmin());
     }
     
     match /wallets/{walletId} {
-      allow get, delete: if isValidId(walletId) && isOwner(resource.data.ownerId);
-      allow list: if isOwner(resource.data.ownerId);
-      allow create: if isValidId(walletId) && incoming().ownerId == request.auth.uid && isValidWallet(incoming());
-      allow update: if isValidId(walletId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidWallet(incoming());
+      allow get, delete: if isValidId(walletId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(walletId) && isOwnerOrAdmin(incoming().ownerId) && (isValidWallet(incoming()) || isAdmin());
+      allow update: if isValidId(walletId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidWallet(incoming()) || isAdmin());
     }
     
     match /ledger/{entryId} {
-      allow get, delete: if isValidId(entryId) && isOwner(resource.data.ownerId);
-      allow list: if isOwner(resource.data.ownerId);
-      allow create: if isValidId(entryId) && incoming().ownerId == request.auth.uid && isValidLedger(incoming());
-      allow update: if isValidId(entryId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidLedger(incoming());
+      allow get, delete: if isValidId(entryId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(entryId) && isOwnerOrAdmin(incoming().ownerId) && (isValidLedger(incoming()) || isAdmin());
+      allow update: if isValidId(entryId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidLedger(incoming()) || isAdmin());
     }
 
     match /digital_services/{serviceId} {
-      allow get, delete: if isValidId(serviceId) && isOwner(resource.data.ownerId);
-      allow list: if isOwner(resource.data.ownerId);
-      allow create: if isValidId(serviceId) && incoming().ownerId == request.auth.uid && isValidDigitalService(incoming());
-      allow update: if isValidId(serviceId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidDigitalService(incoming());
+      allow get, delete: if isValidId(serviceId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(serviceId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalService(incoming()) || isAdmin());
+      allow update: if isValidId(serviceId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalService(incoming()) || isAdmin());
 
       match /service_history/{historyId} {
-        allow get, delete: if isValidId(historyId) && isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId);
-        allow list: if isOwner(resource.data.userId);
-        allow create: if isValidId(historyId) && isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId) && isValidServiceHistory(incoming());
-        allow update: if isValidId(historyId) && isOwner(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId) && isValidServiceHistory(incoming()) && incoming().userId == existing().userId;
+        allow get, delete: if isValidId(historyId) && (isOwnerOrAdmin(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId));
+        allow list: if isOwnerOrAdmin(resource.data.userId);
+        allow create: if isValidId(historyId) && isOwnerOrAdmin(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId) && (isValidServiceHistory(incoming()) || isAdmin());
+        allow update: if isValidId(historyId) && isOwnerOrAdmin(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId) && (isValidServiceHistory(incoming()) || isAdmin()) && (incoming().userId == existing().userId || isAdmin());
       }
     }
     
     match /digital_catalog/{catalogId} {
-      allow get, delete: if isValidId(catalogId) && isOwner(resource.data.ownerId);
-      allow list: if isOwner(resource.data.ownerId);
-      allow create: if isValidId(catalogId) && incoming().ownerId == request.auth.uid && isValidDigitalCatalog(incoming());
-      allow update: if isValidId(catalogId) && isOwner(resource.data.ownerId) && incoming().ownerId == existing().ownerId && isValidDigitalCatalog(incoming());
+      allow get, delete: if isValidId(catalogId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(catalogId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalCatalog(incoming()) || isAdmin());
+      allow update: if isValidId(catalogId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalCatalog(incoming()) || isAdmin());
     }
   }
 }
