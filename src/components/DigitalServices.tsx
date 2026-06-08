@@ -121,7 +121,13 @@ export function DigitalServices() {
       details: [
         { label: 'E-mail Acceso', value: service.email || '-' },
         { label: 'Clave / Password', value: service.password || '-' },
-        { label: 'PIN / Pantalla', value: service.pin || 'General' },
+        { label: 'Tipo Acceso', value: (service as any).serviceType === 'pantalla' ? 'Pantalla / Per Dispositivo' : 'Cuenta Completa' },
+        ...((service as any).serviceType === 'pantalla' ? [
+          { label: 'Nombre Perfil', value: (service as any).profileName || '-' },
+          { label: 'PIN de Acceso', value: service.pin || 'Sin PIN' }
+        ] : [
+          { label: 'PIN / Pantalla', value: service.pin || 'General' }
+        ]),
         { label: 'Fecha Vence', value: service.expirationDate || '-' },
         { label: 'Valor PVP', value: formatCurrency(service.revenue || 0) }
       ],
@@ -181,6 +187,8 @@ export function DigitalServices() {
     email: '',
     password: '',
     pin: '',
+    serviceType: 'completa' as 'completa' | 'pantalla',
+    profileName: '',
     status: 'active' as 'active' | 'expired' | 'pending',
     isPaid: true,
     isCostPaid: true,
@@ -300,11 +308,12 @@ export function DigitalServices() {
         s.email?.trim().toLowerCase() === formData.email.trim().toLowerCase() &&
         s.password === formData.password &&
         s.pin === formData.pin &&
+        ((s as any).profileName || '') === formData.profileName &&
         s.name?.trim().toLowerCase() === formData.name.trim().toLowerCase()
       );
 
       if (isDuplicate) {
-        alert("¡Error de duplicado! Ya existe una venta de servicio digital registrada exactamente con la misma cuenta, correo, clave y pin.");
+        alert("¡Error de duplicado! Ya existe una venta de servicio digital registrada exactamente con la misma cuenta, correo, clave, pin y nombre de perfil.");
         setIsSubmitting(false);
         return;
       }
@@ -325,6 +334,8 @@ export function DigitalServices() {
       email: formData.email,
       password: formData.password,
       pin: formData.pin,
+      serviceType: formData.serviceType,
+      profileName: formData.profileName,
       status: formData.status,
       isPaid: formData.isPaid,
       isCostPaid: formData.isCostPaid,
@@ -429,6 +440,8 @@ export function DigitalServices() {
       email: '',
       password: '',
       pin: '',
+      serviceType: 'completa',
+      profileName: '',
       status: 'active',
       isPaid: true,
       isCostPaid: true,
@@ -452,6 +465,8 @@ export function DigitalServices() {
       email: service.email || '',
       password: service.password || '',
       pin: service.pin || '',
+      serviceType: (service as any).serviceType || 'completa',
+      profileName: (service as any).profileName || '',
       status: service.status || 'active',
       isPaid: service.isPaid !== false, // default true if not false
       isCostPaid: service.isCostPaid !== false,
@@ -1254,26 +1269,41 @@ export function DigitalServices() {
                     )}
 
                     {/* Cuenta credenciales ocultas/visibles */}
-                    {(service.email || service.password || service.pin) && (
+                    {(service.email || service.password || service.pin || (service as any).profileName) && (
                       <div className={cn(
                         "border border-dashed border-slate-500/10 font-medium bg-slate-950/10 tracking-wide",
                         gridCols === 1 ? "p-5 rounded-2xl text-base mb-6 space-y-2.5" : gridCols === 2 ? "p-3.5 rounded-xl text-sm mb-4 space-y-2" : "p-2.5 rounded-xl text-[10px] mb-4 space-y-1"
                       )}>
+                        <div className="flex justify-between items-center gap-4 border-b border-dashed border-slate-500/10 pb-1.5 mb-1.5">
+                          <span className="text-slate-400 font-semibold uppercase tracking-wider text-[8px]">Acceso:</span>
+                          <span className={cn(
+                            "font-black uppercase tracking-widest text-[8px] px-1.5 py-0.5 rounded",
+                            (service as any).serviceType === 'pantalla' ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          )}>
+                            {(service as any).serviceType === 'pantalla' ? '📺 Pantalla' : '👤 Completa'}
+                          </span>
+                        </div>
                         {service.email && (
                           <div className="flex justify-between items-center gap-4 truncate">
-                            <span className="text-slate-400 font-semibold">User:</span>
+                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">User:</span>
                             <span className={cn("font-bold select-all truncate", isDark ? "text-indigo-200" : "text-slate-700")}>{service.email}</span>
                           </div>
                         )}
                         {service.password && (
                           <div className="flex justify-between items-center gap-4 truncate">
-                            <span className="text-slate-400 font-semibold">Clave:</span>
-                            <span className={cn("font-black select-all font-mono tracking-wider", isDark ? "text-indigo-350 dark:text-indigo-300" : "text-slate-800")}>{service.password}</span>
+                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">Clave:</span>
+                            <span className={cn("font-black select-all font-mono tracking-wider", isDark ? "text-indigo-300" : "text-slate-800")}>{service.password}</span>
+                          </div>
+                        )}
+                        {(service as any).profileName && (
+                          <div className="flex justify-between items-center gap-4 truncate">
+                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">Perfil:</span>
+                            <span className="font-bold text-indigo-400">{(service as any).profileName}</span>
                           </div>
                         )}
                         {service.pin && (
                           <div className="flex justify-between items-center gap-4">
-                            <span className="text-slate-400 font-semibold">PIN / Pantalla:</span>
+                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">PIN / Acceso:</span>
                             <span className={cn("font-bold bg-indigo-500/10 text-indigo-500 rounded font-mono",
                               gridCols === 1 ? "px-2.5 py-0.5 text-base" : gridCols === 2 ? "px-1.5 py-0.3 text-sm" : "px-1 py-0.2"
                             )}>{service.pin}</span>
@@ -1585,9 +1615,45 @@ export function DigitalServices() {
                 </div>
 
                 {/* 3. Credenciales de la Cuenta */}
-                <div className="p-3 bg-indigo-50/5 border border-dashed border-slate-100/10 rounded-2xl space-y-3">
+                <div className="p-4 bg-indigo-50/5 border border-dashed border-slate-100/10 rounded-2xl space-y-4">
                   <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 block">Credenciales y Acceso (Opcional)</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  {/* Tipo de Acceso a la Cuenta */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 block">Tipo de Acceso de Venta</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, serviceType: 'completa' }))}
+                        className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                          formData.serviceType === 'completa'
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                        )}
+                      >
+                        👤 Cuenta Completa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, serviceType: 'pantalla' }))}
+                        className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                          formData.serviceType === 'pantalla'
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                        )}
+                      >
+                        📺 Pantalla / Dispositivo
+                      </button>
+                    </div>
+                    <p className="text-[9.5px] text-slate-500 italic font-medium">
+                      {formData.serviceType === 'completa' 
+                        ? '• El cliente compra la cuenta completa (los accesos son personales y únicos).' 
+                        : '• El cliente compra un perfil individual. Se requiere especificar Perfil y PIN de Acceso.'
+                      }
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-bold uppercase text-slate-400">Usuario / Correo</label>
                       <input 
@@ -1609,16 +1675,44 @@ export function DigitalServices() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold uppercase text-slate-400">Identificador / PIN de Pantalla</label>
-                    <input 
-                      type="text"
-                      value={formData.pin}
-                      placeholder="Ej. Pantalla 4 - PIN 4589"
-                      onChange={(e) => setFormData({...formData, pin: e.target.value})}
-                      className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
-                    />
-                  </div>
+
+                  {formData.serviceType === 'pantalla' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 animate-in fade-in duration-200">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-indigo-400">Nombre de Perfil</label>
+                        <input 
+                          type="text"
+                          required={formData.serviceType === 'pantalla'}
+                          value={formData.profileName}
+                          placeholder="Ej. Perfil Carlos, Camilo 1"
+                          onChange={(e) => setFormData({...formData, profileName: e.target.value})}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none border-indigo-500/20", isDark ? "bg-slate-800 text-white" : "bg-indigo-50/20 focus:bg-white")}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-indigo-400">PIN de Acceso</label>
+                        <input 
+                          type="text"
+                          required={formData.serviceType === 'pantalla'}
+                          value={formData.pin}
+                          placeholder="Ej. 1290, 0000"
+                          onChange={(e) => setFormData({...formData, pin: e.target.value})}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none border-indigo-500/20", isDark ? "bg-slate-800 text-white" : "bg-indigo-50/20 focus:bg-white")}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
+                      <label className="text-[9px] font-bold uppercase text-slate-400">PIN de Acceso / Identificador (Opcional)</label>
+                      <input 
+                        type="text"
+                        value={formData.pin}
+                        placeholder="Ej. General, PIN de pantalla (Opcional)"
+                        onChange={(e) => setFormData({...formData, pin: e.target.value})}
+                        className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* 4. Fechas y Estado */}
