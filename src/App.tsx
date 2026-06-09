@@ -20,6 +20,7 @@ import { QuickAddFAB } from './components/QuickAddFAB';
 import { LockScreen } from './components/LockScreen';
 import { WelcomeUpdateModal } from './components/WelcomeUpdateModal';
 import { TutorialModal } from './components/TutorialModal';
+import { ReportSelectorModal } from './components/ReportSelectorModal';
 import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
@@ -58,6 +59,18 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<'comercio' | 'finanzas' | null>(null);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  const handleGenerateReport = async (type: 'general' | 'custom', startDate?: string, endDate?: string) => {
+    try {
+      if (!user) return;
+      const { generateBalanceSheetPDF } = await import('./lib/pdf');
+      await generateBalanceSheetPDF(user.uid, settings?.companyName || 'Empresa', startDate, endDate);
+    } catch (error) {
+      alert("Error generando PDF: " + (error instanceof Error ? error.message : String(error)));
+      console.error(error);
+    }
+  };
 
   // Monitor dynamic network connection state
   useEffect(() => {
@@ -332,16 +345,8 @@ export default function App() {
 
           <div className="flex items-center gap-3 lg:gap-6">
             <button 
-              onClick={async () => {
-                try {
-                  const { generateBalanceSheetPDF } = await import('./lib/pdf');
-                  await generateBalanceSheetPDF(user.uid, settings?.companyName || 'Empresa');
-                } catch (error) {
-                  alert("Error generando PDF");
-                  console.error(error);
-                }
-              }}
-              className="bg-indigo-600 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded text-[10px] lg:text-sm font-bold uppercase tracking-wider shadow-sm hover:bg-indigo-700 transition-colors"
+              onClick={() => setIsReportModalOpen(true)}
+              className="bg-indigo-600 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded text-[10px] lg:text-sm font-bold uppercase tracking-wider shadow-sm hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               <span className="hidden sm:inline">Generar Estado de Cuenta</span>
               <span className="sm:hidden">Reporte</span>
@@ -420,6 +425,12 @@ export default function App() {
         <QuickAddFAB />
         <WelcomeUpdateModal theme={settings?.theme} />
         <TutorialModal />
+        <ReportSelectorModal 
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          onGenerate={handleGenerateReport}
+          isDark={settings?.theme === 'dark'}
+        />
       </main>
 
       {/* Mobile Floating Submenus */}

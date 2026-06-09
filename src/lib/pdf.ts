@@ -13,7 +13,7 @@ interface ExpenseRow {
   amount: number;
 }
 
-export const generateBalanceSheetPDF = async (userId: string, companyName: string) => {
+export const generateBalanceSheetPDF = async (userId: string, companyName: string, startDate?: string, endDate?: string) => {
   const doc = new jsPDF();
   
   doc.setFontSize(20);
@@ -21,6 +21,16 @@ export const generateBalanceSheetPDF = async (userId: string, companyName: strin
   doc.setFontSize(12);
   doc.text(`Empresa: ${companyName}`, 14, 30);
   doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 36);
+
+  let periodText = 'Período: Reporte Completo';
+  if (startDate && endDate) {
+    periodText = `Período: ${startDate} al ${endDate}`;
+  } else if (startDate) {
+    periodText = `Período: Desde ${startDate}`;
+  } else if (endDate) {
+    periodText = `Período: Hasta ${endDate}`;
+  }
+  doc.text(periodText, 14, 42);
 
   // 1. Fetch Wallets
   const walletsRef = await getDocs(query(collection(db, 'wallets'), where('ownerId', '==', userId)));
@@ -35,15 +45,39 @@ export const generateBalanceSheetPDF = async (userId: string, companyName: strin
 
   // 2. Fetch Transactions
   const txRef = await getDocs(query(collection(db, 'transactions'), where('ownerId', '==', userId)));
-  const transactions = txRef.docs.map(d => d.data() as any);
+  let transactions = txRef.docs.map(d => d.data() as any);
 
   // 3. Fetch Digital Services
   const dsRef = await getDocs(query(collection(db, 'digital_services'), where('ownerId', '==', userId)));
-  const digitalServices = dsRef.docs.map(d => d.data() as any);
+  let digitalServices = dsRef.docs.map(d => d.data() as any);
 
   // 4. Fetch Ledger
   const ledgerRef = await getDocs(query(collection(db, 'ledger'), where('ownerId', '==', userId), orderBy('date', 'desc')));
-  const ledgerEntries = ledgerRef.docs.map(d => d.data() as any);
+  let ledgerEntries = ledgerRef.docs.map(d => d.data() as any);
+
+  // Apply optional inputs date filtering
+  if (startDate) {
+    transactions = transactions.filter((tx: any) => {
+      const txDate = tx.billingDate || tx.date || '';
+      return txDate >= startDate;
+    });
+    digitalServices = digitalServices.filter((ds: any) => {
+      const dsDate = ds.createdAt ? ds.createdAt.split('T')[0] : (ds.expirationDate || '');
+      return dsDate >= startDate;
+    });
+    ledgerEntries = ledgerEntries.filter((e: any) => (e.date || '') >= startDate);
+  }
+  if (endDate) {
+    transactions = transactions.filter((tx: any) => {
+      const txDate = tx.billingDate || tx.date || '';
+      return txDate <= endDate;
+    });
+    digitalServices = digitalServices.filter((ds: any) => {
+      const dsDate = ds.createdAt ? ds.createdAt.split('T')[0] : (ds.expirationDate || '');
+      return dsDate <= endDate;
+    });
+    ledgerEntries = ledgerEntries.filter((e: any) => (e.date || '') <= endDate);
+  }
 
   // Calculated Metrics
   // Receivables (Cuentas por Cobrar)
@@ -105,7 +139,7 @@ export const generateBalanceSheetPDF = async (userId: string, companyName: strin
   doc.text('1. Resumen General Financiero', 14, 50);
   
   autoTable(doc, {
-    startY: 54,
+    startY: 55,
     head: [['Indicador / Concepto', 'Monto']],
     body: [
       ['Total Efectivo y Bancos (Caja Real Propia)', formatCurrency(cashBalance)],

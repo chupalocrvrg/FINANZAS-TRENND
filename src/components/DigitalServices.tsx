@@ -902,6 +902,28 @@ export function DigitalServices() {
   const activeProfitMonth = activeRevenueMonth - activeCostMonth;
   const marginPercentDisplay = activeRevenueMonth > 0 ? Math.round((activeProfitMonth / activeRevenueMonth) * 100) : 0;
 
+  // Stats based on accounts expiring in the current month assuming they all renew
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const servicesExpiringThisMonth = services.filter(s => {
+    if (!s.expirationDate) return false;
+    const expDate = new Date(s.expirationDate);
+    return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
+  });
+
+  const expiringRevenueMonth = servicesExpiringThisMonth.reduce((sum, s) => sum + (s.revenue || 0), 0);
+  const expiringCostMonth = servicesExpiringThisMonth.reduce((sum, s) => sum + (s.cost || 0), 0);
+  const expiringProfitMonth = expiringRevenueMonth - expiringCostMonth;
+  const expiringMarginPercent = expiringRevenueMonth > 0 ? Math.round((expiringProfitMonth / expiringRevenueMonth) * 100) : 0;
+
+  const spanishMonths = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+  const currentMonthName = spanishMonths[now.getMonth()];
+
   // Calculate counts dynamically for tab pills
   const totalCounts = services.length;
   const activeCounts = services.filter(s => {
@@ -972,7 +994,7 @@ export function DigitalServices() {
 
           <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm ring-2 ring-indigo-500/10", isDark ? "bg-indigo-950/20 border-indigo-500/20" : "bg-indigo-50/50 border-indigo-150")}>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-500 font-extrabold">Ganancia Estimada</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-500 font-extrabold">Ganancia Estimada ({currentMonthName})</span>
               <div className="w-7 h-7 bg-indigo-500 text-white flex items-center justify-center rounded-xl shadow-md">
                 <TrendingUp className="w-4 h-4" />
               </div>
@@ -980,12 +1002,14 @@ export function DigitalServices() {
             <div className="flex justify-between items-end">
               <div>
                 <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight text-indigo-600 dark:text-indigo-400")}>
-                  {formatCurrency(activeProfitMonth)}
+                  {formatCurrency(expiringProfitMonth)}
                 </p>
-                <p className="text-[9px] text-indigo-500/80 mt-0.5 font-black uppercase tracking-wider">Ganancia libre recurrente mensual</p>
+                <p className="text-[9px] text-indigo-500/80 mt-0.5 font-bold uppercase tracking-wider">
+                  Bajo supuesto de renovación del 100% ({servicesExpiringThisMonth.length} por vencer este mes)
+                </p>
               </div>
-              <div className="bg-indigo-550 text-white font-extrabold uppercase tracking-widest text-[8px] px-2 py-1 rounded-lg shadow-sm">
-                +{marginPercentDisplay}% Margen
+              <div className="bg-indigo-550 text-white font-extrabold uppercase tracking-widest text-[8px] px-2 py-1 rounded-lg shadow-sm shrink-0">
+                +{expiringMarginPercent}% Margen
               </div>
             </div>
           </div>
