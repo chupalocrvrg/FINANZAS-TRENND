@@ -63,6 +63,13 @@ export function CRM() {
     antUpdateCost: '0',
   });
 
+  const [services, setServices] = useState<any[]>([]);
+  const [entitiesLoaded, setEntitiesLoaded] = useState(false);
+  const [servicesLoaded, setServicesLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncCount, setSyncCount] = useState<number | null>(null);
+  const [autoSynced, setAutoSynced] = useState(false);
+
   const isDark = settings?.theme === 'dark';
 
   useEffect(() => {
@@ -71,10 +78,80 @@ export function CRM() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entity));
       setEntities(docs);
+      setEntitiesLoaded(true);
       setLoading(false);
     });
     return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
+    const unsubscribeSer = onSnapshot(qSer, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setServices(docs);
+      setServicesLoaded(true);
+    });
+    return () => unsubscribeSer();
+  }, [user]);
+
+  const runCRMSync = async () => {
+    if (!user || isSyncing) return;
+    setIsSyncing(true);
+    let itemsAdded = 0;
+
+    const clientSales = services.filter(s => s.clientName && s.clientName.trim() !== '');
+    const tempEntities = [...entities];
+
+    for (const sale of clientSales) {
+      const trimmedName = sale.clientName.trim();
+      const clientType = sale.clientType || 'client'; // 'client' or 'reseller'
+
+      const exists = tempEntities.some(ent => 
+        ent.name?.trim().toLowerCase() === trimmedName.toLowerCase() &&
+        ent.type === clientType
+      );
+
+      if (!exists) {
+        try {
+          const docRef = await addDoc(collection(db, 'entities'), {
+            name: trimmedName,
+            contact: sale.clientContact ? sale.clientContact.trim() : '',
+            type: clientType,
+            rate: 0,
+            isAntUpdater: false,
+            antUpdateCost: 0,
+            ownerId: user.uid,
+            createdAt: new Date().toISOString()
+          });
+
+          tempEntities.push({
+            id: docRef.id,
+            name: trimmedName,
+            contact: sale.clientContact ? sale.clientContact.trim() : '',
+            type: clientType as any,
+            rate: 0,
+            isAntUpdater: false,
+            antUpdateCost: 0,
+            createdAt: new Date().toISOString()
+          });
+          itemsAdded++;
+        } catch (err) {
+          console.error("Error auto-syncing entity to CRM:", err);
+        }
+      }
+    }
+
+    setSyncCount(itemsAdded);
+    setIsSyncing(false);
+    setAutoSynced(true);
+  };
+
+  useEffect(() => {
+    if (user && entitiesLoaded && servicesLoaded && !autoSynced && !isSyncing) {
+      runCRMSync();
+    }
+  }, [user, entitiesLoaded, servicesLoaded, autoSynced, isSyncing, services, entities]);
 
   const filteredEntities = entities.filter(e => {
     const matchesTab = e.type === activeTab;
@@ -179,6 +256,44 @@ export function CRM() {
           {t('crm.add_client', 'Añadir Entidad')}
         </button>
       </div>
+
+      {/* Indicador de Sincronización Automática con Ventas */}
+      {(isSyncing || (autoSynced && syncCount !== null)) && (
+        <div className={cn(
+          "p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs font-semibold animate-in fade-in duration-300",
+          isDark ? "bg-indigo-950/20 border-indigo-500/10 text-indigo-300" : "bg-indigo-50/50 border-indigo-100/80 text-indigo-700"
+        )}>
+          <div className="flex items-center gap-3">
+            {isSyncing ? (
+              <Loader2 className="w-5 h-5 animate-spin text-indigo-500 shrink-0" />
+            ) : (
+              <span className="text-emerald-500 text-lg shrink-0">✨</span>
+            )}
+            <div>
+              <p className="font-bold uppercase tracking-wider text-[10px] text-indigo-500 mb-0.5">Sincronización Automática de Ventas</p>
+              <p className="opacity-90">
+                {isSyncing 
+                  ? "Sincronizando clientes registrados en ventas de servicios digitales con el CRM..."
+                  : syncCount && syncCount > 0
+                    ? `¡Sincronización completa! Se compararon todas las ventas registradas y se agregaron automáticamente ${syncCount} nuevos clientes detectados al CRM.`
+                    : "El CRM ya se encuentra totalmente sincronizado con las ventas de servicios digitales."
+                }
+              </p>
+            </div>
+          </div>
+          {autoSynced && (
+            <button 
+              onClick={() => {
+                setAutoSynced(false);
+                setSyncCount(null);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-indigo-500/10 text-[10px] uppercase font-black tracking-wider hover:bg-indigo-500/20 active:scale-95 transition-all text-indigo-400 cursor-pointer self-stretch sm:self-auto text-center"
+            >
+              Cerrar aviso
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Centered Search Bar */}
       <div className="flex justify-center w-full">
