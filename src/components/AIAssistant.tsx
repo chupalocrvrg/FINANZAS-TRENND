@@ -25,7 +25,7 @@ import {
 import { cn, calculateServiceExpirationDate, getGMT5DateString } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, getDocs } from 'firebase/firestore';
 import { Entity } from '../types';
 import { GoogleGenAI } from '@google/genai';
 
@@ -1721,6 +1721,38 @@ export function AIAssistant() {
         updatedAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
       };
+
+      // CRM Auto-Registration for new client if not present in entities database
+      const trimmedClientName = finalClient?.trim() || '';
+      const entityType = data.clientType || 'client';
+      if (trimmedClientName) {
+        try {
+          const entityQuery = query(
+            collection(db, 'entities'),
+            where('ownerId', '==', user.uid),
+            where('type', '==', entityType)
+          );
+          const qSnap = await getDocs(entityQuery);
+          const exists = qSnap.docs.some(
+            dSnap => dSnap.data().name?.trim().toLowerCase() === trimmedClientName.toLowerCase()
+          );
+          if (!exists) {
+            await addDoc(collection(db, 'entities'), {
+              name: trimmedClientName,
+              contact: finalContact ? finalContact.trim() : '',
+              type: entityType,
+              rate: 0,
+              isAntUpdater: false,
+              antUpdateCost: 0,
+              ownerId: user.uid,
+              createdAt: new Date().toISOString()
+            });
+            console.log(`Cliente "${trimmedClientName}" registrado automáticamente desde Asistente AI`);
+          }
+        } catch (crmErr) {
+          console.error("Error al registrar cliente automáticamente en CRM (AI):", crmErr);
+        }
+      }
 
       const docRef = await addDoc(collection(db, 'digital_services'), serviceData);
       

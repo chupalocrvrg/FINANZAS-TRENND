@@ -346,6 +346,34 @@ export function DigitalServices() {
     };
 
     try {
+      // CRM Auto-Registration for new/edited clients if not present in the CRM entities list
+      if (formData.clientName && formData.clientName.trim() !== '') {
+        const trimmedClientName = formData.clientName.trim();
+        const existingEntity = allEntities.find(
+          (ent) =>
+            ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
+            ent.type === formData.clientType
+        );
+
+        if (!existingEntity) {
+          try {
+            await addDoc(collection(db, 'entities'), {
+              name: trimmedClientName,
+              contact: formData.clientContact ? formData.clientContact.trim() : '',
+              type: formData.clientType, // 'client' or 'reseller'
+              rate: 0,
+              isAntUpdater: false,
+              antUpdateCost: 0,
+              ownerId: user.uid,
+              createdAt: new Date().toISOString()
+            });
+            console.log(`Cliente/Revendedor "${trimmedClientName}" registrado automáticamente en el CRM`);
+          } catch (crmErr) {
+            console.error("Error al registrar cliente automáticamente en CRM:", crmErr);
+          }
+        }
+      }
+
       if (formData.id) {
         // Edit Mode
         const { updateDoc, doc } = await import('firebase/firestore');

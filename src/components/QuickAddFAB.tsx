@@ -193,6 +193,34 @@ export function QuickAddFAB() {
           return;
         }
 
+        // CRM Auto-Registration for new client if not present in entities list
+        if (fabDsClientName && fabDsClientName.trim() !== '') {
+          const trimmedClientName = fabDsClientName.trim();
+          const existingEntity = entities.find(
+            (ent) =>
+              ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
+              ent.type === 'client'
+          );
+
+          if (!existingEntity) {
+            try {
+              await addDoc(collection(db, 'entities'), {
+                name: trimmedClientName,
+                contact: fabDsClientContact ? fabDsClientContact.trim() : '',
+                type: 'client',
+                rate: 0,
+                isAntUpdater: false,
+                antUpdateCost: 0,
+                ownerId: user.uid,
+                createdAt: new Date().toISOString()
+              });
+              console.log(`Cliente "${trimmedClientName}" registrado automáticamente desde Acceso Rápido FAB`);
+            } catch (crmErr) {
+              console.error("Error al registrar cliente automáticamente en CRM (FAB):", crmErr);
+            }
+          }
+        }
+
         await addDoc(collection(db, 'digital_services'), {
           name: fabDsName,
           category: fabDsCategory,
