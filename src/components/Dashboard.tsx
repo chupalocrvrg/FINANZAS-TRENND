@@ -1035,7 +1035,7 @@ export function Dashboard() {
     // Pending ledger payments due on this day (credit cards, basic services, etc.)
     const pendingLedger = ledgerEntries.filter(e => e.isPending && e.dueDate === dateStr);
     // Digital services expiring/cutting on this day
-    const expiringServices = digitalServices.filter(s => s.expirationDate === dateStr);
+    const expiringServices = digitalServices.filter(s => s.expirationDate === dateStr && !s.deletedFromModule);
 
     let realIncome = 0;
     let realExpense = 0;

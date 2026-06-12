@@ -9,6 +9,22 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_5_3_1_notification_credentials_search",
+    version: "V5.3.1",
+    title: "V5.3.1 • Filtrado de Servicios por Correo de Cuenta Activa",
+    date: "12-Junio-2026, 05:52:00",
+    description: "Optimización quirúrgica en el sistema de alertas y su redirección. Las notificaciones y paneles ahora presentan el correo de acceso exacto del servicio (p. ej. Netflix). Al hacer clic en la alerta, el sistema filtra de manera específica por el correo electrónico del servicio afectado, evitando la sobreexposición de otros servicios del mismo distribuidor o revendedor.",
+    type: "feature"
+  },
+  {
+    id: "v_5_3_0_notifications_deeplink_and_alerts_search",
+    version: "V5.3.0",
+    title: "V5.3.0 • Sistema de Deep-Linking en Notificaciones Push, SW En Rutado y Buscador de Cobranza",
+    date: "12-Junio-2026, 05:40:00",
+    description: "Implementación del motor avanzado de Deep-Linking en las Alertas de Notificación del Sistema. El Service Worker ahora procesa los clics en notificaciones, abriendo o desviando el foco al módulo preciso. Integración de enrutamiento por eventos automatizado que filtra la cuenta cliqueada al instante mediante el popover. Adición de una barra de búsqueda inteligente y optimizada con soporte completo para filtros en Alertas y Cobranza, junto al motor activo de monitoreo en tiempo real de abonos y cuentas digitales vencidas.",
+    type: "feature"
+  },
+  {
     id: "v_5_2_1_updates_panel",
     version: "V5.2.1",
     title: "V5.2.1 • Recuperación de PIN, Panel de Vencimientos, Rentabilidad y MRR Recurrente",

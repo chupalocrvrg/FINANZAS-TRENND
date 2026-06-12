@@ -76,12 +76,29 @@ export interface DigitalServiceItem {
   createdAt?: string;
   amountPaid?: number;
   costPaid?: number;
+  deletedFromModule?: boolean;
 }
 
 export function DigitalServices() {
   const { user, settings } = useAuth();
   const [services, setServices] = useState<DigitalServiceItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('search') || '';
+  });
+
+  useEffect(() => {
+    const handleFilter = (e: any) => {
+      if (e.detail?.search !== undefined) {
+        setSearchTerm(e.detail.search);
+      }
+    };
+    window.addEventListener('app-search-filter', handleFilter);
+    return () => {
+      window.removeEventListener('app-search-filter', handleFilter);
+    };
+  }, []);
+
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
@@ -215,7 +232,8 @@ export function DigitalServices() {
     if (!user) return;
     const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
     const unsubSer = onSnapshot(qSer, (snapshot) => {
-      setServices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DigitalServiceItem)));
+      const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DigitalServiceItem));
+      setServices(allServices.filter(s => !s.deletedFromModule));
       setLoading(false);
     });
 
@@ -258,7 +276,7 @@ export function DigitalServices() {
 
     const runExpiredCleanup = async () => {
       const today = new Date();
-      const toDelete = services.filter(service => {
+      const toCleanOrDelete = services.filter(service => {
         if (!service.expirationDate) return false;
         
         const expiryDate = new Date(service.expirationDate);
@@ -268,24 +286,27 @@ export function DigitalServices() {
         const diffTime = today.getTime() - expiryDate.getTime();
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
-        // Deletes if expired and more than 3 waiting days elapsed (meaning diffDays > 3)
-        // EXCLUSION: If the subscription has pending accounts receivable (isPaid === false)
-        // or pending accounts payable (isCostPaid === false), preserve it to avoid deleting debt logs.
-        const isPendingReceivable = service.isPaid === false;
-        const isPendingPayable = service.isCostPaid === false;
-
-        return diffDays > 3 && !isPendingReceivable && !isPendingPayable;
+        // Deletes/cleans if expired and more than 3 waiting days elapsed (meaning diffDays > 3)
+        return diffDays > 3;
       });
 
-      if (toDelete.length === 0) return;
+      if (toCleanOrDelete.length === 0) return;
 
-      console.log(`[Auto-Cleanup] Found ${toDelete.length} digital account(s) overdue by more than 3 waiting days. Initiating deletion...`);
-      for (const service of toDelete) {
+      console.log(`[Auto-Cleanup] Found ${toCleanOrDelete.length} digital account(s) overdue by more than 3 waiting days. Initiating cleanup...`);
+      for (const service of toCleanOrDelete) {
         try {
-          await deleteDoc(doc(db, 'digital_services', service.id));
-          console.log(`[Auto-Cleanup] Successfully deleted expired account: name="${service.name}" email="${service.email}"`);
+          const isPending = service.isPaid === false || service.isCostPaid === false;
+          if (isPending) {
+            // Unpaid/uncollected: hide from module but keep document to preserve accounts receivable/payable
+            await updateDoc(doc(db, 'digital_services', service.id), { deletedFromModule: true });
+            console.log(`[Auto-Cleanup] Handled unpaid expired account (flagged as deletedFromModule): name="${service.name}" email="${service.email}"`);
+          } else {
+            // Already paid: can be physically deleted safely
+            await deleteDoc(doc(db, 'digital_services', service.id));
+            console.log(`[Auto-Cleanup] Successfully physically deleted paid expired account: name="${service.name}" email="${service.email}"`);
+          }
         } catch (err) {
-          console.error(`[Auto-Cleanup] Error executing deletion on doc ${service.id}:`, err);
+          console.error(`[Auto-Cleanup] Error executing cleanup/deletion on doc ${service.id}:`, err);
         }
       }
     };
@@ -678,11 +699,23 @@ export function DigitalServices() {
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const serviceObj = services.find(s => s.id === id);
+    const isUncollected = serviceObj && (serviceObj.isPaid === false || serviceObj.isCostPaid === false);
+
+    const confirmTitle = isUncollected ? "¿Ocultar y archivar deuda?" : "¿Eliminar venta de servicio?";
+    const confirmMessage = isUncollected
+      ? "Esta cuenta tiene saldos pendientes de cobro o de pago. Para limpiar este módulo pero no perder la cartera vencida, el registro se ocultará de aquí pero se conservará en Cuentas por Cobrar/Pagar. ¿Deseas proceder?"
+      : "¿Está seguro de que desea eliminar permanentemente este registro de venta digital? Esta acción no se puede deshacer.";
+
     triggerConfirm(
-      "¿Eliminar venta de servicio?",
-      "¿Está seguro de que desea eliminar permanentemente este registro de venta digital? Esta acción no se puede deshacer.",
+      confirmTitle,
+      confirmMessage,
       async () => {
-        await deleteDoc(doc(db, 'digital_services', id));
+        if (isUncollected) {
+          await updateDoc(doc(db, 'digital_services', id), { deletedFromModule: true });
+        } else {
+          await deleteDoc(doc(db, 'digital_services', id));
+        }
       }
     );
   };
@@ -807,15 +840,21 @@ export function DigitalServices() {
     if (selectedItemIds.length === 0) return;
     triggerConfirm(
       "¿Eliminar selección masiva?",
-      `¿Está absolutamente seguro de que desea eliminar permanentemente las ${selectedItemIds.length} suscripciones seleccionadas? Esta acción es irreversible.`,
+      `¿Está absolutamente seguro de que desea eliminar las ${selectedItemIds.length} suscripciones seleccionadas? Las que posean deudas pendientes serán archivadas para no perder tu cartera de cuentas por cobrar.`,
       async () => {
         try {
           const batch = writeBatch(db);
           selectedItemIds.forEach(id => {
-            batch.delete(doc(db, 'digital_services', id));
+            const serviceObj = services.find(item => item.id === id);
+            const isUncollected = serviceObj && (serviceObj.isPaid === false || serviceObj.isCostPaid === false);
+            if (isUncollected) {
+              batch.update(doc(db, 'digital_services', id), { deletedFromModule: true });
+            } else {
+              batch.delete(doc(db, 'digital_services', id));
+            }
           });
           await batch.commit();
-          await sendLocalPushNotification('Borrado Exitoso 🗑️', 'Suscripciones eliminadas permanentemente.');
+          await sendLocalPushNotification('Acción Completada 🗑️', 'Suscripciones eliminadas o archivadas con éxito.');
           setSelectedItemIds([]);
         } catch (err) {
           console.error("Error borrando en lote:", err);

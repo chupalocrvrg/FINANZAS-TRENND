@@ -104,14 +104,41 @@ export default function App() {
     if (disabledFeatures.includes(activeTab)) {
       setActiveTab('dashboard');
     }
-  }, [settings?.disabledFeatures, activeTab]);
-
-  useEffect(() => {
+  }, [settings?.disabledFeatures, activeTab]);  useEffect(() => {
     if (user) {
       requestNotificationPermission();
       setupMessageListener();
     }
   }, [user]);
+
+  // Escuchar parámetros url (deep linking de notificaciones)
+  useEffect(() => {
+    const handleUrlParams = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      const searchParam = params.get('search');
+      
+      if (tabParam) {
+        setActiveTab(tabParam);
+        if (searchParam) {
+          const decodedSearch = decodeURIComponent(searchParam);
+          setTimeout(() => {
+            const eventName = tabParam === 'services' ? 'app-search-filter' : 'app-alerts-filter';
+            window.dispatchEvent(new CustomEvent(eventName, { detail: { search: decodedSearch } }));
+          }, 400);
+        }
+        // Limpiar parámetros para no repetirlos al refrescar
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    };
+
+    handleUrlParams();
+    window.addEventListener('popstate', handleUrlParams);
+    return () => {
+      window.removeEventListener('popstate', handleUrlParams);
+    };
+  }, []);
 
   // Temporizador de inactividad que bloquea el sistema
   useEffect(() => {
@@ -149,6 +176,22 @@ export default function App() {
     const qTxs = query(collection(db, 'transactions'), where('ownerId', '==', user.uid), where('isPaid', '==', false));
     const unsubTxs = onSnapshot(qTxs, (txSnap) => {
       setTxCount(txSnap.size);
+
+      txSnap.docs.forEach(doc => {
+        const tx = doc.data();
+        const customerName = tx.intermediaryName || tx.finalClientName || 'Cliente';
+        const description = `ANT: ${tx.finalClientName || 'Cliente Final'} (${tx.warehouse || 'Generico'})`;
+        const sessionNotifKey = `notified_tx_${doc.id}`;
+
+        if (!sessionStorage.getItem(sessionNotifKey)) {
+          sendLocalPushNotification(
+            'Cobranza ANT Pendiente 📈',
+            `Recordatorio Pago: Trámite ${description} de ${customerName} por ${tx.chargedRate || 0} USD sigue impago.`,
+            `/?tab=alerts&search=${encodeURIComponent(customerName)}`
+          );
+          sessionStorage.setItem(sessionNotifKey, 'true');
+        }
+      });
     }, (error) => {
       console.error("Error listening transactions:", error);
     });
@@ -164,31 +207,61 @@ export default function App() {
     const unsubSer = onSnapshot(qSer, (serSnap) => {
       const now = new Date();
       let count = 0;
-      let approachingServices: string[] = [];
 
       serSnap.docs.forEach(doc => {
-        const ser = doc.data();
-        if (ser.status === 'expired') {
-          count++;
-        } else if (ser.expirationDate) {
+        const ser = { id: doc.id, ...doc.data() } as any;
+        if (ser.deletedFromModule) return;
+
+        const nowAtStartOfDay = new Date();
+        nowAtStartOfDay.setHours(0, 0, 0, 0);
+
+        let isToday = false;
+        let diffDays = -999;
+
+        if (ser.expirationDate) {
           const expiry = new Date(ser.expirationDate);
           const diffTime = expiry.getTime() - now.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          if (diffDays >= 0 && diffDays <= 7) {
-            count++;
-            approachingServices.push(ser.name);
+          diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          const expDay = new Date(ser.expirationDate);
+          expDay.setHours(0, 0, 0, 0);
+          isToday = expDay.getTime() === nowAtStartOfDay.getTime();
+        }
+
+        const isOverduOrExp = ser.status === 'expired' || (diffDays !== -999 && diffDays < 0);
+
+        if (isOverduOrExp || (diffDays !== -999 && diffDays <= 7)) {
+          count++;
+
+          const sessionNotifKey = `notified_expired_${ser.id}`;
+          if (!sessionStorage.getItem(sessionNotifKey)) {
+            const customerName = ser.clientName || 'Cliente';
+            const serviceName = ser.name || 'Servicio';
+            const extraEmail = ser.email || '';
+            const searchKey = ser.email || ser.profileName || customerName;
+
+            let title = 'Recordatorio Vencimiento ⚠️';
+            let message = '';
+
+            if (isToday) {
+              title = 'Cuenta por Vencerse Hoy ⚠️';
+              message = `Cuenta de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} vence el día de hoy.`;
+            } else if (isOverduOrExp) {
+              title = 'Servicio Expirado ❌';
+              message = `Cuenta vencida de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} venció o expiró.`;
+            } else {
+              message = `Cuenta de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} vence pronto (en ${diffDays} días).`;
+            }
+
+            sendLocalPushNotification(
+              title,
+              message,
+              `/?tab=services&search=${encodeURIComponent(searchKey)}`
+            );
+            sessionStorage.setItem(sessionNotifKey, 'true');
           }
         }
       });
-
-      // Trigger push notification once per session if there are expirations approaching
-      if (approachingServices.length > 0 && !sessionStorage.getItem('expiration_notified')) {
-         sendLocalPushNotification(
-           'Aviso de Vencimiento ⚠️', 
-           `Tienes ${approachingServices.length} servicios por vencer pronto (Ej: ${approachingServices[0]}).`
-         );
-         sessionStorage.setItem('expiration_notified', 'true');
-      }
 
       setSerAlertCount(count);
     }, (error) => {

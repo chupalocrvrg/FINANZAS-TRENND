@@ -86,17 +86,26 @@ self.addEventListener('push', (event) => {
 // Notify click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = event.notification.data?.url || '/';
+
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((windowClients) => {
-      // Check if there is already a window/tab open with the target URL
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there is already a window/tab open to navigate
       for (const client of windowClients) {
-        if (client.url === '/' && 'focus' in client) {
+        if ('focus' in client) {
+          if ('navigate' in client) {
+            try {
+              client.navigate(targetUrl);
+            } catch (err) {
+              console.warn("Failed to navigate existing tab:", err);
+            }
+          }
           return client.focus();
         }
       }
       // If not, open a new window
-      if (clients.openWindow) {
-        return clients.openWindow('/');
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
       }
     })
   );

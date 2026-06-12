@@ -8,7 +8,8 @@ import {
   Loader2,
   CheckCircle,
   Trash2,
-  XCircle
+  XCircle,
+  Search
 } from 'lucide-react';
 import { NoticeShareModal } from './NoticeShareModal';
 import { formatCurrency, cn } from '../lib/utils';
@@ -34,7 +35,23 @@ export function Alerts() {
   const [alerts, setAlerts] = useState<RealAlertItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [noticeShareData, setNoticeShareData] = useState<any | null>(null);
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('search') || '';
+  });
   const isDark = settings?.theme === 'dark';
+
+  useEffect(() => {
+    const handleFilter = (e: any) => {
+      if (e.detail?.search !== undefined) {
+        setSearchTerm(e.detail.search);
+      }
+    };
+    window.addEventListener('app-alerts-filter', handleFilter);
+    return () => {
+      window.removeEventListener('app-alerts-filter', handleFilter);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -87,6 +104,7 @@ export function Alerts() {
           
           const now = new Date();
           const serAlerts = rawServices.filter(ser => {
+            if (ser.deletedFromModule) return false;
             // Un servicio califica como alerta si:
             // a) Su status es explicitamente 'expired'
             // b) Su fecha de expiracion ya pasó
@@ -103,11 +121,14 @@ export function Alerts() {
             const expDate = new Date(ser.expirationDate);
             const isOverdu = expDate < now || ser.status === 'expired';
             
+            const extraDetail = ser.email || ser.profileName || ser.category || '';
+            const itemLabel = `${ser.name} (${extraDetail})`;
+            
             return {
               id: ser.id,
               type: 'expiration' as const,
               customer: ser.clientName || 'Cliente Digital',
-              item: `${ser.name} (${ser.category})`,
+              item: itemLabel,
               amount: ser.revenue || 0,
               date: ser.expirationDate,
               status: isOverdu ? ('expired' as const) : ('expiring-soon' as const),
@@ -159,14 +180,30 @@ export function Alerts() {
   // Acción: Eliminar servicio digital de forma definitiva por no renovación o fin de suscripción
   const handleCancelService = async (alertItem: RealAlertItem) => {
     try {
-      await deleteDoc(doc(db, 'digital_services', alertItem.id));
+      const s = alertItem.rawRef;
+      if (s && (s.isPaid === false || s.isCostPaid === false)) {
+        await updateDoc(doc(db, 'digital_services', alertItem.id), {
+          deletedFromModule: true,
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        await deleteDoc(doc(db, 'digital_services', alertItem.id));
+      }
     } catch (err) {
       console.error("Error al eliminar servicio:", err);
       alert("No se pudo dar de baja.");
     }
   };
 
-  const filteredAlerts = alerts.filter(a => activeFilter === 'all' || a.type === activeFilter);
+  const filteredAlerts = alerts.filter(a => {
+    const matchesFilter = activeFilter === 'all' || a.type === activeFilter;
+    if (!searchTerm) return matchesFilter;
+    const term = searchTerm.toLowerCase();
+    return matchesFilter && (
+      (a.customer && a.customer.toLowerCase().includes(term)) ||
+      (a.item && a.item.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
@@ -182,6 +219,25 @@ export function Alerts() {
           <button onClick={() => setActiveFilter('expiration')} className={cn("flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer", activeFilter === 'expiration' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}>Expiraciones ({alerts.filter(a => a.type === 'expiration').length})</button>
           <button onClick={() => setActiveFilter('receivable')} className={cn("flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer", activeFilter === 'receivable' ? "bg-white text-rose-600 shadow-sm" : "text-slate-500")}>Cobros ANT ({alerts.filter(a => a.type === 'receivable').length})</button>
         </div>
+      </div>
+
+      {/* Modern Search Input */}
+      <div className="relative w-full">
+        <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+          <Search className="w-5 h-5 text-indigo-500" />
+        </span>
+        <input
+          type="text"
+          placeholder="🔍 Buscar por cliente de cobranza, convenio, servicio..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className={cn(
+            "w-full pl-11 pr-4 py-3 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner",
+            isDark 
+              ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+              : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+          )}
+        />
       </div>
 
       {loading ? (

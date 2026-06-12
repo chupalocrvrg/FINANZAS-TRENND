@@ -100,7 +100,7 @@ export function CRM() {
     setIsSyncing(true);
     let itemsAdded = 0;
 
-    const clientSales = services.filter(s => s.clientName && s.clientName.trim() !== '');
+    const clientSales = services.filter(s => s.clientName && s.clientName.trim() !== '' && !s.deletedFromModule);
     const tempEntities = [...entities];
 
     for (const sale of clientSales) {

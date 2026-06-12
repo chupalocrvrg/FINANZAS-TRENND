@@ -94,6 +94,7 @@ export function Reports() {
 
       // Parse Digital Services inside date boundaries
       const services = servicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)).filter(item => {
+        if (item.deletedFromModule) return false;
         if (!item.expirationDate) return true; // Keep or skip based on preference
         const dateObj = new Date(item.expirationDate);
         return dateObj >= startSecs && dateObj <= endSecs;

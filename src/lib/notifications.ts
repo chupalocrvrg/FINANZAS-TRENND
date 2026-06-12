@@ -39,17 +39,22 @@ export function setupMessageListener() {
 }
 
 // Function to simulate a push notification from the client for demonstration when a backend is not available
-export async function sendLocalPushNotification(title: string, body: string) {
+export async function sendLocalPushNotification(title: string, body: string, urlPath?: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   
+  const options = {
+    body,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: {
+      url: urlPath || '/'
+    }
+  };
+
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.ready;
-    reg.showNotification(title, {
-      body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png'
-    });
+    reg.showNotification(title, options);
   } else {
-    new Notification(title, { body, icon: '/icon-192.png' });
+    new Notification(title, { body, icon: '/icon-192.png', data: { url: urlPath || '/' } });
   }
 }

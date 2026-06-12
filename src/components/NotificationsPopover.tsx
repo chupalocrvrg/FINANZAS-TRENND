@@ -20,6 +20,8 @@ interface RealNotifItem {
   date?: string;
   status: 'expired' | 'past-due' | 'expiring-soon';
   contact: string;
+  email?: string;
+  profileName?: string;
 }
 
 export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopoverProps) {
@@ -78,6 +80,7 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
           
           const now = new Date();
           const serAlerts = rawServices.filter(ser => {
+            if (ser.deletedFromModule) return false;
             if (ser.status === 'expired') return true;
             if (!ser.expirationDate) return false;
             const expiry = new Date(ser.expirationDate);
@@ -87,16 +90,20 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
           }).map(ser => {
             const expDate = new Date(ser.expirationDate);
             const isOverdu = expDate < now || ser.status === 'expired';
+            const extraDetail = ser.email || ser.profileName || ser.category || '';
+            const itemLabel = `${ser.name} (${extraDetail})`;
             
             return {
               id: ser.id,
               type: 'expiration' as const,
               customer: ser.clientName || 'Cliente Digital',
-              item: `${ser.name} (${ser.category})`,
+              item: itemLabel,
               amount: ser.revenue || 0,
               date: ser.expirationDate,
               status: isOverdu ? ('expired' as const) : ('expiring-soon' as const),
-              contact: ser.clientContact || ''
+              contact: ser.clientContact || '',
+              email: ser.email || '',
+              profileName: ser.profileName || ''
             };
           });
 
@@ -152,8 +159,15 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
   const handleItemClick = (alert: RealNotifItem) => {
     if (alert.type === 'expiration') {
       onNavigate('services');
+      setTimeout(() => {
+        const searchTermToUse = alert.email || alert.profileName || alert.customer;
+        window.dispatchEvent(new CustomEvent('app-search-filter', { detail: { search: searchTermToUse } }));
+      }, 100);
     } else if (alert.type === 'receivable') {
       onNavigate('alerts');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('app-alerts-filter', { detail: { search: alert.customer } }));
+      }, 100);
     }
     onClose();
   };
