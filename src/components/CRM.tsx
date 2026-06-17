@@ -21,6 +21,7 @@ import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useTranslation } from '../lib/translations';
 import { ConfirmModal } from './ConfirmModal';
+import { sanitizeString, checkRateLimit } from '../lib/security';
 
 export function CRM() {
   const { user, settings } = useAuth();
@@ -165,10 +166,28 @@ export function CRM() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // Check rate limit (Max 15 submissions per minute to prevent DB spam/flooding)
+    if (!editingEntity) {
+      const rateCheck = checkRateLimit('create_crm_entity', 15, 60000);
+      if (!rateCheck.allowed) {
+        alert(`Has realizado demasiadas creaciones muy rápido. Por seguridad, por favor espera ${rateCheck.retryAfterSeconds} segundos.`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
-    const name = formData.name;
-    const contact = formData.contact;
+    // Sanitize and validate Name and Contact inputs
+    const name = sanitizeString(formData.name, 100);
+    const contact = sanitizeString(formData.contact, 150);
+
+    if (!name || name.trim().length === 0) {
+      alert("El nombre de la entidad es obligatorio y debe tener un formato válido.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const rate = activeTab === 'intermediary' ? parseFloat(formData.rate) : 0;
     const isAntUpdater = activeTab === 'supplier' ? formData.isAntUpdater : false;
     const antUpdateCost = (activeTab === 'supplier' && isAntUpdater) ? parseFloat(formData.antUpdateCost) : 0;

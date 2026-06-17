@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { motion } from 'motion/react';
 import { Shield, UserCircle, ArrowRight, Fingerprint, Coins, Smartphone, HelpCircle } from 'lucide-react';
@@ -29,9 +29,17 @@ export function Onboarding() {
   const [biometricStatus, setBiometricStatus] = useState<'idle' | 'scanning' | 'success' | null>(null);
   const [scanProgress, setScanProgress] = useState(0);
   const [registeredCredId, setRegisteredCredId] = useState<string>('');
+  const [isBiometricSupported, setIsBiometricSupported] = useState(true);
 
   // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isSupported = !!(navigator.credentials && window.PublicKeyCredential && window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable);
+      setIsBiometricSupported(isSupported);
+    }
+  }, []);
 
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
@@ -222,6 +230,28 @@ export function Onboarding() {
                   placeholder="Ej. Comercial o Distribuidora Peralta"
                   required
                 />
+                
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  <span className="text-[8px] font-black uppercase text-slate-400 self-center mr-1">⚡ Autocompletar:</span>
+                  {['Store', 'Digital', 'Servicios', 'Streaming'].map((suffix) => {
+                    const firstName = displayName.split(' ')[0] || 'Mi';
+                    const suggested = `${suffix === 'Servicios' ? 'Servicios ' : ''}${firstName}${suffix !== 'Servicios' ? ' ' + suffix : ''}`;
+                    return (
+                      <button
+                        key={suffix}
+                        type="button"
+                        onClick={() => {
+                          setCompanyName(suggested);
+                          if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' }));
+                        }}
+                        className="text-[9px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full transition-all border border-indigo-100 cursor-pointer"
+                      >
+                        {suggested}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {errors.companyName && (
                   <p className="text-rose-500 text-[10px] font-bold mt-1 text-left uppercase tracking-wider">{errors.companyName}</p>
                 )}
@@ -339,7 +369,32 @@ export function Onboarding() {
               <p className="text-slate-500 text-xs mt-1">Vincula tu huella dactilar o reconocimiento facial (FaceID) para desbloqueo ágil.</p>
             </div>
 
-            {!biometricStatus ? (
+            {!isBiometricSupported ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left space-y-1.5 animate-in fade-in duration-300">
+                  <span className="text-[9px] font-black uppercase text-amber-700 block gap-1 flex items-center">⚠️ Dispositivo no compatible o sin biometría activa</span>
+                  <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                    Este dispositivo o navegador no tiene activo o no admite el registro biométrico (WebAuthn / FaceID). ¡No te preocupes! El sistema ha optimizado tu inicio de sesión configurando el <strong>PIN de Seguridad de 4 dígitos</strong> como método exclusivo.
+                  </p>
+                </div>
+                
+                <div className="p-3.5 bg-emerald-50 border border-emerald-100 rounded-xl text-left space-y-1 text-emerald-800">
+                  <span className="text-[9px] font-black uppercase block">✓ PIN de Respaldo Configurado</span>
+                  <p className="text-[10px] font-bold">Tu clave secreta: <strong className="font-mono bg-white px-1.5 py-0.5 border border-emerald-200 rounded text-emerald-950 font-black tracking-widest text-xs">{pin}</strong></p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-[10px] text-slate-500 text-left">
+                  <p className="leading-relaxed">Tus credenciales y datos se guardarán de forma interna y privada en la plataforma de forma encriptada para futuros accesos.</p>
+                </div>
+
+                <button 
+                  onClick={() => handleFinish(false)}
+                  className="w-full bg-slate-900 text-white hover:bg-black font-black py-4 rounded-xl flex items-center justify-center gap-2 transition-all uppercase tracking-widest text-[10px] cursor-pointer shadow-lg"
+                >
+                  Registar PIN y Entrar al Centro de Control
+                </button>
+              </div>
+            ) : !biometricStatus ? (
               <div className="space-y-3">
                 <button 
                   onClick={handleSetupBiometrics}

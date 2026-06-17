@@ -64,6 +64,15 @@ export function QuickAddFAB() {
   const [fabDsPin, setFabDsPin] = useState('');
   const [fabDsServiceType, setFabDsServiceType] = useState<'completa' | 'pantalla'>('completa');
   const [fabDsProfileName, setFabDsProfileName] = useState('');
+  const [fabDsClientType, setFabDsClientType] = useState<'client' | 'reseller'>('client');
+  const [fabDsFinalClientName, setFabDsFinalClientName] = useState('');
+  const [fabDsFinalClientContact, setFabDsFinalClientContact] = useState('');
+
+  // Local quick client/reseller form inside the popover
+  const [showFabNewClientForm, setShowFabNewClientForm] = useState(false);
+  const [newEntityName, setNewEntityName] = useState('');
+  const [newEntityContact, setNewEntityContact] = useState('');
+  const [newEntityType, setNewEntityType] = useState<'client' | 'reseller'>('client');
 
   // ANT Update Form states
   const [fabAntIntermediaryId, setFabAntIntermediaryId] = useState('');
@@ -85,6 +94,9 @@ export function QuickAddFAB() {
   const [fabLedgerIsCreditCardPayment, setFabLedgerIsCreditCardPayment] = useState(false);
   const [fabLedgerTargetWalletId, setFabLedgerTargetWalletId] = useState('');
 
+  const [catalogItems, setCatalogItems] = useState<any[]>([]);
+  const [quickPasteText, setQuickPasteText] = useState('');
+
   const isDark = settings?.theme === 'dark';
 
   useEffect(() => {
@@ -105,9 +117,14 @@ export function QuickAddFAB() {
       setEntities(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
     });
 
+    const unsubCatalog = onSnapshot(query(collection(db, 'digital_catalog'), where('ownerId', '==', user.uid)), (snap) => {
+      setCatalogItems(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+    });
+
     return () => {
       unsubWallets();
       unsubEntities();
+      unsubCatalog();
     };
   }, [user]);
 
@@ -134,6 +151,13 @@ export function QuickAddFAB() {
     setFabDsPin('');
     setFabDsServiceType('completa');
     setFabDsProfileName('');
+    setFabDsClientType('client');
+    setFabDsFinalClientName('');
+    setFabDsFinalClientContact('');
+    setShowFabNewClientForm(false);
+    setNewEntityName('');
+    setNewEntityContact('');
+    setNewEntityType('client');
 
     setFabAntIntermediaryId('');
     setFabAntUpdaterId('');
@@ -154,6 +178,239 @@ export function QuickAddFAB() {
     setFabLedgerInstallments('1');
     setFabLedgerIsCreditCardPayment(false);
     setFabLedgerTargetWalletId('');
+  };
+
+  const handleQuickPasteParse = (text: string) => {
+    setQuickPasteText(text);
+    if (!text.trim()) return;
+
+    const normalizedText = text.toLowerCase();
+
+    // Decide if it is an ANT Update vs Digital Service
+    const isAnt = normalizedText.includes('ant') || 
+                  normalizedText.includes('planilla') || 
+                  normalizedText.includes('trámite') || 
+                  normalizedText.includes('tramite') || 
+                  normalizedText.includes('depósito') || 
+                  normalizedText.includes('deposito') || 
+                  normalizedText.includes('transferencia') || 
+                  normalizedText.includes('bodega') ||
+                  normalizedText.includes('establecimiento');
+
+    if (isAnt) {
+      // 1. ANT Update
+      let chargedRate = 0;
+      const rateRegexes = [
+        /(?:tasa|rate|monto|valor|costo|precio|cobro)[:\s]*\$?\s*(\d+(?:\.\d+)?)/i,
+        /\$\s*(\d+(?:\.\d+)?)/i,
+        /\b(\d+(?:\.\d+)?)\s*usd/i,
+        /\b(\d+(?:\.\d+)?)\s*dolares/i
+      ];
+      for (const rx of rateRegexes) {
+        const match = text.match(rx);
+        if (match) {
+          chargedRate = parseFloat(match[1]);
+          if (!isNaN(chargedRate) && chargedRate > 0) break;
+        }
+      }
+
+      let warehouse = "";
+      const popularPlaces = [
+        "Manta", "Guayaquil", "Quito", "Portoviejo", "Huaquillas", "Cuenca", 
+        "Loja", "Ambato", "Riobamba", "Ibarra", "Esmeraldas", "Santo Domingo",
+        "Machala", "Duran", "Quevedo", "Babahoyo", "Latacunga", "Tulcan"
+      ];
+      for (const place of popularPlaces) {
+        if (normalizedText.includes(place.toLowerCase())) {
+          warehouse = place;
+          break;
+        }
+      }
+
+      if (!warehouse) {
+        const bRegex = /(?:bodega|establecimiento|agencia|banco|punto|lugar|oficina)[:\s]+([A-Za-z]+)/i;
+        const bMatch = text.match(bRegex);
+        if (bMatch) {
+          warehouse = bMatch[1].trim();
+        }
+      }
+
+      let finalClientName = "";
+      const nameRegexes = [
+        /(?:cliente final|persona|interesado|titular|para|nombre|cliente)[:\s]+([A-Za-z\s]{3,25})/i,
+        /(?:ant|planilla|tramite)\s+(?:de|para)\s+([A-Za-z\s]{3,25})/i
+      ];
+      for (const rx of nameRegexes) {
+        const match = text.match(rx);
+        if (match) {
+          finalClientName = match[1].trim();
+          break;
+        }
+      }
+      if (finalClientName) {
+        finalClientName = finalClientName.replace(/\n.*/g, '').replace(/(?:vence|bodega|establecimiento|tasa|monto|valor).*/i, '').trim();
+      }
+
+      let intermediaryId = "";
+      const matchedInter = entities.find(i => i.type === 'intermediary' && normalizedText.includes(i.name.toLowerCase()));
+      if (matchedInter) {
+        intermediaryId = matchedInter.id;
+      } else {
+        const firstInter = entities.find(i => i.type === 'intermediary');
+        if (firstInter) intermediaryId = firstInter.id;
+      }
+
+      let updaterId = "";
+      const matchedUpdater = entities.find(u => u.type === 'supplier' && normalizedText.includes(u.name.toLowerCase()));
+      if (matchedUpdater) {
+        updaterId = matchedUpdater.id;
+      } else {
+        const firstUpdater = entities.find(u => u.type === 'supplier');
+        if (firstUpdater) updaterId = firstUpdater.id;
+      }
+
+      const activeInter = entities.find(e => e.id === intermediaryId);
+      const activeUpdater = entities.find(e => e.id === updaterId);
+
+      setQuickAddType('ant_update');
+      setFabAntFinalClientName(finalClientName || 'Cliente Planilla');
+      setFabAntWarehouse(warehouse || 'Establecimiento ANT');
+      setFabAntIntermediaryId(intermediaryId);
+      setFabAntUpdaterId(updaterId);
+      setFabAntChargedRate(activeInter ? String(activeInter.rate || 0) : String(chargedRate || 0));
+      setFabAntBaseCost(activeUpdater ? String(activeUpdater.antUpdateCost || 0) : '0');
+
+    } else {
+      // 2. Digital Service
+      const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
+      const email = emailMatch ? emailMatch[0].trim() : "";
+
+      let password = "";
+      const passRegexes = [
+        /(?:contraseña|contrasena|clave|password|pass|clv|pw)[:\s]+([^\s,;]+)/i,
+        /clave[:\s]+([^\s,;]+)/i,
+        /password[:\s]+([^\s,;]+)/i,
+        /pass[:\s]+([^\s,;]+)/i
+      ];
+      for (const rx of passRegexes) {
+        const match = text.match(rx);
+        if (match) {
+          password = match[1].trim();
+          break;
+        }
+      }
+      if (!password && email) {
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.includes(email)) {
+            const afterEmail = line.substring(line.indexOf(email) + email.length);
+            const parts = afterEmail.split(/[:\s/|\-]+/);
+            const filteredParts = parts.map(p => p.trim()).filter(p => p.length > 2 && p.toLowerCase() !== 'pin');
+            if (filteredParts.length > 0) {
+              password = filteredParts[0];
+              break;
+            }
+          }
+        }
+      }
+
+      let pin = "";
+      const pinRegexes = [
+        /(?:pin|perfil|pantalla|slot|perf|pl|combo)[:\s]+([^\s,;]+)/i,
+        /pin[:\s]*(\d+)/i,
+        /perfil[:\s]*(\d+|[A-Za-z0-9ñÑ]+)/i
+      ];
+      for (const rx of pinRegexes) {
+        const match = text.match(rx);
+        if (match) {
+          pin = match[1].trim();
+          break;
+        }
+      }
+
+      let profileName = "";
+      const profileMatch = text.match(/(?:perfil|pantalla|slot|perf|pl)[:\s]+([A-Za-z0-9ñÑ\s]+)/i);
+      if (profileMatch) {
+        profileName = profileMatch[1].trim();
+      }
+
+      let name = "";
+      let cost = 0;
+      let revenue = 0;
+
+      for (const item of catalogItems) {
+        if (normalizedText.includes(item.name.toLowerCase())) {
+          name = item.name;
+          cost = item.cost || item.costo || 0;
+          revenue = item.pvp || item.precio || 0;
+          break;
+        }
+      }
+
+      if (!name) {
+        const streamingMatch = ["netflix", "disney", "spotify", "max", "hbo", "prime", "crunchyroll", "youtube", "capcut", "canva", "magis", "plex"];
+        for (const brand of streamingMatch) {
+          if (normalizedText.includes(brand)) {
+            const bestCatalogMatch = catalogItems.find(item => item.name.toLowerCase().includes(brand));
+            if (bestCatalogMatch) {
+              name = bestCatalogMatch.name;
+              cost = bestCatalogMatch.cost || bestCatalogMatch.costo || 0;
+              revenue = bestCatalogMatch.pvp || bestCatalogMatch.precio || 0;
+            } else {
+              name = brand.charAt(0).toUpperCase() + brand.slice(1);
+            }
+            break;
+          }
+        }
+      }
+      if (!name) {
+        name = "Servicio Digital";
+      }
+
+      const costMatch = text.match(/(?:costo|cost|compra|prov)[:\s]*\$?\s*(\d+(?:\.\d+)?)/i);
+      if (costMatch) {
+        cost = parseFloat(costMatch[1]);
+      }
+      const priceMatch = text.match(/(?:precio|venta|cobro|pvp|ingreso)[:\s]*\$?\s*(\d+(?:\.\d+)?)/i);
+      if (priceMatch) {
+        revenue = parseFloat(priceMatch[1]);
+      }
+
+      let supplierId = "";
+      const matchedSupplier = entities.find(s => s.type === 'supplier' && normalizedText.includes(s.name.toLowerCase()));
+      if (matchedSupplier) {
+        supplierId = matchedSupplier.id;
+      } else {
+        const firstSupplier = entities.find(s => s.type === 'supplier');
+        if (firstSupplier) supplierId = firstSupplier.id;
+      }
+
+      let clientContact = "";
+      const contactMatch = text.match(/(?:celular|telefono|contacto|telf|\+593)[:\s]*(\+?\d{9,15})/i) || text.match(/\b(09\d{8})\b/);
+      if (contactMatch) {
+        clientContact = contactMatch[1].trim();
+      }
+
+      let clientName = "";
+      const clientNameMatch = text.match(/(?:cliente|para|comprador|nombre)[:\s]+([A-Za-z\s]{3,20})/i);
+      if (clientNameMatch) {
+        clientName = clientNameMatch[1].trim().replace(/\n.*/g, '');
+      }
+
+      setQuickAddType('digital_service');
+      setFabDsName(name);
+      setFabDsCategory('Streaming');
+      setFabDsEmail(email);
+      setFabDsPassword(password);
+      setFabDsPin(pin);
+      setFabDsProfileName(profileName || pin || '');
+      setFabDsServiceType(profileName || pin ? 'pantalla' : 'completa');
+      setFabDsCost(String(cost || 0));
+      setFabDsRevenue(String(revenue || 0));
+      setFabDsClientContact(clientContact);
+      setFabDsClientName(clientName || 'Cliente Final');
+      setFabDsDurationDays('30');
+    }
   };
 
   const handleFabSubmit = async (e: React.FormEvent) => {
@@ -212,7 +469,7 @@ export function QuickAddFAB() {
           const existingEntity = entities.find(
             (ent) =>
               ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
-              ent.type === 'client'
+              ent.type === fabDsClientType
           );
 
           if (!existingEntity) {
@@ -220,6 +477,34 @@ export function QuickAddFAB() {
               await addDoc(collection(db, 'entities'), {
                 name: trimmedClientName,
                 contact: fabDsClientContact ? fabDsClientContact.trim() : '',
+                type: fabDsClientType,
+                rate: 0,
+                isAntUpdater: false,
+                antUpdateCost: 0,
+                ownerId: user.uid,
+                createdAt: new Date().toISOString()
+              });
+              console.log(`Cliente/Revendedor "${trimmedClientName}" registrado automáticamente desde Acceso Rápido FAB`);
+            } catch (crmErr) {
+              console.error("Error al registrar cliente automáticamente en CRM (FAB):", crmErr);
+            }
+          }
+        }
+
+        // CRM Auto-Registration for final client if provided under reseller mode
+        if (fabDsClientType === 'reseller' && fabDsFinalClientName && fabDsFinalClientName.trim() !== '') {
+          const trimmedFinalName = fabDsFinalClientName.trim();
+          const existingFinalEntity = entities.find(
+            (ent) =>
+              ent.name?.trim().toLowerCase() === trimmedFinalName.toLowerCase() &&
+              ent.type === 'client'
+          );
+
+          if (!existingFinalEntity) {
+            try {
+              await addDoc(collection(db, 'entities'), {
+                name: trimmedFinalName,
+                contact: fabDsFinalClientContact ? fabDsFinalClientContact.trim() : '',
                 type: 'client',
                 rate: 0,
                 isAntUpdater: false,
@@ -227,9 +512,9 @@ export function QuickAddFAB() {
                 ownerId: user.uid,
                 createdAt: new Date().toISOString()
               });
-              console.log(`Cliente "${trimmedClientName}" registrado automáticamente desde Acceso Rápido FAB`);
+              console.log(`Cliente final "${trimmedFinalName}" registrado automáticamente en el CRM desde FAB`);
             } catch (crmErr) {
-              console.error("Error al registrar cliente automáticamente en CRM (FAB):", crmErr);
+              console.error("Error al registrar cliente final automáticamente en CRM (FAB):", crmErr);
             }
           }
         }
@@ -241,6 +526,9 @@ export function QuickAddFAB() {
           revenue: revVal,
           clientName: fabDsClientName,
           clientContact: fabDsClientContact,
+          clientType: fabDsClientType,
+          finalClientName: fabDsClientType === 'reseller' ? fabDsFinalClientName : '',
+          finalClientContact: fabDsClientType === 'reseller' ? fabDsFinalClientContact : '',
           email: fabDsEmail,
           password: fabDsPassword,
           pin: fabDsPin,
@@ -379,6 +667,29 @@ export function QuickAddFAB() {
                     <Sparkles className={cn("w-5 h-5 shrink-0", isDark ? "text-indigo-405 animate-pulse" : "text-indigo-200 animate-bounce")} />
                     <span>Preguntar al Asistente AI</span>
                   </motion.div>
+                </div>
+
+                {/* ⚡ EXTRACTOR LOCAL AUTÓNOMO 100% SIN CLAVE API */}
+                <div className="space-y-1.5 p-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-950/20">
+                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-indigo-554 dark:text-indigo-400">
+                    <span className="flex items-center gap-1">⚡ Autoprocesar Texto/Chat</span>
+                    <span className="px-1.5 py-0.5 rounded bg-indigo-505/10 dark:bg-indigo-500/10 text-[8px] font-black tracking-widest text-indigo-500 dark:text-indigo-400">Cero Clave API</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    className={cn(
+                      "w-full mt-1 p-2.5 rounded-xl border text-xs font-mono outline-none resize-none transition-all",
+                      isDark 
+                        ? "bg-slate-950 border-slate-800 text-slate-350 focus:border-indigo-500 placeholder-slate-650" 
+                        : "bg-slate-50 border-slate-200 text-slate-700 focus:bg-white focus:border-indigo-500 placeholder-slate-400"
+                    )}
+                    placeholder="Pegue aquí el chat de WhatsApp o datos de la cuenta / planilla para auto-rellenar y abrir el formulario..."
+                    value={quickPasteText}
+                    onChange={(e) => handleQuickPasteParse(e.target.value)}
+                  />
+                  <div className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">
+                    Detecta de forma 100% autónoma cuentas streaming (correo, clave, perfil, pin, costo) o abonos y planillas de placas ANT.
+                  </div>
                 </div>
 
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">¿Qué desea registrar de forma directa?</div>
@@ -552,25 +863,46 @@ export function QuickAddFAB() {
                 {/* 2. FORMULARIO SERVICIOS DIGITALES */}
                 {quickAddType === 'digital_service' && (
                   <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-                    <div className="text-xs font-black uppercase text-indigo-500">Venta de Cuenta / Suscripción</div>
+                    <div className="text-xs font-black uppercase text-indigo-505">Venta de Cuenta / Suscripción</div>
+                    
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Cuenta / Servicio</label>
-                        <input
-                          required
-                          type="text"
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Producto (Catálogo)</label>
+                        <select
                           value={fabDsName}
-                          onChange={(e) => setFabDsName(e.target.value)}
-                          className={cn("w-full p-2.5 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
-                          placeholder="Ej. Netflix"
-                        />
+                          onChange={(e) => {
+                            const pickedName = e.target.value;
+                            setFabDsName(pickedName);
+                            if (!pickedName) return;
+
+                            const cItem = catalogItems.find(c => c.name === pickedName);
+                            if (cItem) {
+                              setFabDsCategory(cItem.category || 'Streaming');
+                              if (cItem.providers && cItem.providers.length > 0) {
+                                const p = cItem.providers[0];
+                                setFabDsCost(String(p.cost || 0));
+                                if (fabDsClientType === 'reseller' && (p as any).pvpReseller) {
+                                  setFabDsRevenue(String((p as any).pvpReseller));
+                                } else if (p.pvp) {
+                                  setFabDsRevenue(String(p.pvp));
+                                }
+                              }
+                            }
+                          }}
+                          className={cn("w-full p-2 rounded-lg border text-[11px] font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
+                        >
+                          <option value="">-- Personalizado --</option>
+                          {catalogItems.map(c => (
+                            <option key={c.id} value={c.name}>{c.name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Categoría</label>
                         <select
                           value={fabDsCategory}
                           onChange={(e) => setFabDsCategory(e.target.value)}
-                          className={cn("w-full p-2.5 rounded-lg border text-xs font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
+                          className={cn("w-full p-2 rounded-lg border text-[11px] font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
                         >
                           <option value="Streaming">Streaming</option>
                           <option value="Consolas">Consolas / Juegos</option>
@@ -579,29 +911,310 @@ export function QuickAddFAB() {
                         </select>
                       </div>
                     </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Nombre / Cuenta Manual</label>
+                      <input
+                        required
+                        type="text"
+                        value={fabDsName}
+                        onChange={(e) => setFabDsName(e.target.value)}
+                        className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
+                        placeholder="Ej. Netflix"
+                      />
+                    </div>
+
+                    {/* CRM LINKING & CLIENT_TYPE BLOCK */}
+                    <div className="p-2 rounded-xl border border-indigo-500/15 bg-indigo-50/5 text-left space-y-2 shadow-inner">
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black uppercase tracking-widest text-indigo-500 block">Tipo de Cliente</label>
+                        <div className="grid grid-cols-2 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFabDsClientType('client');
+                              const cItem = catalogItems.find(c => c.name === fabDsName);
+                              if (cItem && cItem.providers && cItem.providers.length > 0) {
+                                const p = cItem.providers[0];
+                                if (p.pvp) setFabDsRevenue(String(p.pvp));
+                              }
+                            }}
+                            className={cn("py-1 text-[8.5px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1",
+                              fabDsClientType === 'client'
+                                ? "bg-indigo-650 dark:bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                : (isDark ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                            )}
+                          >
+                            👤 Cliente Final
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFabDsClientType('reseller');
+                              const cItem = catalogItems.find(c => c.name === fabDsName);
+                              if (cItem && cItem.providers && cItem.providers.length > 0) {
+                                const p = cItem.providers[0];
+                                if ((p as any).pvpReseller) {
+                                  setFabDsRevenue(String((p as any).pvpReseller));
+                                }
+                              }
+                            }}
+                            className={cn("py-1 text-[8.5px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1",
+                              fabDsClientType === 'reseller'
+                                ? "bg-indigo-655 dark:bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                : (isDark ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                            )}
+                          >
+                            🤝 Revendedor
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[8px] font-black uppercase tracking-widest text-indigo-500 block">Vincular con CRM</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowFabNewClientForm(!showFabNewClientForm);
+                              setNewEntityName(fabDsClientName !== 'Cliente Final' ? fabDsClientName : '');
+                              setNewEntityContact(fabDsClientContact);
+                              setNewEntityType(fabDsClientType);
+                            }}
+                            className="text-[8px] font-black text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 uppercase tracking-widest flex items-center gap-0.5 cursor-pointer"
+                          >
+                            {showFabNewClientForm ? '✕ Cancelar' : '➕ Crear Nuevo'}
+                          </button>
+                        </div>
+
+                        {showFabNewClientForm ? (
+                          <div className="p-2 mt-1 rounded-lg border border-dashed border-indigo-500/30 bg-indigo-500/5 dark:bg-indigo-950/20 space-y-2 text-left animate-in fade-in slide-in-from-top-1 duration-250">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500 block">➕ Registrar nuevo en CRM</span>
+                            <div className="space-y-0.5">
+                              <label className="text-[7.5px] font-bold uppercase text-slate-500 block">Nombre Completo</label>
+                              <input
+                                type="text"
+                                value={newEntityName}
+                                onChange={(e) => setNewEntityName(e.target.value)}
+                                className={cn("w-full p-1.5 rounded border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 focus:border-indigo-500")}
+                                placeholder="Ej. Juan Pérez"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <div className="space-y-0.5">
+                                <label className="text-[7.5px] font-bold uppercase text-slate-500 block">WhatsApp / Contacto</label>
+                                <input
+                                  type="text"
+                                  value={newEntityContact}
+                                  onChange={(e) => setNewEntityContact(e.target.value)}
+                                  className={cn("w-full p-1.5 rounded border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 focus:border-indigo-500")}
+                                  placeholder="Ej. +593..."
+                                />
+                              </div>
+                              <div className="space-y-0.5">
+                                <label className="text-[7.5px] font-bold uppercase text-slate-500 block">Tipo</label>
+                                <select
+                                  value={newEntityType}
+                                  onChange={(e) => setNewEntityType(e.target.value as 'client' | 'reseller')}
+                                  className={cn("w-full p-1.5 rounded border text-[10px] font-bold outline-none", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 focus:border-indigo-500")}
+                                >
+                                  <option value="client">👤 Cliente Final</option>
+                                  <option value="reseller">🤝 Revendedor</option>
+                                </select>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!newEntityName.trim()) {
+                                  alert("Por favor ingrese el nombre del cliente/revendedor");
+                                  return;
+                                }
+                                try {
+                                  const trimmed = newEntityName.trim();
+                                  await addDoc(collection(db, 'entities'), {
+                                    name: trimmed,
+                                    contact: newEntityContact ? newEntityContact.trim() : '',
+                                    type: newEntityType,
+                                    rate: 0,
+                                    isAntUpdater: false,
+                                    antUpdateCost: 0,
+                                    ownerId: user.uid,
+                                    createdAt: new Date().toISOString()
+                                  });
+                                  setFabDsClientName(trimmed);
+                                  setFabDsClientContact(newEntityContact ? newEntityContact.trim() : '');
+                                  setFabDsClientType(newEntityType);
+                                  setShowFabNewClientForm(false);
+                                  setNewEntityName('');
+                                  setNewEntityContact('');
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                              className="w-full py-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[8px] uppercase tracking-widest rounded cursor-pointer transition-colors shadow"
+                            >
+                              ✓ Guardar y Vincular
+                            </button>
+                          </div>
+                        ) : (
+                          <select
+                            onChange={(e) => {
+                              const entId = e.target.value;
+                              if (!entId) return;
+                              const selected = entities.find(ent => ent.id === entId);
+                              if (selected) {
+                                setFabDsClientName(selected.name);
+                                setFabDsClientContact(selected.contact || '');
+                              }
+                            }}
+                            className={cn("w-full p-2 rounded-lg border text-[11px] font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
+                          >
+                            <option value="">-- Seleccionar registrado --</option>
+                            {entities
+                              .filter(e => e.type === fabDsClientType)
+                              .map(ent => (
+                                <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
+                              ))
+                            }
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Cliente</label>
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Nombre de Cliente</label>
                         <input
                           required
                           type="text"
                           value={fabDsClientName}
                           onChange={(e) => setFabDsClientName(e.target.value)}
-                          className={cn("w-full p-2.5 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
-                          placeholder="Nombre cliente"
+                          className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
+                          placeholder="Ej. Galo Peralta"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">WhatsApp</label>
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">WhatsApp de Cliente</label>
                         <input
                           type="text"
                           value={fabDsClientContact}
                           onChange={(e) => setFabDsClientContact(e.target.value)}
-                          className={cn("w-full p-2.5 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
-                          placeholder="WhatsApp"
+                          className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
+                          placeholder="Ej. +593987654321"
                         />
                       </div>
                     </div>
+
+                    {/* REGISTRAR CLIENTE / REVENDEDOR NUEVO EN CRM INSTANTÁNEAMENTE */}
+                    {fabDsClientName && fabDsClientName.trim() !== '' && !entities.some(e => e.name?.trim().toLowerCase() === fabDsClientName.trim().toLowerCase() && e.type === fabDsClientType) && (
+                      <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const trimmed = fabDsClientName.trim();
+                              await addDoc(collection(db, 'entities'), {
+                                name: trimmed,
+                                contact: fabDsClientContact ? fabDsClientContact.trim() : '',
+                                type: fabDsClientType,
+                                rate: 0,
+                                isAntUpdater: false,
+                                antUpdateCost: 0,
+                                ownerId: user.uid,
+                                createdAt: new Date().toISOString()
+                              });
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                          className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-[9px] uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all border border-indigo-550"
+                        >
+                          ➕ Guardar "{fabDsClientName}" en CRM ({fabDsClientType === 'client' ? 'Cliente' : 'Revendedor'})
+                        </button>
+                      </div>
+                    )}
+
+                    {/* INFO CLIENTE FINAL (OPCIONAL) PARA REVENDEDOR */}
+                    {fabDsClientType === 'reseller' && (
+                      <div className={cn("p-2 rounded-xl border space-y-1.5 animate-in fade-in duration-200 text-left", isDark ? "bg-slate-955/40 border-slate-800" : "bg-indigo-55/15 border-indigo-100/40")}>
+                        <span className="text-[8.5px] font-black uppercase tracking-widest text-indigo-500 block">Información de Cliente Final (Opcional)</span>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-bold uppercase text-indigo-510/80 block">Vincular Cliente Final registrado en CRM</label>
+                          <select
+                            onChange={(e) => {
+                              const entId = e.target.value;
+                              if (!entId) return;
+                              const selected = entities.find(ent => ent.id === entId);
+                              if (selected) {
+                                setFabDsFinalClientName(selected.name);
+                                setFabDsFinalClientContact(selected.contact || '');
+                              }
+                            }}
+                            className={cn("w-full p-1.5 rounded-lg border text-[11px] font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
+                          >
+                            <option value="">-- Seleccionar registrado --</option>
+                            {entities
+                              .filter(e => e.type === 'client')
+                              .map(ent => (
+                                <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
+                              ))
+                            }
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-bold text-slate-500">Nombre Cliente Final</label>
+                            <input
+                              type="text"
+                              value={fabDsFinalClientName}
+                              onChange={(e) => setFabDsFinalClientName(e.target.value)}
+                              className={cn("w-full p-1.5 rounded-lg border text-xs font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
+                              placeholder="Ej. Galo Peralta"
+                            />
+                          </div>
+                           <div className="space-y-1">
+                            <label className="text-[8px] font-bold text-slate-500">WhatsApp Cliente Final</label>
+                            <input
+                              type="text"
+                              value={fabDsFinalClientContact}
+                              onChange={(e) => setFabDsFinalClientContact(e.target.value)}
+                              className={cn("w-full p-1.5 rounded-lg border text-xs font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
+                              placeholder="Ej. +593..."
+                            />
+                          </div>
+                        </div>
+
+                        {/* REGISTRAR CLIENTE FINAL EN CRM INSTANTÁNEAMENTE */}
+                        {fabDsFinalClientName && fabDsFinalClientName.trim() !== '' && !entities.some(e => e.name?.trim().toLowerCase() === fabDsFinalClientName.trim().toLowerCase() && e.type === 'client') && (
+                          <div className="pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const trimmed = fabDsFinalClientName.trim();
+                                  await addDoc(collection(db, 'entities'), {
+                                    name: trimmed,
+                                    contact: fabDsFinalClientContact ? fabDsFinalClientContact.trim() : '',
+                                    type: 'client',
+                                    rate: 0,
+                                    isAntUpdater: false,
+                                    antUpdateCost: 0,
+                                    ownerId: user.uid,
+                                    createdAt: new Date().toISOString()
+                                  });
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                              className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-[9px] uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all border border-indigo-550"
+                            >
+                              ➕ Guardar "{fabDsFinalClientName}" en CRM (Cliente Final)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="grid grid-cols-3 gap-1.5">
                       <div className="space-y-1">
                         <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Costo (USD)</label>

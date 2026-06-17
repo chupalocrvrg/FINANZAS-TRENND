@@ -9,6 +9,46 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_0_0_hardened_security_and_onboarding",
+    version: "V6.0.0",
+    title: "V6.0.0 • Suite de Seguridad Robusta, Control Anti-Fuerza-Bruta y Onboarding Inteligente",
+    date: "17-Junio-2026, 18:00:00",
+    description: "Lanzamiento mayor de la arquitectura de seguridad integral del sistema. Activa de forma efectiva la protección de datos por RLS (Row Level Security) a través de reglas de acceso en Firestore, junto con una configuración de CORS robusta en el servidor Express. Implementa una suite de sanitización y limpieza de inputs contra inyección SQL y XSS, límites de repetición (Rate Limiting) para evitar ataques de fuerza bruta en creación de registros, e indexación compuesta para optimizar consultas frecuentes. Además, se optimiza por completo el onboarding pre-detectando compatibilidad biométrica y ofreciendo chips de autocompletado inteligente.",
+    type: "security"
+  },
+  {
+    id: "v_5_9_0_fab_inline_crm_creation_form",
+    version: "V5.9.0",
+    title: "V5.9.0 • Formulario Inline de Creación de Clientes y Revendedores en FAB",
+    date: "17-Junio-2026, 17:55:00",
+    description: "Implementación de un formulario inline e interactivo de creación de clientes y revendedores directamente dentro de la sección de vinculación con el CRM del botón flotante (FAB). Ahora, el usuario puede presionar 'Crear Nuevo' para desplegar instantáneamente campos dedicados de nombre completo, contacto de WhatsApp y tipo de entidad, guardándolos e indexándolos en el CRM con un solo clic y seleccionándolos para la venta activa de forma 100% ininterrumpida.",
+    type: "feature"
+  },
+  {
+    id: "v_5_8_0_fab_instant_crm_registration",
+    version: "V5.8.0",
+    title: "V5.8.0 • Registro Inteligente Instantáneo en CRM desde FAB",
+    date: "17-Junio-2026, 17:45:00",
+    description: "Inclusión de botones dinámicos de autoguardado en CRM dentro del menú de Acceso Rápido Flotante. Ahora, al pegar textos de WhatsApp o escribir manualmente un cliente o revendedor nuevo, un botón inteligente de alto contraste aparece instantáneamente si no existen en la base de datos de CRM, permitiendo registrarlos con un solo clic directamente desde el popover flotante sin interrumpir el flujo.",
+    type: "feature"
+  },
+  {
+    id: "v_5_7_0_fab_crm_client_linking",
+    version: "V5.7.0",
+    title: "V5.7.0 • Integración Completa de Clientes CRM y Revendedores en FAB",
+    date: "17-Junio-2026, 17:35:00",
+    description: "Sincronización quirúrgica de clientes y revendedores en el panel de Acceso Rápido Flotante (FAB). Ahora, el usuario puede seleccionar dinámicamente si la venta es a un Cliente Final o a un Revendedor, auto-vincular de forma directa con los registros del CRM, seleccionar productos del catálogo para auto-rellenar pvp/costo, y detallar opcionalmente los datos de Cliente Final para revendedores, igualando la fiabilidad de la vista completa.",
+    type: "feature"
+  },
+  {
+    id: "v_5_6_0_fab_local_text_extractor",
+    version: "V5.6.0",
+    title: "V5.6.0 • Extractor Local Integrado Directo en Botonera Flotante (Cero API)",
+    date: "17-Junio-2026, 16:15:00",
+    description: "Incorporación quirúrgica del Extractor Inteligente Local Autónomo en el Panel de Acceso Rápido (FAB). Ahora, el usuario puede simplemente escribir o pegar cualquier texto de entrega de cuenta o planilla (como chats de WhatsApp) directamente en la botonera flotante. El sistema procesa la información de forma local e instantánea (sin requerir llamadas de API ni internet) y auto-rellena dinámicamente todos los campos correspondientes de la venta de cuenta o placa ANT para registro inmediato.",
+    type: "feature"
+  },
+  {
     id: "v_5_5_0_unified_fab_recurrent_expenses",
     version: "V5.5.0",
     title: "V5.5.0 • Unificación de Botonera Flotante y Sugerencia de Gastos Recurrentes",
