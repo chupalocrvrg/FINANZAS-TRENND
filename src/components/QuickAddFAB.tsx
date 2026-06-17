@@ -17,7 +17,8 @@ import {
   ArrowUpCircle, 
   ArrowDownCircle, 
   Loader2, 
-  Save 
+  Save,
+  Sparkles
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { 
@@ -77,6 +78,12 @@ export function QuickAddFAB() {
   const [fabLedgerCategory, setFabLedgerCategory] = useState('');
   const [fabLedgerDescription, setFabLedgerDescription] = useState('');
   const [fabLedgerWalletId, setFabLedgerWalletId] = useState('');
+  const [fabLedgerIsRecurring, setFabLedgerIsRecurring] = useState(false);
+  const [fabLedgerIsPending, setFabLedgerIsPending] = useState(false);
+  const [fabLedgerDueDate, setFabLedgerDueDate] = useState('');
+  const [fabLedgerInstallments, setFabLedgerInstallments] = useState('1');
+  const [fabLedgerIsCreditCardPayment, setFabLedgerIsCreditCardPayment] = useState(false);
+  const [fabLedgerTargetWalletId, setFabLedgerTargetWalletId] = useState('');
 
   const isDark = settings?.theme === 'dark';
 
@@ -141,6 +148,12 @@ export function QuickAddFAB() {
     setFabLedgerCategory('');
     setFabLedgerDescription('');
     setFabLedgerWalletId(wallets[0]?.id || '');
+    setFabLedgerIsRecurring(false);
+    setFabLedgerIsPending(false);
+    setFabLedgerDueDate('');
+    setFabLedgerInstallments('1');
+    setFabLedgerIsCreditCardPayment(false);
+    setFabLedgerTargetWalletId('');
   };
 
   const handleFabSubmit = async (e: React.FormEvent) => {
@@ -269,11 +282,20 @@ export function QuickAddFAB() {
         const numericAmount = parseFloat(fabLedgerAmount) || 0;
         const signedAmount = quickAddType === 'expense' ? -Math.abs(numericAmount) : Math.abs(numericAmount);
 
-        // Update Wallet Balance
-        if (fabLedgerWalletId) {
-          await updateDoc(doc(db, 'wallets', fabLedgerWalletId), {
+        const wallId = fabLedgerIsPending ? '' : fabLedgerWalletId;
+        const isPend = fabLedgerIsPending;
+
+        // Update Wallet Balance only if not pending
+        if (!isPend && wallId) {
+          await updateDoc(doc(db, 'wallets', wallId), {
             balance: increment(signedAmount)
           });
+
+          if (fabLedgerIsCreditCardPayment && fabLedgerTargetWalletId) {
+            await updateDoc(doc(db, 'wallets', fabLedgerTargetWalletId), {
+              balance: increment(Math.abs(signedAmount))
+            });
+          }
         }
 
         // Add Ledger Entry
@@ -282,11 +304,15 @@ export function QuickAddFAB() {
           category: fabLedgerCategory || (quickAddType === 'income' ? 'Ingreso Adicional' : 'Egreso de Caja'),
           amount: signedAmount,
           description: fabLedgerDescription,
-          walletId: fabLedgerWalletId,
+          walletId: wallId,
           date: new Date().toISOString().split('T')[0],
           ownerId: user.uid,
-          isRecurring: false,
-          isPending: false,
+          isRecurring: fabLedgerIsRecurring,
+          isPending: isPend,
+          dueDate: (fabLedgerIsRecurring || isPend) ? fabLedgerDueDate : '',
+          installments: fabLedgerInstallments,
+          isCreditCardPayment: fabLedgerIsCreditCardPayment,
+          targetWalletId: fabLedgerIsCreditCardPayment ? fabLedgerTargetWalletId : '',
           createdAt: new Date().toISOString()
         });
         alert("Transacción de Tesorería registrada correctamente ✓");
@@ -305,7 +331,7 @@ export function QuickAddFAB() {
   if (!user) return null;
 
   return (
-    <div className="fixed bottom-20 lg:bottom-8 right-24 lg:right-28 z-40 flex flex-col items-end">
+    <div className="fixed bottom-20 lg:bottom-8 right-6 lg:right-8 z-40 flex flex-col items-end animate-in fade-in duration-300">
       <AnimatePresence>
         {isFabOpen && (
           <motion.div
@@ -320,7 +346,7 @@ export function QuickAddFAB() {
             <div className="flex justify-between items-center mb-4 border-b pb-3 border-slate-800/10 dark:border-slate-800/80">
               <div className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-500 animate-pulse shrink-0" />
-                <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Registro Rápido Directo</span>
+                <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Acceso Rápido Unificado</span>
               </div>
               <button
                 onClick={() => { setIsFabOpen(false); resetFabForm(); }}
@@ -333,7 +359,29 @@ export function QuickAddFAB() {
             {quickAddType === null ? (
               /* MENU DE SELECCION INICIAL */
               <div className="space-y-4">
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">¿Qué desea agregar?</div>
+                {/* BOTÓN UNIFICADO DEL ASISTENTE INTELIGENTE AI */}
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-indigo-550 dark:text-indigo-400">Soporte Inteligente</div>
+                  <motion.div 
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => {
+                      setIsFabOpen(false);
+                      window.dispatchEvent(new CustomEvent('open-ai-assistant'));
+                    }}
+                    className={cn(
+                      "p-3.5 rounded-2xl border text-xs font-black uppercase tracking-widest cursor-pointer transition-all flex items-center justify-center gap-2.5 shadow-md",
+                      isDark 
+                        ? "bg-gradient-to-r from-indigo-950 to-slate-900 border-indigo-500/30 text-indigo-300 hover:border-indigo-500/50" 
+                        : "bg-gradient-to-r from-indigo-600 to-indigo-700 border-indigo-600 text-white hover:opacity-95 shadow-indigo-600/15"
+                    )}
+                  >
+                    <Sparkles className={cn("w-5 h-5 shrink-0", isDark ? "text-indigo-405 animate-pulse" : "text-indigo-200 animate-bounce")} />
+                    <span>Preguntar al Asistente AI</span>
+                  </motion.div>
+                </div>
+
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">¿Qué desea registrar de forma directa?</div>
                 
                 {/* Categoría CRM */}
                 <div className="space-y-2">
@@ -814,6 +862,33 @@ export function QuickAddFAB() {
                         className={cn("w-full p-2.5 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55")}
                         placeholder={quickAddType === 'income' ? 'Ej. Intereses, Venta Equipos' : 'Ej. Compras, Viáticos'}
                       />
+                      {quickAddType === 'expense' && (
+                        <div className="pt-1 flex flex-wrap gap-1 px-0.5">
+                          {[
+                            { label: '🌐 Internet', val: 'Pago de Internet / Wifi' },
+                            { label: '💳 Tarjeta', val: 'Pago de Tarjeta de Crédito' },
+                            { label: '🔌 Servicios', val: 'Servicios Básicos (Luz/Agua/Gas)' },
+                            { label: '🏢 Arriendo', val: 'Arriendo de Local' }
+                          ].map((item, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setFabLedgerCategory(item.val);
+                                setFabLedgerDescription(`Pago recurrente mensual de ${item.val}`);
+                              }}
+                              className={cn(
+                                "px-2 py-1 text-[8px] font-bold rounded-lg border transition-all cursor-pointer",
+                                isDark 
+                                  ? "bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white" 
+                                  : "bg-slate-100/100 border-slate-200/80 text-slate-650 hover:text-slate-900"
+                              )}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -827,6 +902,91 @@ export function QuickAddFAB() {
                         placeholder="Notas explicativas del movimiento"
                       />
                     </div>
+
+                    {/* RECURRENT & PENDING SELECTIONS IN FAB */}
+                    <div className="pt-2 flex items-center justify-between gap-4 border-t border-slate-150/15 dark:border-slate-800/60">
+                      <label className="flex items-center gap-1.5 text-[8.5px] font-black uppercase text-slate-505 dark:text-slate-400 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={fabLedgerIsRecurring} 
+                          onChange={e => {
+                            setFabLedgerIsRecurring(e.target.checked);
+                            if (e.target.checked && !fabLedgerDueDate) {
+                              setFabLedgerDueDate(new Date().toISOString().split('T')[0]);
+                            }
+                          }} 
+                        />
+                        <span>¿Recurrente?</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 text-[8.5px] font-black uppercase text-slate-505 dark:text-slate-400 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={fabLedgerIsPending} 
+                          onChange={e => {
+                            setFabLedgerIsPending(e.target.checked);
+                            if (e.target.checked && !fabLedgerDueDate) {
+                              setFabLedgerDueDate(new Date().toISOString().split('T')[0]);
+                            }
+                          }} 
+                        />
+                        <span>Pendiente {quickAddType === 'expense' ? '(CxP)' : '(CxC)'}</span>
+                      </label>
+                    </div>
+
+                    {(fabLedgerIsRecurring || fabLedgerIsPending) && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="space-y-1">
+                          <label className="text-[8.5px] font-black uppercase tracking-widest text-indigo-400">Fecha de Vencimiento</label>
+                          <input 
+                            required
+                            type="date"
+                            value={fabLedgerDueDate}
+                            onChange={(e) => setFabLedgerDueDate(e.target.value)}
+                            className={cn("w-full p-2 rounded-lg border text-xs font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55")}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400 font-mono">N° Cuotas</label>
+                          <input 
+                            type="number"
+                            min="1"
+                            value={fabLedgerInstallments}
+                            onChange={(e) => setFabLedgerInstallments(e.target.value)}
+                            className={cn("w-full p-2 rounded-lg border text-xs font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55")}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CREDIT CARD PAYMENT ROUTINE */}
+                    {quickAddType === 'expense' && (
+                      <div className="pt-2 border-t border-slate-150/15 dark:border-slate-800/60">
+                        <label className="flex items-center gap-1.5 text-[8.5px] font-black uppercase text-slate-505 dark:text-slate-400 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={fabLedgerIsCreditCardPayment} 
+                            onChange={e => setFabLedgerIsCreditCardPayment(e.target.checked)} 
+                          />
+                          <span>Pago a Tarjeta de Crédito (Liberar cupo)</span>
+                        </label>
+                        {fabLedgerIsCreditCardPayment && (
+                          <div className="space-y-1 mt-1.5">
+                            <label className="text-[8.5px] font-black uppercase tracking-widest text-slate-400">Tarjeta Destinataria (Receptor)</label>
+                            <select 
+                              required={fabLedgerIsCreditCardPayment}
+                              value={fabLedgerTargetWalletId}
+                              onChange={(e) => setFabLedgerTargetWalletId(e.target.value)}
+                              className={cn("w-full p-2 rounded-lg border text-xs font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55")}
+                            >
+                              <option value="">Seleccione Tarjeta...</option>
+                              {wallets.filter(w => w.type === 'credit_card').map(w => (
+                                <option key={w.id} value={w.id}>{w.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

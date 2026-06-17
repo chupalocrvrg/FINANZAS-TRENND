@@ -48,6 +48,8 @@ export interface DigitalService {
   costPaid?: number; // Total cost paid to the supplier of cost
   supplierId?: string;
   supplierName?: string;
+  finalClientName?: string;
+  finalClientContact?: string;
 }
 
 export interface Transaction {

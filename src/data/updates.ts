@@ -9,6 +9,22 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_5_5_0_unified_fab_recurrent_expenses",
+    version: "V5.5.0",
+    title: "V5.5.0 • Unificación de Botonera Flotante y Sugerencia de Gastos Recurrentes",
+    date: "17-Junio-2026, 15:30:00",
+    description: "Consolidación de la experiencia de registro y soporte en un único e intuitivo Botón Flotante Central en la esquina inferior derecha. Este control unificado despliega el menú interactivo que ahora incluye acceso directo con efectos de alta fidelidad al Asistente Inteligente (Gemini). Además, se incorporó un módulo de chips de asistencia rápida para Egresos y Gastos Recurrentes (Internet, Tarjetas de Crédito, Arriendos, Servicios Públicos) que rellenan instantáneamente la transacción financiera y configuran de forma automatizada las periodicidades y cuentas correspondientes.",
+    type: "feature"
+  },
+  {
+    id: "v_5_4_0_zero_key_local_extractor",
+    version: "V5.4.0",
+    title: "V5.4.0 • Extractor de Cuentas y Trámites Autónomo Sin Clave API",
+    date: "17-Junio-2026, 11:15:00",
+    description: "Integración del nuevo Extractor Autónomo Inteligente optimizado para funcionar 100% offline y de manera local sin requerir de Claves de API de Gemini ni de conexiones externas. El sistema es ahora capaz de identificar de manera instantánea correos, claves, PINs, perfiles, precios y costos de cuentas de streaming, así como abonos o trámites ANT a partir de textos o chats de WhatsApp copiados, eliminando por completo la necesidad de configurar o actualizar claves API de forma manual.",
+    type: "feature"
+  },
+  {
     id: "v_5_3_1_notification_credentials_search",
     version: "V5.3.1",
     title: "V5.3.1 • Filtrado de Servicios por Correo de Cuenta Activa",

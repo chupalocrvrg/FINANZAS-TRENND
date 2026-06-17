@@ -145,6 +145,10 @@ export function DigitalServices() {
         ] : [
           { label: 'PIN / Pantalla', value: service.pin || 'General' }
         ]),
+        ...(((service as any).clientType === 'reseller' && (service as any).finalClientName) ? [
+          { label: 'Cliente Final', value: (service as any).finalClientName },
+          { label: 'Tel. Cliente Final', value: (service as any).finalClientContact || '-' }
+        ] : []),
         { label: 'Fecha Vence', value: service.expirationDate || '-' },
         { label: 'Valor PVP', value: formatCurrency(service.revenue || 0) }
       ],
@@ -200,6 +204,8 @@ export function DigitalServices() {
     clientName: '',
     clientContact: '',
     clientType: 'client' as 'client' | 'reseller',
+    finalClientName: '',
+    finalClientContact: '',
     expirationDate: '',
     email: '',
     password: '',
@@ -351,6 +357,8 @@ export function DigitalServices() {
       clientName: formData.clientName,
       clientContact: formData.clientContact,
       clientType: formData.clientType,
+      finalClientName: formData.finalClientName || '',
+      finalClientContact: formData.finalClientContact || '',
       expirationDate: formData.expirationDate,
       email: formData.email,
       password: formData.password,
@@ -391,6 +399,34 @@ export function DigitalServices() {
             console.log(`Cliente/Revendedor "${trimmedClientName}" registrado automáticamente en el CRM`);
           } catch (crmErr) {
             console.error("Error al registrar cliente automáticamente en CRM:", crmErr);
+          }
+        }
+      }
+
+      // CRM Auto-Registration for final client if provided under reseller mode
+      if (formData.clientType === 'reseller' && formData.finalClientName && formData.finalClientName.trim() !== '') {
+        const trimmedFinalName = formData.finalClientName.trim();
+        const existingEntity = allEntities.find(
+          (ent) =>
+            ent.name?.trim().toLowerCase() === trimmedFinalName.toLowerCase() &&
+            ent.type === 'client'
+        );
+
+        if (!existingEntity) {
+          try {
+            await addDoc(collection(db, 'entities'), {
+              name: trimmedFinalName,
+              contact: formData.finalClientContact ? formData.finalClientContact.trim() : '',
+              type: 'client', // Registration as a client
+              rate: 0,
+              isAntUpdater: false,
+              antUpdateCost: 0,
+              ownerId: user.uid,
+              createdAt: new Date().toISOString()
+            });
+            console.log(`Cliente Final "${trimmedFinalName}" de revendedor registrado automáticamente en el CRM`);
+          } catch (crmErr) {
+            console.error("Error al registrar cliente final automáticamente en CRM:", crmErr);
           }
         }
       }
@@ -485,6 +521,8 @@ export function DigitalServices() {
       clientName: '',
       clientContact: '',
       clientType: 'client',
+      finalClientName: '',
+      finalClientContact: '',
       expirationDate: '',
       email: '',
       password: '',
@@ -510,6 +548,8 @@ export function DigitalServices() {
       clientName: service.clientName || '',
       clientContact: service.clientContact || '',
       clientType: (service as any).clientType || 'client',
+      finalClientName: (service as any).finalClientName || '',
+      finalClientContact: (service as any).finalClientContact || '',
       expirationDate: service.expirationDate || '',
       email: service.email || '',
       password: service.password || '',
@@ -1294,12 +1334,22 @@ export function DigitalServices() {
                         isDark ? "bg-slate-950/45" : "bg-slate-50"
                       )}>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <p className={cn("font-bold truncate flex items-center gap-1.5", 
-                            gridCols === 1 ? "text-base md:text-lg font-black" : gridCols === 2 ? "text-sm md:text-base" : "text-xs",
-                            isDark ? "text-slate-250" : "text-slate-800"
-                          )}>
-                            <span>👤</span> <span>{service.clientName}</span>
-                          </p>
+                          <div className="min-w-0">
+                            <p className={cn("font-bold truncate flex items-center gap-1.5", 
+                              gridCols === 1 ? "text-base md:text-lg font-black" : gridCols === 2 ? "text-sm md:text-base" : "text-xs",
+                              isDark ? "text-slate-250" : "text-slate-800"
+                            )}>
+                              <span>👤</span> <span>{service.clientName}</span>
+                              {(service as any).clientType === 'reseller' && (
+                                <span className="text-[8px] px-1.5 py-0.5 bg-indigo-500/10 text-indigo-500 rounded-full font-black">REVENDR.</span>
+                              )}
+                            </p>
+                            {(service as any).finalClientName && (
+                              <p className="text-[10px] font-bold text-slate-450 dark:text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                                <span className="text-indigo-500 dark:text-indigo-400">└ 👤 Final:</span> <span>{(service as any).finalClientName}</span>
+                              </p>
+                            )}
+                          </div>
                           <div className="flex flex-row sm:flex-col gap-1 items-start sm:items-end shrink-0">
                             <button 
                               onClick={(e) => {
@@ -1705,6 +1755,70 @@ export function DigitalServices() {
                   </div>
                 </div>
 
+                {formData.clientType === 'reseller' && (
+                  <div 
+                    className={cn(
+                      "p-4 rounded-2xl border space-y-3.5 animate-in fade-in duration-200",
+                      isDark ? "bg-slate-950/40 border-slate-800" : "bg-indigo-50/15 border-indigo-100/40"
+                    )}
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 block">Información del Cliente Final (Opcional)</span>
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500/80 block">Vincular Cliente Final Registrado en CRM</label>
+                      <select
+                        onChange={(e) => {
+                          const entityId = e.target.value;
+                          if (!entityId) return;
+                          const selected = allEntities.find(ent => ent.id === entityId);
+                          if (selected) {
+                            setFormData(prev => ({
+                              ...prev,
+                              finalClientName: selected.name,
+                              finalClientContact: selected.contact || ''
+                            }));
+                          }
+                        }}
+                        className={cn("w-full p-3 rounded-xl border text-[11px] font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
+                      >
+                        <option value="">-- Seleccionar registrado --</option>
+                        {allEntities
+                          .filter(e => e.type === 'client')
+                          .map(ent => (
+                            <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Nombre de Cliente Final</label>
+                        <input 
+                          type="text"
+                          value={formData.finalClientName || ''}
+                          onChange={(e) => setFormData({...formData, finalClientName: e.target.value})}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-white border-slate-100 focus:bg-white focus:border-indigo-500")}
+                          placeholder="Ej. Sofía Benítez"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-slate-400">WhatsApp de Cliente Final</label>
+                        <input 
+                          type="text"
+                          value={formData.finalClientContact || ''}
+                          onChange={(e) => setFormData({...formData, finalClientContact: e.target.value})}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-white border-slate-100 focus:bg-white focus:border-indigo-500")}
+                          placeholder="Ej. +593912345678"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[9.5px] text-slate-500 italic font-medium">
+                      ✨ Si escribes un cliente final que no existe en el CRM, el sistema lo registrará automáticamente al guardar la venta.
+                    </p>
+                  </div>
+                )}
+
                 {/* 3. Credenciales de la Cuenta */}
                 <div className="p-4 bg-indigo-50/5 border border-dashed border-slate-100/10 rounded-2xl space-y-4">
                   <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 block">Credenciales y Acceso (Opcional)</span>
@@ -1781,12 +1895,12 @@ export function DigitalServices() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold uppercase text-indigo-400">PIN de Acceso</label>
+                        <label className="text-[9px] font-bold uppercase text-indigo-400">PIN de Acceso (Opcional)</label>
                         <input 
                           type="text"
-                          required={formData.serviceType === 'pantalla'}
+                          required={false}
                           value={formData.pin}
-                          placeholder="Ej. 1290, 0000"
+                          placeholder="Ej. 1290 (Opcional)"
                           onChange={(e) => setFormData({...formData, pin: e.target.value})}
                           className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none border-indigo-500/20", isDark ? "bg-slate-800 text-white" : "bg-indigo-50/20 focus:bg-white")}
                         />

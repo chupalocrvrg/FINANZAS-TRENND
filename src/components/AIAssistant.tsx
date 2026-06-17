@@ -1050,6 +1050,229 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
   );
 }
 
+function runLocalStructuredExtractor(
+  text: string, 
+  catalogItems: any[], 
+  suppliers: any[], 
+  intermediaries: any[]
+) {
+  const normalizedText = text.toLowerCase();
+  
+  // Decide if it is an ANT Update vs Digital Service
+  const isAnt = normalizedText.includes('ant') || 
+                normalizedText.includes('planilla') || 
+                normalizedText.includes('trámite') || 
+                normalizedText.includes('tramite') || 
+                normalizedText.includes('depósito') || 
+                normalizedText.includes('deposito') || 
+                normalizedText.includes('transferencia') || 
+                normalizedText.includes('bodega') ||
+                normalizedText.includes('establecimiento');
+                
+  if (isAnt) {
+    let chargedRate = 0;
+    const rateRegexes = [
+      /(?:tasa|rate|monto|valor|costo|precio|cobro)[:\s]*\$?\s*(\d+(?:\.\d+)?)/i,
+      /\$\s*(\d+(?:\.\d+)?)/i,
+      /\b(\d+(?:\.\d+)?)\s*usd/i,
+      /\b(\d+(?:\.\d+)?)\s*dolares/i
+    ];
+    for (const rx of rateRegexes) {
+      const match = text.match(rx);
+      if (match) {
+        chargedRate = parseFloat(match[1]);
+        if (!isNaN(chargedRate) && chargedRate > 0) break;
+      }
+    }
+    
+    let warehouse = "";
+    const popularPlaces = [
+      "Manta", "Guayaquil", "Quito", "Portoviejo", "Huaquillas", "Cuenca", 
+      "Loja", "Ambato", "Riobamba", "Ibarra", "Esmeraldas", "Santo Domingo",
+      "Machala", "Duran", "Quevedo", "Babahoyo", "Latacunga", "Tulcan"
+    ];
+    for (const place of popularPlaces) {
+      if (normalizedText.includes(place.toLowerCase())) {
+        warehouse = place;
+        break;
+      }
+    }
+    
+    if (!warehouse) {
+      const bRegex = /(?:bodega|establecimiento|agencia|banco|punto|lugar|oficina)[:\s]+([A-Za-z]+)/i;
+      const bMatch = text.match(bRegex);
+      if (bMatch) {
+         warehouse = bMatch[1].trim();
+      }
+    }
+    
+    let finalClientName = "";
+    const nameRegexes = [
+      /(?:cliente final|persona|interesado|titular|para|nombre|cliente)[:\s]+([A-Za-z\s]{3,25})/i,
+      /(?:ant|planilla|tramite)\s+(?:de|para)\s+([A-Za-z\s]{3,25})/i
+    ];
+    for (const rx of nameRegexes) {
+      const match = text.match(rx);
+      if (match) {
+        finalClientName = match[1].trim();
+        break;
+      }
+    }
+    if (finalClientName) {
+      finalClientName = finalClientName.replace(/\n.*/g, '').replace(/(?:vence|bodega|establecimiento|tasa|monto|valor).*/i, '').trim();
+    }
+    
+    let intermediaryId = "";
+    let intermediaryName = "";
+    for (const i of intermediaries) {
+      if (normalizedText.includes(i.name.toLowerCase())) {
+        intermediaryId = i.id;
+        intermediaryName = i.name;
+        break;
+      }
+    }
+    if (!intermediaryId && intermediaries.length > 0) {
+      intermediaryId = intermediaries[0].id;
+      intermediaryName = intermediaries[0].name;
+    }
+    
+    return {
+      type: "add_transaction",
+      success: true,
+      finalClientName: finalClientName || "Cliente Planilla",
+      warehouse: warehouse || "Establecimiento ANT",
+      intermediaryId: intermediaryId || "",
+      intermediaryName: intermediaryName || "",
+      chargedRate: chargedRate || 0
+    };
+  } else {
+    const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
+    const email = emailMatch ? emailMatch[0].trim() : "";
+    
+    let password = "";
+    const passRegexes = [
+      /(?:contraseña|contrasena|clave|password|pass|clv|pw)[:\s]+([^\s,;]+)/i,
+      /clave[:\s]+([^\s,;]+)/i,
+      /password[:\s]+([^\s,;]+)/i,
+      /pass[:\s]+([^\s,;]+)/i
+    ];
+    for (const rx of passRegexes) {
+      const match = text.match(rx);
+      if (match) {
+        password = match[1].trim();
+        break;
+      }
+    }
+    if (!password && email) {
+      const lines = text.split('\n');
+      for (const line of lines) {
+        if (line.includes(email)) {
+          const afterEmail = line.substring(line.indexOf(email) + email.length);
+          const parts = afterEmail.split(/[:\s/|\-]+/);
+          const filteredParts = parts.map(p => p.trim()).filter(p => p.length > 2 && p.toLowerCase() !== 'pin');
+          if (filteredParts.length > 0) {
+            password = filteredParts[0];
+            break;
+          }
+        }
+      }
+    }
+    
+    let pin = "";
+    const pinRegexes = [
+      /(?:pin|perfil|pantalla|slot|perf|pl|combo)[:\s]+([^\s,;]+)/i,
+      /pin[:\s]*(\d+)/i,
+      /perfil[:\s]*(\d+|[A-Za-z0-9ñÑ]+)/i
+    ];
+    for (const rx of pinRegexes) {
+      const match = text.match(rx);
+      if (match) {
+        pin = match[1].trim();
+        break;
+      }
+    }
+    
+    let name = "";
+    let cost = 0;
+    let revenue = 0;
+    
+    for (const item of catalogItems) {
+      if (normalizedText.includes(item.name.toLowerCase())) {
+        name = item.name;
+        cost = item.cost || item.costo || 0;
+        revenue = item.pvp || item.precio || 0;
+        break;
+      }
+    }
+    
+    if (!name) {
+      const streamingMatch = ["netflix", "disney", "spotify", "max", "hbo", "prime", "crunchyroll", "youtube", "capcut", "canva", "magis", "plex"];
+      for (const brand of streamingMatch) {
+        if (normalizedText.includes(brand)) {
+          const bestCatalogMatch = catalogItems.find(item => item.name.toLowerCase().includes(brand));
+          if (bestCatalogMatch) {
+            name = bestCatalogMatch.name;
+            cost = bestCatalogMatch.cost || bestCatalogMatch.costo || 0;
+            revenue = bestCatalogMatch.pvp || bestCatalogMatch.precio || 0;
+          } else {
+            name = brand.charAt(0).toUpperCase() + brand.slice(1);
+          }
+          break;
+        }
+      }
+    }
+    if (!name) {
+      name = "Servicio Digital";
+    }
+    
+    const costMatch = text.match(/(?:costo|cost|compra|prov)[:\s]*\$?\s*(\d+(?:\.\d+)?)/i);
+    if (costMatch) {
+      cost = parseFloat(costMatch[1]);
+    }
+    const priceMatch = text.match(/(?:precio|venta|cobro|pvp|ingreso)[:\s]*\$?\s*(\d+(?:\.\d+)?)/i);
+    if (priceMatch) {
+      revenue = parseFloat(priceMatch[1]);
+    }
+    
+    const expirationDate = calculateServiceExpirationDate(name, text);
+    
+    let supplierId = "";
+    let supplierName = "";
+    for (const s of suppliers) {
+      if (normalizedText.includes(s.name.toLowerCase())) {
+        supplierId = s.id;
+        supplierName = s.name;
+        break;
+      }
+    }
+    if (!supplierId && suppliers.length > 0) {
+      supplierId = suppliers[0].id;
+      supplierName = suppliers[0].name;
+    }
+    
+    let clientContact = "";
+    const contactMatch = text.match(/(?:celular|telefono|contacto|telf|\+593)[:\s]*(\+?\d{9,15})/i) || text.match(/\b(09\d{8})\b/);
+    if (contactMatch) {
+      clientContact = contactMatch[1].trim();
+    }
+    
+    return {
+      type: "add_digital_service" as const,
+      success: true,
+      name,
+      email,
+      password,
+      pin,
+      expirationDate,
+      cost,
+      revenue,
+      supplierId,
+      supplierName,
+      clientContact
+    };
+  }
+}
+
 async function callGeminiClientSide(
   apiKey: string,
   updatedMessages: any[],
@@ -1207,7 +1430,7 @@ export function AIAssistant() {
   const [messages, setMessages] = useState<AIMessage[]>([
     { 
       role: 'model', 
-      text: '¡Hola! Soy tu asistente financiero inteligente impulsado por Gemini.\n\n**✨ ¡MIS SÚPER PODERES MULTIMODALES!** ✨\n\n1. **Actualizaciones ANT:** Sube o pega la captura de una transferencia o planilla de ANT, y extraeré el cliente, establecimiento de depósito, guardándola de inmediato para el distribuidor adecuado.\n\n2. **🛍️ Ventas de Servicios Digitales:** ¿Activaste o compraste cuentas ? Sube o pega la captura del chat con el proveedor o mensaje de entrega (con correo, clave, pin, etc.). Extraeré toda la información al instante, ¡y solo tendrás que elegir al Cliente para crear y registrar la venta! ¡Pruébalo ahora!' 
+      text: '¡Hola! Soy tu asistente financiero inteligente, ahora equipado con un **Extractor Local Súper Rápido Autónomo**.\n\n**¡YA NO NECESITAS CLAVE API DE GEMINI PARA EMPEZAR!** 🎉\nSi deseas registrar tus ventas o trámites de manera instantánea y sin configurar ninguna clave o internet, simplemente copia y pega el texto de las entregas o planillas aquí en el chat. El sistema procesará y extraerá:\n\n1. **🛍️ Ventas de Servicios Digitales:** Copia/pega el chat con el proveedor o los datos de la cuenta (correo, clave, pin/perfil, costo/precio, etc.). El extractor local creará la tarjeta de venta de inmediato.\n2. **📝 Actualizaciones ANT:** Coloca o pega detalles de la planilla/depósito de ANT y se formulará la tarjeta de abonos/trámites automáticamente.\n\n*Nota:* Si tienes una clave Gemini API activa (puedes configurarla en 🔑 arriba), también podrás subir capturas e imágenes (OCR multimodal) y conversar de forma libre.' 
     }
   ]);
   const [input, setInput] = useState('');
@@ -1362,12 +1585,19 @@ export function AIAssistant() {
     stopCamera();
   };
 
-  // Stop camera stream on unmount
+  // Stop camera stream on unmount, and support unified FAB event triggers
   useEffect(() => {
+    const handleOpenE = () => setIsOpen(true);
+    const handleToggleE = () => setIsOpen(prev => !prev);
+    window.addEventListener('open-ai-assistant', handleOpenE);
+    window.addEventListener('toggle-ai-assistant', handleToggleE);
+
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      window.removeEventListener('open-ai-assistant', handleOpenE);
+      window.removeEventListener('toggle-ai-assistant', handleToggleE);
     };
   }, []);
 
@@ -1501,12 +1731,58 @@ export function AIAssistant() {
         const clientApiKey = localApiKey || (import.meta as any).env.VITE_GEMINI_API_KEY || "";
         
         if (!clientApiKey) {
-          setMessages(prev => [...prev, { 
-            role: 'model', 
-            text: `⚠️ **Modo Servidor Estático / Vercel Detectado**\n\nNo se pudo conectar con el servidor backend (\`/api/assistant\`).\n\nPara utilizar el asistente de forma segura en tu navegador sin requerir de un servidor activo, por favor configura una **Clave API de Gemini**.\n\nHaz clic en el **icono de llave 🔑** en la parte superior derecha de esta ventana del chat para guardarla de manera segura, o agrega la variable \`VITE_GEMINI_API_KEY\` en tu panel de Vercel.` 
-          }]);
-          setIsTyping(false);
-          return;
+          const localParsedResult = runLocalStructuredExtractor(userMessageText, catalogItems, suppliers, intermediaries);
+          if (localParsedResult) {
+            let descStr = "";
+            let actionParsedObj: any = null;
+            if (localParsedResult.type === "add_digital_service") {
+              const formattedExp = localParsedResult.expirationDate || "";
+              descStr = `🚀 **¡Procesador Automático Local Activado!** (Sin Clave API de Gemini)\n\nHe extraído una **Venta de Cuenta Digital** al instante de manera offline:\n\n* **Producto:** ${localParsedResult.name}\n* **Correo:** \`${localParsedResult.email || 'No detectado'}\`\n* **Clave:** \`${localParsedResult.password || 'No detectada'}\`\n* **PIN/Perfil:** ${localParsedResult.pin || 'No detectado'}\n* **Fecha Vto (Estimada):** ${formattedExp}\n* **Costo:** $${localParsedResult.cost.toFixed(2)}\n* **Precio:** $${localParsedResult.revenue.toFixed(2)}\n\nPuedes ajustar cualquier detalle o asignarle el cliente final en la tarjeta de abajo para registrarla oficialmente en Firestore:`;
+              
+              actionParsedObj = {
+                type: 'add_digital_service' as const,
+                success: true,
+                name: localParsedResult.name,
+                email: localParsedResult.email,
+                password: localParsedResult.password,
+                pin: localParsedResult.pin,
+                expirationDate: formattedExp,
+                cost: localParsedResult.cost,
+                revenue: localParsedResult.revenue,
+                supplierId: localParsedResult.supplierId,
+                supplierName: localParsedResult.supplierName,
+                isSaved: false
+              };
+            } else {
+              descStr = `🚀 **¡Procesador Automático Local Activado!** (Sin Clave API de Gemini)\n\nHe extraído un **Trámite de ANT** al instante de manera offline:\n\n* **Socio / Cliente Final:** ${localParsedResult.finalClientName}\n* **Bodega:** ${localParsedResult.warehouse || 'No detectada'}\n\nPuedes ajustar o verificar los campos en la tarjeta de confirmación de abajo para registrar la actualización en Firestore:`;
+              
+              actionParsedObj = {
+                type: 'add_transaction' as const,
+                success: true,
+                finalClientName: localParsedResult.finalClientName,
+                warehouse: localParsedResult.warehouse,
+                intermediaryId: localParsedResult.intermediaryId,
+                intermediaryName: localParsedResult.intermediaryName,
+                chargedRate: localParsedResult.chargedRate,
+                isSaved: false
+              };
+            }
+
+            setMessages(prev => [...prev, {
+              role: 'model',
+              text: descStr,
+              actionParsed: actionParsedObj
+            }]);
+            setIsTyping(false);
+            return;
+          } else {
+            setMessages(prev => [...prev, {
+              role: 'model',
+              text: `⚠️ **Modo Local Sin Clave API**\n\nNo se detectaron datos estructurados suficientes en el texto para realizar una extracción offline. Por favor, asegúrate de escribir los detalles relevantes, como correo, contraseña, PIN, o ANT. Si deseas usar el reconocimiento avanzado de lenguaje, puedes configurar una Clave API Gemini pulsando el botón 🔑 situado arriba.`
+            }]);
+            setIsTyping(false);
+            return;
+          }
         }
 
         try {
@@ -1520,13 +1796,59 @@ export function AIAssistant() {
             catalogItems
           );
         } catch (clientGeminiErr: any) {
-          console.error("Client fallback also failed:", clientGeminiErr);
-          setMessages(prev => [...prev, { 
-            role: 'model', 
-            text: `⚠️ **Error de API Gemini Directa**\n\nLa conexión directa con la API de Gemini falló.\n\n**Detalles del error:** ${clientGeminiErr.message || JSON.stringify(clientGeminiErr)}\n\n*Consejo:* Si la clave ingresada fue reportada como filtrada (leaked), el sistema de seguridad de Google la desactiva automáticamente. Por favor genera un **nuevo API Key válido** en Google AI Studio y regístralo pulsando el botón **🔑**.` 
-          }]);
-          setIsTyping(false);
-          return;
+          console.error("Client fallback also failed, falling back to local extractor:", clientGeminiErr);
+          const localParsedResult = runLocalStructuredExtractor(userMessageText, catalogItems, suppliers, intermediaries);
+          if (localParsedResult) {
+            let descStr = "";
+            let actionParsedObj: any = null;
+            if (localParsedResult.type === "add_digital_service") {
+              const formattedExp = localParsedResult.expirationDate || "";
+              descStr = `⚠️ **Conexión con Gemini falló (Clave API inválida o expirada)**, sin embargo, he activado el **Extractor Local de Respaldo** y obtuve:\n\n* **Producto:** ${localParsedResult.name}\n* **Correo:** \`${localParsedResult.email || 'No detectado'}\`\n* **Clave:** \`${localParsedResult.password || 'No detectada'}\`\n* **PIN/Perfil:** ${localParsedResult.pin || 'No detectado'}\n* **Fecha Vto (Estimada):** ${formattedExp}\n* **Costo:** $${localParsedResult.cost.toFixed(2)}\n* **Precio:** $${localParsedResult.revenue.toFixed(2)}\n\nPuedes ajustar cualquier detalle o asignarle el cliente final en la tarjeta de abajo para registrarla oficialmente en Firestore:`;
+              
+              actionParsedObj = {
+                type: 'add_digital_service' as const,
+                success: true,
+                name: localParsedResult.name,
+                email: localParsedResult.email,
+                password: localParsedResult.password,
+                pin: localParsedResult.pin,
+                expirationDate: formattedExp,
+                cost: localParsedResult.cost,
+                revenue: localParsedResult.revenue,
+                supplierId: localParsedResult.supplierId,
+                supplierName: localParsedResult.supplierName,
+                isSaved: false
+              };
+            } else {
+              descStr = `⚠️ **Conexión con Gemini falló (Clave API inválida o expirada)**, sin embargo, he activado el **Extractor Local de Respaldo** y obtuve:\n\n* **Titular / Cliente Final:** ${localParsedResult.finalClientName}\n* **Bodega:** ${localParsedResult.warehouse || 'No detectada'}\n\nPuedes ajustar o verificar los campos en la tarjeta de confirmación de abajo para registrar la actualización en Firestore:`;
+              
+              actionParsedObj = {
+                type: 'add_transaction' as const,
+                success: true,
+                finalClientName: localParsedResult.finalClientName,
+                warehouse: localParsedResult.warehouse,
+                intermediaryId: localParsedResult.intermediaryId,
+                intermediaryName: localParsedResult.intermediaryName,
+                chargedRate: localParsedResult.chargedRate,
+                isSaved: false
+              };
+            }
+
+            setMessages(prev => [...prev, {
+              role: 'model',
+              text: descStr,
+              actionParsed: actionParsedObj
+            }]);
+            setIsTyping(false);
+            return;
+          } else {
+            setMessages(prev => [...prev, { 
+              role: 'model', 
+              text: `⚠️ **Error de API Gemini Directa y Extracción Local Falló**\n\nLa conexión directa con la API de Gemini falló (${clientGeminiErr.message || "desconocido"}) y el texto suministrado no cuenta con datos estructurados legibles para una extracción automática fuera de línea.` 
+            }]);
+            setIsTyping(false);
+            return;
+          }
         }
       }
 
@@ -1895,13 +2217,6 @@ export function AIAssistant() {
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 lg:bottom-8 right-6 lg:right-8 w-14 h-14 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 hover:scale-105 transition-transform z-40 cursor-pointer"
-      >
-        <Sparkles className="w-6 h-6" />
-      </button>
-
       <AnimatePresence>
         {isOpen && (
           <motion.div 

@@ -534,9 +534,44 @@ export function Treasury() {
                     type="text"
                     value={formData.category}
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 border-slate-100 focus:bg-white focus:border-indigo-500")}
                     placeholder="Ej. Sueldo, Internet, Netflix, etc."
                   />
+                  
+                  {formData.isExpense && (
+                    <div className="pt-2 flex flex-wrap gap-1.5 px-0.5">
+                      <span className="text-[8.5px] font-black uppercase tracking-widest text-slate-400 block w-full mb-0.5">Sugerencias de Gastos:</span>
+                      {[
+                        { label: '🌐 Pago de Internet', val: 'Pago de Internet / Wifi' },
+                        { label: '💳 Pagos de Tarjetas de Créditos', val: 'Pago de Tarjeta de Crédito', isCard: true },
+                        { label: '🏢 Arriendo de Local', val: 'Arriendo de Local' },
+                        { label: '⚡ Plan Celular', val: 'Plan de Telefonía' },
+                        { label: '🔌 Servicios Públicos', val: 'Servicios Básicos (Luz/Agua/Gas)' },
+                        { label: '📺 Pago Proveedores', val: 'Pago de Proveedores Digitales' }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              category: item.val,
+                              isRecurring: true,
+                              isCreditCardPayment: !!item.isCard
+                            }));
+                          }}
+                          className={cn(
+                            "px-2 py-1 text-[9px] font-black rounded-lg border transition-all cursor-pointer hover:scale-105 active:scale-95",
+                            isDark 
+                              ? "bg-slate-950/65 border-slate-800 text-slate-300 hover:text-white" 
+                              : "bg-slate-100/80 border-slate-200/80 text-slate-600 hover:text-slate-900"
+                          )}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex flex-col gap-4">

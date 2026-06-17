@@ -73,17 +73,17 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     // Canvas scaling for high resolution (Retina support)
     const scale = 2;
     canvas.width = 400 * scale;
-    canvas.height = 780 * scale;
+    canvas.height = (v.status === 'paid' ? 510 : 780) * scale;
     ctx.scale(scale, scale);
 
     // Context drawing settings
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 400, 780);
+    ctx.fillRect(0, 0, 400, v.status === 'paid' ? 510 : 780);
 
     // Draw solid border accent
     ctx.strokeStyle = v.status === 'paid' ? '#10b981' : v.status === 'expired' ? '#f43f5e' : '#f59e0b';
     ctx.lineWidth = 6;
-    ctx.strokeRect(10, 10, 380, 760);
+    ctx.strokeRect(10, 10, 380, (v.status === 'paid' ? 490 : 760));
 
     // Header Company Name
     ctx.fillStyle = '#0f172a';
@@ -193,74 +193,80 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     ctx.fillText(formatCurrency(v.amount), 345, currentY + 14);
 
     // PAYMENT METHODS BLOCK ON CANVAS
-    currentY += 45;
-    ctx.fillStyle = '#f8fafc';
-    ctx.beginPath();
-    ctx.roundRect(35, currentY - 15, 330, 185, 8);
-    ctx.fill();
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(35, currentY - 15, 330, 185);
+    if (v.status !== 'paid') {
+      currentY += 45;
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.roundRect(35, currentY - 15, 330, 185, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(35, currentY - 15, 330, 185);
 
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#1e293b';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.fillText('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 45, currentY + 0);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillText('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 45, currentY + 0);
 
-    ctx.font = 'bold italic 8px sans-serif';
-    ctx.fillStyle = '#4f46e5';
-    ctx.fillText('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 45, currentY + 12);
+      ctx.font = 'bold italic 8px sans-serif';
+      ctx.fillStyle = '#4f46e5';
+      ctx.fillText('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 45, currentY + 12);
 
-    ctx.font = 'normal 8.2px sans-serif';
-    ctx.fillStyle = '#475569';
-    ctx.fillText('• Ahorros Pichincha: 2203066545', 45, currentY + 25);
-    ctx.fillText('• Ahorros Guayaquil: 0032481285', 45, currentY + 38);
-    ctx.fillText('• Ahorros Coop JEP: 406002489704', 45, currentY + 51);
-    ctx.fillText('• Binance ID: 717956622', 45, currentY + 64);
-    ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com', 45, currentY + 77);
+      ctx.font = 'normal 8.2px sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText('• Ahorros Pichincha: 2203066545', 45, currentY + 25);
+      ctx.fillText('• Ahorros Guayaquil: 0032481285', 45, currentY + 38);
+      ctx.fillText('• Ahorros Coop JEP: 406002489704', 45, currentY + 51);
+      ctx.fillText('• Binance ID: 717956622', 45, currentY + 64);
+      ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com', 45, currentY + 77);
 
-    ctx.font = 'bold italic 7.5px sans-serif';
-    ctx.fillStyle = '#0f172a';
-    ctx.fillText('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 45, currentY + 92);
+      ctx.font = 'bold italic 7.5px sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 45, currentY + 92);
 
-    // Side-by-side QR Codes
-    if (binanceImgRef.current && qrImagesLoaded) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(80, currentY + 101, 55, 55);
-      ctx.strokeStyle = '#ca8a04';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(80, currentY + 101, 55, 55);
-      try {
-        ctx.drawImage(binanceImgRef.current, 82, currentY + 103, 51, 51);
-      } catch (err) {
-        console.error("Canvas drawImage Binance error:", err);
+      // Side-by-side QR Codes
+      if (binanceImgRef.current && qrImagesLoaded) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(80, currentY + 101, 55, 55);
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(80, currentY + 101, 55, 55);
+        try {
+          ctx.drawImage(binanceImgRef.current, 82, currentY + 103, 51, 51);
+        } catch (err) {
+          console.error("Canvas drawImage Binance error:", err);
+        }
+        ctx.fillStyle = '#ca8a04';
+        ctx.font = 'bold 7.5px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('QR BINANCE PAY', 107, currentY + 167);
       }
-      ctx.fillStyle = '#ca8a04';
-      ctx.font = 'bold 7.5px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('QR BINANCE PAY', 107, currentY + 167);
-    }
 
-    if (paypalImgRef.current && qrImagesLoaded) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(260, currentY + 101, 55, 55);
-      ctx.strokeStyle = '#003087';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(260, currentY + 101, 55, 55);
-      try {
-        ctx.drawImage(paypalImgRef.current, 262, currentY + 103, 51, 51);
-      } catch (err) {
-        console.error("Canvas drawImage PayPal error:", err);
+      if (paypalImgRef.current && qrImagesLoaded) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(260, currentY + 101, 55, 55);
+        ctx.strokeStyle = '#003087';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(260, currentY + 101, 55, 55);
+        try {
+          ctx.drawImage(paypalImgRef.current, 262, currentY + 103, 51, 51);
+        } catch (err) {
+          console.error("Canvas drawImage PayPal error:", err);
+        }
+        ctx.fillStyle = '#003087';
+        ctx.font = 'bold 7.5px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('QR PAYPAL ME', 287, currentY + 167);
       }
-      ctx.fillStyle = '#003087';
-      ctx.font = 'bold 7.5px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('QR PAYPAL ME', 287, currentY + 167);
-    }
 
-    // Barcode rendering footer (simulated)
-    ctx.textAlign = 'center';
-    currentY += 195;
+      // Barcode rendering footer (simulated)
+      ctx.textAlign = 'center';
+      currentY += 195;
+    } else {
+      // Barcode rendering footer (simulated)
+      ctx.textAlign = 'center';
+      currentY += 20;
+    }
     
     // Draw vertical barcode lines nicely centered
     ctx.fillStyle = '#000000';
@@ -329,21 +335,21 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
 
   // Handles PDF compilation trigger via jsPDF
   const handleDownloadPDF = () => {
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: [100, 250] // Custom ticket size stretched to fit both QRs and new texts
-    });
-
     const isPaid = voucher.status === 'paid';
     const isDigital = voucher.subtitle?.toLowerCase().includes('digital') || 
                       voucher.subtitle?.toLowerCase().includes('suscripción') || 
                       voucher.title.toLowerCase().includes('venta:');
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [100, isPaid ? 170 : 255] // Much more compact ticket when already paid
+    });
     
     // Aesthetic Ticket Border
     doc.setDrawColor(isPaid ? 16 : 244, isPaid ? 185 : 63, isPaid ? 129 : 94);
     doc.setLineWidth(1.5);
-    doc.rect(3, 3, 94, 244);
+    doc.rect(3, 3, 94, isPaid ? 164 : 249);
 
     // Title / Header
     doc.setTextColor(15, 23, 42);
@@ -425,60 +431,64 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     doc.setFontSize(12);
     doc.text(formatCurrency(voucher.amount), 86, y + 8, { align: 'right' });
 
-    // Payment Accounts on PDF
-    y += 18;
-    doc.setFillColor(248, 250, 252);
-    doc.rect(10, y, 80, 60, 'F');
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(10, y, 80, 60, 'S');
+    if (!isPaid) {
+      // Payment Accounts on PDF (Only drawn for unpaid/pending receipts)
+      y += 18;
+      doc.setFillColor(248, 250, 252);
+      doc.rect(10, y, 80, 60, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(10, y, 80, 60, 'S');
 
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 14, y + 5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.text('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 14, y + 5);
 
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(6);
-    doc.setTextColor(79, 70, 229);
-    doc.text('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 14, y + 10);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(6);
+      doc.setTextColor(79, 70, 229);
+      doc.text('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 14, y + 10);
 
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('• Pichincha Ahorros: 2203066545', 14, y + 15);
-    doc.text('• Guayaquil Ahorros: 0032481285', 14, y + 20);
-    doc.text('• Coop JEP Ahorros: 406002489704', 14, y + 25);
-    doc.text('• Binance ID: 717956622', 14, y + 30);
-    doc.text('• PayPal ID: marcelogutama3eroa@gmail.com', 14, y + 35);
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 14, y + 41);
+      doc.setFont('Helvetica', 'normal');
+      doc.setTextColor(51, 65, 85);
+      doc.text('• Pichincha Ahorros: 2203066545', 14, y + 15);
+      doc.text('• Guayaquil Ahorros: 0032481285', 14, y + 20);
+      doc.text('• Coop JEP Ahorros: 406002489704', 14, y + 25);
+      doc.text('• Binance ID: 717956622', 14, y + 30);
+      doc.text('• PayPal ID: marcelogutama3eroa@gmail.com', 14, y + 35);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 14, y + 41);
 
-    // QRs on PDF
-    if (binanceImgRef.current && qrImagesLoaded) {
-      try {
-        doc.addImage(binanceImgRef.current, 'PNG', 20, y + 44, 11, 11);
-        doc.setFontSize(4.5);
-        doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(202, 138, 4); // Clear gold color for Binance Pay
-        doc.text('QR BINANCE PAY', 25.5, y + 57, { align: 'center' });
-      } catch (err) {
-        console.error("Error drawing PDF QR Binance:", err);
+      // QRs on PDF
+      if (binanceImgRef.current && qrImagesLoaded) {
+        try {
+          doc.addImage(binanceImgRef.current, 'PNG', 20, y + 44, 11, 11);
+          doc.setFontSize(4.5);
+          doc.setFont('Helvetica', 'bold');
+          doc.setTextColor(202, 138, 4); // Clear gold color for Binance Pay
+          doc.text('QR BINANCE PAY', 25.5, y + 57, { align: 'center' });
+        } catch (err) {
+          console.error("Error drawing PDF QR Binance:", err);
+        }
       }
-    }
-    if (paypalImgRef.current && qrImagesLoaded) {
-      try {
-        doc.addImage(paypalImgRef.current, 'PNG', 58, y + 44, 11, 11);
-        doc.setFontSize(4.5);
-        doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(0, 48, 135); // Classic deep blue for PayPal me
-        doc.text('QR PAYPAL ME', 63.5, y + 57, { align: 'center' });
-      } catch (err) {
-        console.error("Error drawing PDF QR PayPal:", err);
+      if (paypalImgRef.current && qrImagesLoaded) {
+        try {
+          doc.addImage(paypalImgRef.current, 'PNG', 58, y + 44, 11, 11);
+          doc.setFontSize(4.5);
+          doc.setFont('Helvetica', 'bold');
+          doc.setTextColor(0, 48, 135); // Classic deep blue for PayPal me
+          doc.text('QR PAYPAL ME', 63.5, y + 57, { align: 'center' });
+        } catch (err) {
+          console.error("Error drawing PDF QR PayPal:", err);
+        }
       }
+      y += 68;
+    } else {
+      y += 15;
     }
 
     // Legal / bottom footer text
-    y += 67;
     doc.setTextColor(148, 163, 184);
     doc.setFont('Helvetica', 'italic');
     doc.setFontSize(7);
@@ -490,8 +500,10 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
 
   // Prepares the WhatsApp content message
   const handleShareWhatsApp = () => {
+    const isPaid = voucher.status === 'paid';
     const detailsTxt = filteredDetails.map(d => `*${d.label}:* ${d.value}`).join('\n');
-    const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*${isDigitalService ? 'Valor PVP' : 'Monto Total'}:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!\n\n${PAYMENT_INSTRUCTIONS_TXT}`;
+    const instructions = isPaid ? '' : `\n\n${PAYMENT_INSTRUCTIONS_TXT}`;
+    const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*${isDigitalService ? 'Valor PVP' : 'Monto Total'}:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!${instructions}`;
     const encoded = encodeURIComponent(text);
     
     // Direct popup link to WA
@@ -501,8 +513,10 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
 
   // Copy text support
   const handleCopyText = () => {
+    const isPaid = voucher.status === 'paid';
     const detailsTxt = filteredDetails.map(d => `${d.label}: ${d.value}`).join('\n');
-    const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n${isDigitalService ? 'Valor PVP' : 'Monto Total'}: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}\n\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
+    const instructions = isPaid ? '' : `\n\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
+    const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n${isDigitalService ? 'Valor PVP' : 'Monto Total'}: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}\n\n¡Gracias por su preferencia!${instructions}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

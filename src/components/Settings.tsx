@@ -972,7 +972,7 @@ export function Settings() {
                           <Sparkles className="w-4 h-4 animate-pulse" /> Inteligencia Conversacional Gemini
                         </h4>
                         <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                          Configure su clave de API personal para desbloquear el máximo poder de análisis inteligente en su panel de Control Financiero. Esto permite procesar capturas de depósitos de cooperativas/bancos, recibos de remesas de la ANT, y chats o entregas de proveedores de cuentas de streaming (Netflix, Max, Disney+) de forma directa y autónoma desde el navegador.
+                          La clave Gemini API habilita el análisis avanzado con lenguaje inteligente e imágenes. Si no tiene clave o prefiere rapidez absoluta, **¡no se preocupe!** El sistema ahora incluye un **Extractor Local Autónomo** que analiza automáticamente textos y chats con cuentas o trámites ANT de manera instantánea sin requerir de configuraciones de API ni internet.
                         </p>
                         
                         <div className="flex items-center gap-2 text-xs font-bold pt-1">
