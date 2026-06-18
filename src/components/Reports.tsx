@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { cacheManager } from '../lib/cache';
 import { motion } from 'motion/react';
 import { 
   TrendingUp, 
@@ -81,19 +82,19 @@ export function Reports() {
       const startSecs = new Date(startDate + 'T00:00:00');
       const endSecs = new Date(endDate + 'T23:59:59');
 
-      // Fetch active modules in parallel
-      const servicesPromise = getDocs(query(collection(db, 'digital_services'), where('ownerId', '==', user.uid)));
-      const updatesPromise = getDocs(query(collection(db, 'transactions'), where('ownerId', '==', user.uid)));
-      const ledgerPromise = getDocs(query(collection(db, 'ledger'), where('ownerId', '==', user.uid)));
+      // Fetch active modules using our optimized Client-Side Memory caching layer
+      const sQuery = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
+      const uQuery = query(collection(db, 'transactions'), where('ownerId', '==', user.uid));
+      const lQuery = query(collection(db, 'ledger'), where('ownerId', '==', user.uid));
 
-      const [servicesSnap, updatesSnap, ledgerSnap] = await Promise.all([
-        servicesPromise,
-        updatesPromise,
-        ledgerPromise
+      const [rawServices, rawUpdates, rawLedger] = await Promise.all([
+        cacheManager.getDocsCached(`ds_${user.uid}`, sQuery, 60000), // Cache for 60 seconds
+        cacheManager.getDocsCached(`tx_${user.uid}`, uQuery, 60000),
+        cacheManager.getDocsCached(`lg_${user.uid}`, lQuery, 60000)
       ]);
 
       // Parse Digital Services inside date boundaries
-      const services = servicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)).filter(item => {
+      const services = rawServices.filter((item: any) => {
         if (item.deletedFromModule) return false;
         if (!item.expirationDate) return true; // Keep or skip based on preference
         const dateObj = new Date(item.expirationDate);
@@ -101,7 +102,7 @@ export function Reports() {
       });
 
       // Parse Updates
-      const updates = updatesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)).filter(item => {
+      const updates = rawUpdates.filter((item: any) => {
         // Find if field updated / date exists
         const rawDate = item.date || item.updated;
         if (!rawDate) return false;
@@ -110,7 +111,7 @@ export function Reports() {
       });
 
       // Parse Treasury movements
-      const ledger = ledgerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)).filter(item => {
+      const ledger = rawLedger.filter((item: any) => {
         if (!item.date) return false;
         const dateObj = new Date(item.date);
         return dateObj >= startSecs && dateObj <= endSecs;

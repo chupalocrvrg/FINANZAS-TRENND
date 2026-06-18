@@ -21,6 +21,7 @@ import { LockScreen } from './components/LockScreen';
 import { WelcomeUpdateModal } from './components/WelcomeUpdateModal';
 import { TutorialModal } from './components/TutorialModal';
 import { ReportSelectorModal } from './components/ReportSelectorModal';
+import { AsyncRunner } from './lib/asyncRunner';
 import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationsPopover } from './components/NotificationsPopover';
@@ -177,20 +178,22 @@ export default function App() {
     const unsubTxs = onSnapshot(qTxs, (txSnap) => {
       setTxCount(txSnap.size);
 
-      txSnap.docs.forEach(doc => {
-        const tx = doc.data();
-        const customerName = tx.intermediaryName || tx.finalClientName || 'Cliente';
-        const description = `ANT: ${tx.finalClientName || 'Cliente Final'} (${tx.warehouse || 'Generico'})`;
-        const sessionNotifKey = `notified_tx_${doc.id}`;
+      AsyncRunner.runInBackground('tx_non_blocking_evaluation', () => {
+        txSnap.docs.forEach(doc => {
+          const tx = doc.data();
+          const customerName = tx.intermediaryName || tx.finalClientName || 'Cliente';
+          const description = `ANT: ${tx.finalClientName || 'Cliente Final'} (${tx.warehouse || 'Generico'})`;
+          const sessionNotifKey = `notified_tx_${doc.id}`;
 
-        if (!sessionStorage.getItem(sessionNotifKey)) {
-          sendLocalPushNotification(
-            'Cobranza ANT Pendiente 📈',
-            `Recordatorio Pago: Trámite ${description} de ${customerName} por ${tx.chargedRate || 0} USD sigue impago.`,
-            `/?tab=alerts&search=${encodeURIComponent(customerName)}`
-          );
-          sessionStorage.setItem(sessionNotifKey, 'true');
-        }
+          if (!sessionStorage.getItem(sessionNotifKey)) {
+            sendLocalPushNotification(
+              'Cobranza ANT Pendiente 📈',
+              `Recordatorio Pago: Trámite ${description} de ${customerName} por ${tx.chargedRate || 0} USD sigue impago.`,
+              `/?tab=alerts&search=${encodeURIComponent(customerName)}`
+            );
+            sessionStorage.setItem(sessionNotifKey, 'true');
+          }
+        });
       });
     }, (error) => {
       console.error("Error listening transactions:", error);
@@ -206,64 +209,68 @@ export default function App() {
     const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
     const unsubSer = onSnapshot(qSer, (serSnap) => {
       const now = new Date();
-      let count = 0;
 
-      serSnap.docs.forEach(doc => {
-        const ser = { id: doc.id, ...doc.data() } as any;
-        if (ser.deletedFromModule) return;
+      AsyncRunner.runInBackground('digital_services_notifications_check', () => {
+        let count = 0;
 
-        const nowAtStartOfDay = new Date();
-        nowAtStartOfDay.setHours(0, 0, 0, 0);
+        serSnap.docs.forEach(doc => {
+          const ser = { id: doc.id, ...doc.data() } as any;
+          if (ser.deletedFromModule) return;
 
-        let isToday = false;
-        let diffDays = -999;
+          const nowAtStartOfDay = new Date();
+          nowAtStartOfDay.setHours(0, 0, 0, 0);
 
-        if (ser.expirationDate) {
-          const expiry = new Date(ser.expirationDate);
-          const diffTime = expiry.getTime() - now.getTime();
-          diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          let isToday = false;
+          let diffDays = -999;
 
-          const expDay = new Date(ser.expirationDate);
-          expDay.setHours(0, 0, 0, 0);
-          isToday = expDay.getTime() === nowAtStartOfDay.getTime();
-        }
+          if (ser.expirationDate) {
+            const expiry = new Date(ser.expirationDate);
+            const diffTime = expiry.getTime() - now.getTime();
+            diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        const isOverduOrExp = ser.status === 'expired' || (diffDays !== -999 && diffDays < 0);
-
-        if (isOverduOrExp || (diffDays !== -999 && diffDays <= 7)) {
-          count++;
-
-          const sessionNotifKey = `notified_expired_${ser.id}`;
-          if (!sessionStorage.getItem(sessionNotifKey)) {
-            const customerName = ser.clientName || 'Cliente';
-            const serviceName = ser.name || 'Servicio';
-            const extraEmail = ser.email || '';
-            const searchKey = ser.email || ser.profileName || customerName;
-
-            let title = 'Recordatorio Vencimiento ⚠️';
-            let message = '';
-
-            if (isToday) {
-              title = 'Cuenta por Vencerse Hoy ⚠️';
-              message = `Cuenta de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} vence el día de hoy.`;
-            } else if (isOverduOrExp) {
-              title = 'Servicio Expirado ❌';
-              message = `Cuenta vencida de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} venció o expiró.`;
-            } else {
-              message = `Cuenta de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} vence pronto (en ${diffDays} días).`;
-            }
-
-            sendLocalPushNotification(
-              title,
-              message,
-              `/?tab=services&search=${encodeURIComponent(searchKey)}`
-            );
-            sessionStorage.setItem(sessionNotifKey, 'true');
+            const expDay = new Date(ser.expirationDate);
+            expDay.setHours(0, 0, 0, 0);
+            isToday = expDay.getTime() === nowAtStartOfDay.getTime();
           }
-        }
-      });
 
-      setSerAlertCount(count);
+          const isOverduOrExp = ser.status === 'expired' || (diffDays !== -999 && diffDays < 0);
+
+          if (isOverduOrExp || (diffDays !== -999 && diffDays <= 7)) {
+            count++;
+
+            const sessionNotifKey = `notified_expired_${ser.id}`;
+            if (!sessionStorage.getItem(sessionNotifKey)) {
+              const customerName = ser.clientName || 'Cliente';
+              const serviceName = ser.name || 'Servicio';
+              const extraEmail = ser.email || '';
+              const searchKey = ser.email || ser.profileName || customerName;
+
+              let title = 'Recordatorio Vencimiento ⚠️';
+              let message = '';
+
+              if (isToday) {
+                title = 'Cuenta por Vencerse Hoy ⚠️';
+                message = `Cuenta de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} vence el día de hoy.`;
+              } else if (isOverduOrExp) {
+                title = 'Servicio Expirado ❌';
+                message = `Cuenta vencida de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} venció o expiró.`;
+              } else {
+                message = `Cuenta de cliente ${customerName} del servicio ${serviceName}${extraEmail ? `, con correo ${extraEmail},` : ''} vence pronto (en ${diffDays} días).`;
+              }
+
+              sendLocalPushNotification(
+                title,
+                message,
+                `/?tab=services&search=${encodeURIComponent(searchKey)}`
+              );
+              sessionStorage.setItem(sessionNotifKey, 'true');
+            }
+          }
+        });
+
+        // Set state on main thread cleanly
+        setSerAlertCount(count);
+      });
     }, (error) => {
       console.error("Error listening digital services:", error);
     });

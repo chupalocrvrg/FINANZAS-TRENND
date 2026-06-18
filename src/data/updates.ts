@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_1_0_cache_and_background_optimization",
+    version: "V6.1.0",
+    title: "V6.1.0 • Capa de Caché Inteligente, Procesos Asíncronos Desacoplados y Optimización de Índices",
+    date: "18-Junio-2026, 14:00:00",
+    description: "Implementa una arquitectura avanzada de optimización de rendimiento y coste de base de datos. Introduce una capa de caché en memoria de alto rendimiento para consultas repetitivas de reportes que reduce el consumo de lectura de Firestore. Desarrolla un ejecutor asíncrono para delegar comprobaciones pesadas y envíos de notificaciones locales al hilo secundario del navegador de forma no bloqueante. Adicionalmente, detecta y define los índices compuestos de Firestore críticos para optimizar consultas de rango y ordenamiento frecuentes.",
+    type: "core"
+  },
+  {
     id: "v_6_0_0_hardened_security_and_onboarding",
     version: "V6.0.0",
     title: "V6.0.0 • Suite de Seguridad Robusta, Control Anti-Fuerza-Bruta y Onboarding Inteligente",
