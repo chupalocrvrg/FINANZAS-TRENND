@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_5_0_notification_linking_whatsapp_billing_loans",
+    version: "V6.5.0",
+    title: "V6.5.0 • Enrutamiento por Service Worker, Credenciales en Recoratorios de WhatsApp y Módulo de Préstamos en Tesorería",
+    date: "19-Junio-2026, 15:30:00",
+    description: "Introduce un sistema robusto de navegación interactiva y enfoque en Service Workers mediante postMessage para redirección instantánea de notificaciones. Integra credenciales de correo electrónico en los mensajes de recordatorio de WhatsApp. Ajusta el cálculo del saldo del periodo de renovación para no duplicar los montos de costos del proveedor. Finalmente, lanza una sección de sugerencias de ingresos y egresos en Tesorería, incluyendo el registro de 'Préstamos' autovinculados automáticamente al panel de Cuentas por Cobrar (AR).",
+    type: "feature"
+  },
+  {
     id: "v_6_4_0_owasp_audit_logging_credential_masking",
     version: "V6.4.0",
     title: "V6.4.0 • Escudo de Privacidad de Credenciales, Prevención Shoulder-Surfing y Auditoría de Seguridad OWASP (A09)",

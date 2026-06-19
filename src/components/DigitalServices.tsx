@@ -354,11 +354,13 @@ export function DigitalServices() {
     }
     
     const sup = suppliers.find(s => s.id === formData.supplierId);
-    const serviceData = {
+    const revenueVal = parseFloat(formData.revenue) || 0;
+    const costVal = parseFloat(formData.cost) || 0;
+    const serviceData: any = {
       name: formData.name,
       category: formData.category,
-      revenue: parseFloat(formData.revenue) || 0,
-      cost: parseFloat(formData.cost) || 0,
+      revenue: revenueVal,
+      cost: costVal,
       supplierId: formData.supplierId,
       supplierName: sup?.name || '',
       clientName: formData.clientName,
@@ -380,6 +382,17 @@ export function DigitalServices() {
       ownerId: user.uid,
       updatedAt: new Date().toISOString()
     };
+
+    if (formData.id) {
+      const existing = services.find(s => s.id === formData.id);
+      if (existing) {
+        serviceData.amountPaid = formData.isPaid ? revenueVal : (existing.amountPaid || 0);
+        serviceData.costPaid = formData.isCostPaid ? costVal : (existing.costPaid || 0);
+      }
+    } else {
+      serviceData.amountPaid = formData.isPaid ? revenueVal : 0;
+      serviceData.costPaid = formData.isCostPaid ? costVal : 0;
+    }
 
     try {
       // CRM Auto-Registration for new/edited clients if not present in the CRM entities list
@@ -787,7 +800,7 @@ export function DigitalServices() {
       alert(`No se encontró número registrado para "${service.clientName || 'el cliente'}". Por favor edite el servicio y guarde su número.`);
       return;
     }
-    const msg = `Hola *${service.clientName || 'Cliente'}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nTe recordamos amablemente que tu servicio de *${service.name}* está por vencer o venció el *${service.expirationDate}*.\n\nEl valor de renovación es de *${formatCurrency(service.revenue)}*.\n\nPor favor, confírmanos si deseas renovarlo para coordinar el pago. ¡Muchas gracias!`;
+    const msg = `Hola *${service.clientName || 'Cliente'}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nTe recordamos amablemente que tu servicio de *${service.name}* (${service.email || 'N/A'}) está por vencer o venció el *${service.expirationDate}*.\n\nEl valor de renovación es de *${formatCurrency(service.revenue)}*.\n\nPor favor, confírmanos si deseas renovarlo para coordinar el pago. ¡Muchas gracias!`;
     const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -942,7 +955,7 @@ export function DigitalServices() {
     
     client.services.forEach(s => {
       const pending = s.revenue - (s.amountPaid || 0);
-      msg += `\n• *${s.name}* \n  📅 Vence: *${s.expirationDate || 'N/A'}*\n  💵 Saldo: *${formatCurrency(pending)}* (${s.isPaid ? 'Pagado' : 'Pendiente'})\n`;
+      msg += `\n• *${s.name}* (${s.email || 'N/A'}) \n  📅 Vence: *${s.expirationDate || 'N/A'}*\n  💵 Saldo: *${formatCurrency(pending)}* (${s.isPaid ? 'Pagado' : 'Pendiente'})\n`;
       totalDue += pending;
     });
 

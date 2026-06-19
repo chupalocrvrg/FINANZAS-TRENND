@@ -55,6 +55,19 @@ export async function sendLocalPushNotification(title: string, body: string, url
     const reg = await navigator.serviceWorker.ready;
     reg.showNotification(title, options);
   } else {
-    new Notification(title, { body, icon: '/icon-192.png', data: { url: urlPath || '/' } });
+    const notif = new Notification(title, { body, icon: '/icon-192.png', data: { url: urlPath || '/' } });
+    notif.onclick = (e) => {
+      e.preventDefault();
+      window.focus();
+      const query = urlPath?.split('?')[1];
+      if (query) {
+        const params = new URLSearchParams(query);
+        const tabParam = params.get('tab');
+        const searchParam = params.get('search');
+        if (tabParam) {
+          window.dispatchEvent(new CustomEvent('app-tab-navigation', { detail: { tab: tabParam, search: searchParam } }));
+        }
+      }
+    };
   }
 }

@@ -402,12 +402,19 @@ export function Dashboard() {
       pendingAmount: (ds.revenue || 0) - (ds.amountPaid || 0),
       finalClientName: ds.clientName,
       warehouse: ds.name
+    })),
+    ...ledgerEntries.filter(e => e.isPending && (e.isLoan || e.category?.toLowerCase().includes('préstamo') || e.category?.toLowerCase().includes('prestamo'))).map(e => ({
+      ...e,
+      isLedger: true,
+      pendingAmount: Math.abs(e.amount),
+      finalClientName: e.description || 'Prestatario',
+      warehouse: 'Préstamo Directo / Caja'
     }))
   ];
 
   // Derived payables
   const payables = [
-    ...ledgerEntries.filter(e => e.isPending && e.amount < 0).map(e => ({
+    ...ledgerEntries.filter(e => e.isPending && e.amount < 0 && !(e.isLoan || e.category?.toLowerCase().includes('préstamo') || e.category?.toLowerCase().includes('prestamo'))).map(e => ({
       ...e,
       isLedger: true,
       category: e.category || 'Gasto General',

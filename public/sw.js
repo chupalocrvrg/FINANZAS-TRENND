@@ -86,7 +86,8 @@ self.addEventListener('push', (event) => {
 // Notify click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || '/';
+  const rawUrl = event.notification.data?.url || '/';
+  const targetUrl = new URL(rawUrl, self.location.origin).href;
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
@@ -99,6 +100,12 @@ self.addEventListener('notificationclick', (event) => {
             } catch (err) {
               console.warn("Failed to navigate existing tab:", err);
             }
+          }
+          if ('postMessage' in client) {
+            client.postMessage({
+              type: 'NOTIFICATION_CLICKED',
+              url: targetUrl
+            });
           }
           return client.focus();
         }

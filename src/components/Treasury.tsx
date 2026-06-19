@@ -135,6 +135,9 @@ export function Treasury() {
     const tWallId = formData.targetWalletId;
 
     const editingId = formData.id;
+    const categoryLower = cat.toLowerCase();
+    const isLoanFlag = categoryLower.includes('préstamo') || categoryLower.includes('prestamo');
+
     // Reset UI state immediately (optimistic offline-first pattern)
     setIsModalOpen(false);
     setFormData({ id: '', category: '', amount: '', description: '', walletId: '', isExpense: false, isRecurring: false, isPending: false, dueDate: '', installments: '1', isCreditCardPayment: false, targetWalletId: '' });
@@ -149,6 +152,7 @@ export function Treasury() {
             walletId: wallId,
             isRecurring: isRec,
             isPending: isPend,
+            isLoan: isLoanFlag,
             dueDate: dDate,
             installments: instls,
             isCreditCardPayment: isCcPaid,
@@ -181,6 +185,7 @@ export function Treasury() {
           ownerId: user.uid,
           isRecurring: isRec,
           isPending: isPend,
+          isLoan: isLoanFlag,
           dueDate: dDate,
           installments: instls,
           isCreditCardPayment: isCcPaid,
@@ -543,6 +548,7 @@ export function Treasury() {
                       <span className="text-[8.5px] font-black uppercase tracking-widest text-slate-400 block w-full mb-0.5">Sugerencias de Gastos:</span>
                       {[
                         { label: '🌐 Pago de Internet', val: 'Pago de Internet / Wifi' },
+                        { label: '🙋‍♂️ Préstamo', val: 'Préstamo (Cuenta por Cobrar)', isLoan: true },
                         { label: '💳 Pagos de Tarjetas de Créditos', val: 'Pago de Tarjeta de Crédito', isCard: true },
                         { label: '🏢 Arriendo de Local', val: 'Arriendo de Local' },
                         { label: '⚡ Plan Celular', val: 'Plan de Telefonía' },
@@ -556,8 +562,43 @@ export function Treasury() {
                             setFormData(prev => ({
                               ...prev,
                               category: item.val,
-                              isRecurring: true,
+                              isRecurring: !item.isLoan,
+                              isPending: !!item.isLoan || prev.isPending,
                               isCreditCardPayment: !!item.isCard
+                            }));
+                          }}
+                          className={cn(
+                            "px-2 py-1 text-[9px] font-black rounded-lg border transition-all cursor-pointer hover:scale-105 active:scale-95",
+                            isDark 
+                              ? "bg-slate-950/65 border-slate-800 text-slate-300 hover:text-white" 
+                              : "bg-slate-100/80 border-slate-200/80 text-slate-600 hover:text-slate-900"
+                          )}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {!formData.isExpense && (
+                    <div className="pt-2 flex flex-wrap gap-1.5 px-0.5">
+                      <span className="text-[8.5px] font-black uppercase tracking-widest text-slate-400 block w-full mb-0.5">Sugerencias de Ingresos:</span>
+                      {[
+                        { label: '💰 Venta de Servicio', val: 'Venta de Servicio Digital' },
+                        { label: '📈 Comisiones', val: 'Comisiones de Ventas' },
+                        { label: '🙋‍♂️ Cobro de Préstamo', val: 'Cobras - Cobro de Préstamo' },
+                        { label: '💵 Depósito / Capital', val: 'Aporte de Capital / Depósito' }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              category: item.val,
+                              isRecurring: false,
+                              isPending: false,
+                              isCreditCardPayment: false
                             }));
                           }}
                           className={cn(
@@ -582,7 +623,7 @@ export function Treasury() {
                     </label>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-600">
                       <input type="checkbox" checked={formData.isPending} onChange={e => setFormData({...formData, isPending: e.target.checked})} />
-                      Pendiente ({formData.isExpense ? 'CxP' : 'CxC'})
+                      Pendiente ({formData.isExpense ? (formData.category.toLowerCase().includes('préstamo') || formData.category.toLowerCase().includes('prestamo') ? 'CxC / Préstamo' : 'CxP') : 'CxC'})
                     </label>
                   </div>
 

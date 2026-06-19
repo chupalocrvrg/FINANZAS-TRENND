@@ -100,17 +100,14 @@ export function ServiceRenewalModal({
         newDateStr = getGMT5DateString(start);
       }
 
-      // Add prices/costs to service metrics
-      const updatedRevenue = (service.revenue || 0) + parsedPrice;
-      const updatedCost = (service.cost || 0) + parsedCost;
+      // Reset financial metrics to represent the current renewal cycle (avoiding cumulative chronological sums)
+      const updatedRevenue = parsedPrice;
+      const updatedCost = parsedCost;
       
-      const addedAmountPaid = clientPaymentType === 'paid' ? parsedPrice : 0;
-      const addedCostPaid = supplierPaymentType === 'paid' ? parsedCost : 0;
+      const updatedAmountPaid = clientPaymentType === 'paid' ? parsedPrice : 0;
+      const updatedCostPaid = supplierPaymentType === 'paid' ? parsedCost : 0;
 
-      const updatedAmountPaid = (service.amountPaid || 0) + addedAmountPaid;
-      const updatedCostPaid = (service.costPaid || 0) + addedCostPaid;
-
-      // Determine payment statuses based on complete balance sheets of the service item
+      // Determine payment statuses based on the current cycle's metrics
       const isPaid = updatedAmountPaid >= (updatedRevenue - 0.005);
       const isCostPaid = updatedCostPaid >= (updatedCost - 0.005);
 

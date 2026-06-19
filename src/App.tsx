@@ -134,10 +134,58 @@ export default function App() {
       }
     };
 
+    // Manejar eventos de navegación personalizados (notificaciones fallback)
+    const handleCustomNav = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.tab) {
+        setActiveTab(detail.tab);
+        if (detail.search) {
+          const decodedSearch = decodeURIComponent(detail.search);
+          setTimeout(() => {
+            const eventName = detail.tab === 'services' ? 'app-search-filter' : 'app-alerts-filter';
+            window.dispatchEvent(new CustomEvent(eventName, { detail: { search: decodedSearch } }));
+          }, 400);
+        }
+      }
+    };
+
+    // Manejar mensajes del Service Worker (Deep link clicks del Service Worker activo)
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'NOTIFICATION_CLICKED') {
+        const targetUrl = event.data.url;
+        const queryIdx = targetUrl.indexOf('?');
+        if (queryIdx !== -1) {
+          const query = targetUrl.substring(queryIdx + 1);
+          const params = new URLSearchParams(query);
+          const tabParam = params.get('tab');
+          const searchParam = params.get('search');
+          if (tabParam) {
+            setActiveTab(tabParam);
+            if (searchParam) {
+              const decodedSearch = decodeURIComponent(searchParam);
+              setTimeout(() => {
+                const eventName = tabParam === 'services' ? 'app-search-filter' : 'app-alerts-filter';
+                window.dispatchEvent(new CustomEvent(eventName, { detail: { search: decodedSearch } }));
+              }, 400);
+            }
+          }
+        }
+      }
+    };
+
     handleUrlParams();
     window.addEventListener('popstate', handleUrlParams);
+    window.addEventListener('app-tab-navigation', handleCustomNav);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
+
     return () => {
       window.removeEventListener('popstate', handleUrlParams);
+      window.removeEventListener('app-tab-navigation', handleCustomNav);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      }
     };
   }, []);
 
