@@ -333,9 +333,13 @@ export function Transactions() {
       const phone = inter?.contact || '';
       if (phone) {
         const text = `Hola *${inter?.name || tx.intermediaryName}*, confirmamos que la actualización ANT para el cliente *${tx.finalClientName}* (${tx.warehouse}) se ha realizado con ÉXITO ✅.\n\nGracias por confiar en nosotros.`;
-        if (confirm("Actualización marcada como realizada. ¿Desea notificar al intermediario por WhatsApp ahora?")) {
-          window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
-        }
+        triggerConfirm(
+          "Actualización Realizada 🎉",
+          `La actualización de placa ANT para el cliente ${tx.finalClientName} se ha marcado como completada. ¿Desea abrir WhatsApp para notificar a ${inter?.name || tx.intermediaryName} de inmediato?`,
+          () => {
+            window.open(`https://api.whatsapp.com/send?phone=${phone.replace(/\D/g, '')}&text=${encodeURIComponent(text)}`, '_blank');
+          }
+        );
       }
     }
   };

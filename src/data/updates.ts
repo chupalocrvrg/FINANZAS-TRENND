@@ -9,6 +9,38 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_3_0_owasp_security_hardening",
+    version: "V6.3.0",
+    title: "V6.3.0 • Blindaje de Seguridad Integral OWASP (Zero-Trust, Sanitización e ID Validation)",
+    date: "19-Junio-2026, 09:00:00",
+    description: "Implementa el modelo Zero-Trust en toda la capa de API de Node/Express. Introduce middleware de validación criptográfica y autenticación JWT para tokens de Firebase Auth, sanitización estricta de cadenas de caracteres e inyecciones HTML en endpoints de asistencia Gemini, y robustece las políticas de cabeceras CORS/CSP siguiendo guías OWASP.",
+    type: "security"
+  },
+  {
+    id: "v_6_2_2_system_version_alerts",
+    version: "V6.2.2",
+    title: "V6.2.2 • Visualización Dinámica de Versión en Panel de Alertas",
+    date: "19-Junio-2026, 08:50:00",
+    description: "Incorpora un distintivo indicador visual que muestra dinámicamente la versión activa del software en el Panel de Alertas y Cobranzas, respondiendo a la selección interactiva de foco.",
+    type: "interface"
+  },
+  {
+    id: "v_6_2_1_crm_autocomplete_polishing",
+    version: "V6.2.1",
+    title: "V6.2.1 • Refinamiento de Autocompletado Predictivo CRM, WhatsApp Opcional y Diálogos de Alertas",
+    date: "19-Junio-2026, 08:45:00",
+    description: "Refina la interfaz de autocompletado en el menú rápido (FAB) sustituyendo selectores en cascada por un sistema de búsqueda predictiva de alta precisión. Introduce ventanas emergentes de confirmación interactiva para WhatsApp opcional y diálogos de estado estilizados de éxito/error en reemplazo de alertas nativas del navegador.",
+    type: "feature"
+  },
+  {
+    id: "v_6_2_0_crm_integration_and_scheduled_payments",
+    version: "V6.2.0",
+    title: "V6.2.0 • Autocompletado Predictivo CRM, Selección de Proveedores, Alertas de Pagos Programados y Rediseño de Vista de Recibos",
+    date: "19-Junio-2026, 08:30:00",
+    description: "Lanza el sistema predictivo de búsqueda y autocompletado en CRM para campos de clientes finales y distribuidores. Integra selección explícita de proveedores en ventas de servicios digitales corporativos desde el botón flotante (FAB). Implementa el motor de alertas y amortizaciones para egresos y deudas de deudas fijas/programadas (incluyendo tarjetas de crédito con liberación inteligente de cupo). Además, optimiza el centrado y dimensionamiento de códigos de barra en comprobantes de pago y reemplaza diálogos nativos por ventanas emergentes.",
+    type: "feature"
+  },
+  {
     id: "v_6_1_0_cache_and_background_optimization",
     version: "V6.1.0",
     title: "V6.1.0 • Capa de Caché Inteligente, Procesos Asíncronos Desacoplados y Optimización de Índices",

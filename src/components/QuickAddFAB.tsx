@@ -18,7 +18,9 @@ import {
   ArrowDownCircle, 
   Loader2, 
   Save,
-  Sparkles
+  Sparkles,
+  CheckCircle2,
+  MessageCircle
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { 
@@ -67,6 +69,25 @@ export function QuickAddFAB() {
   const [fabDsClientType, setFabDsClientType] = useState<'client' | 'reseller'>('client');
   const [fabDsFinalClientName, setFabDsFinalClientName] = useState('');
   const [fabDsFinalClientContact, setFabDsFinalClientContact] = useState('');
+  const [fabDsSupplierId, setFabDsSupplierId] = useState('');
+  const [showDsClientSuggestions, setShowDsClientSuggestions] = useState(false);
+  const [showFinalClientSuggestions, setShowFinalClientSuggestions] = useState(false);
+
+  // Modal de confirmación para añadir WhatsApp (Requirement #1)
+  const [whatsappConfirmModal, setWhatsappConfirmModal] = useState<{
+    isOpen: boolean;
+    entityName: string;
+    entityType: 'client' | 'reseller' | 'intermediary' | 'supplier' | 'ant_update' | 'digital_service';
+    currentContact: string;
+    onConfirm: (phone: string) => void;
+  } | null>(null);
+
+  // Diálogo elegante de éxito/error (Requirement #7)
+  const [fabStatusMessage, setFabStatusMessage] = useState<{
+    type: 'success' | 'error';
+    title: string;
+    description: string;
+  } | null>(null);
 
   // Local quick client/reseller form inside the popover
   const [showFabNewClientForm, setShowFabNewClientForm] = useState(false);
@@ -187,7 +208,31 @@ export function QuickAddFAB() {
     const normalizedText = text.toLowerCase();
 
     // Decide if it is an ANT Update vs Digital Service
-    const isAnt = normalizedText.includes('ant') || 
+    const hasStreamingSignals = normalizedText.includes('@') ||
+                                normalizedText.includes('correo') ||
+                                normalizedText.includes('email') ||
+                                normalizedText.includes('contraseña') ||
+                                normalizedText.includes('contrasena') ||
+                                normalizedText.includes('clave') ||
+                                normalizedText.includes('password') ||
+                                normalizedText.includes('pass') ||
+                                normalizedText.includes('perfil') ||
+                                normalizedText.includes('pin') ||
+                                normalizedText.includes('netflix') ||
+                                normalizedText.includes('disney') ||
+                                normalizedText.includes('spotify') ||
+                                normalizedText.includes('max') ||
+                                normalizedText.includes('prime') ||
+                                normalizedText.includes('crunchy') ||
+                                normalizedText.includes('magis') ||
+                                normalizedText.includes('canva') ||
+                                normalizedText.includes('capcut') ||
+                                normalizedText.includes('plex') ||
+                                normalizedText.includes('combo') ||
+                                normalizedText.includes('pantalla');
+
+    const isAnt = !hasStreamingSignals && (
+                  normalizedText.includes('ant') || 
                   normalizedText.includes('planilla') || 
                   normalizedText.includes('trámite') || 
                   normalizedText.includes('tramite') || 
@@ -195,7 +240,8 @@ export function QuickAddFAB() {
                   normalizedText.includes('deposito') || 
                   normalizedText.includes('transferencia') || 
                   normalizedText.includes('bodega') ||
-                  normalizedText.includes('establecimiento');
+                  normalizedText.includes('establecimiento')
+    );
 
     if (isAnt) {
       // 1. ANT Update
@@ -413,13 +459,223 @@ export function QuickAddFAB() {
     }
   };
 
+  const proceedSavingDigitalService = async (confirmedWhatsApp?: string) => {
+    setFabSubmitting(true);
+    try {
+      const finalContact = confirmedWhatsApp !== undefined ? confirmedWhatsApp : fabDsClientContact;
+      const costVal = parseFloat(fabDsCost) || 0;
+      const revVal = parseFloat(fabDsRevenue) || 0;
+      const expDate = new Date();
+      expDate.setDate(expDate.getDate() + parseInt(fabDsDurationDays || '30'));
+
+      // 1. Duplicate check
+      const { getDocs } = await import('firebase/firestore');
+      const q = query(
+        collection(db, 'digital_services'),
+        where('ownerId', '==', user?.uid),
+        where('email', '==', fabDsEmail.trim())
+      );
+      const querySnapshot = await getDocs(q);
+      const duplicate = querySnapshot.docs.find(docSnap => {
+        const s = docSnap.data();
+        return (
+          s.email?.trim().toLowerCase() === fabDsEmail.trim().toLowerCase() &&
+          s.password === fabDsPassword &&
+          s.pin === fabDsPin &&
+          (s.profileName || '') === fabDsProfileName &&
+          s.name?.trim().toLowerCase() === fabDsName.trim().toLowerCase()
+        );
+      });
+
+      if (duplicate) {
+        setFabStatusMessage({
+          type: 'error',
+          title: 'Venta Duplicada',
+          description: 'Ya existe una venta de servicio digital con exactamente el mismo correo, contraseña, perfil y pin.'
+        });
+        setFabSubmitting(false);
+        return;
+      }
+
+      // 2. CRM Auto-Registration for new client if not present in entities list
+      if (fabDsClientName && fabDsClientName.trim() !== '') {
+        const trimmedClientName = fabDsClientName.trim();
+        const existingEntity = entities.find(
+          (ent) =>
+            ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
+            ent.type === fabDsClientType
+        );
+
+        if (!existingEntity) {
+          await addDoc(collection(db, 'entities'), {
+            name: trimmedClientName,
+            contact: finalContact ? finalContact.trim() : '',
+            type: fabDsClientType,
+            rate: 0,
+            isAntUpdater: false,
+            antUpdateCost: 0,
+            ownerId: user?.uid,
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
+
+      // 3. CRM Auto-Registration for final client if provided under reseller mode
+      if (fabDsClientType === 'reseller' && fabDsFinalClientName && fabDsFinalClientName.trim() !== '') {
+        const trimmedFinalName = fabDsFinalClientName.trim();
+        const existingFinalEntity = entities.find(
+          (ent) =>
+            ent.name?.trim().toLowerCase() === trimmedFinalName.toLowerCase() &&
+            ent.type === 'client'
+        );
+
+        if (!existingFinalEntity) {
+          await addDoc(collection(db, 'entities'), {
+            name: trimmedFinalName,
+            contact: fabDsFinalClientContact ? fabDsFinalClientContact.trim() : '',
+            type: 'client',
+            rate: 0,
+            isAntUpdater: false,
+            antUpdateCost: 0,
+            ownerId: user?.uid,
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
+
+      // 4. Save actual service
+      await addDoc(collection(db, 'digital_services'), {
+        name: fabDsName,
+        category: fabDsCategory,
+        cost: costVal,
+        revenue: revVal,
+        clientName: fabDsClientName,
+        clientContact: finalContact,
+        clientType: fabDsClientType,
+        finalClientName: fabDsClientType === 'reseller' ? fabDsFinalClientName : '',
+        finalClientContact: fabDsClientType === 'reseller' ? fabDsFinalClientContact : '',
+        email: fabDsEmail,
+        password: fabDsPassword,
+        pin: fabDsPin,
+        serviceType: fabDsServiceType,
+        profileName: fabDsProfileName,
+        supplierId: fabDsSupplierId || '',
+        supplierName: entities.find(e => e.id === fabDsSupplierId)?.name || '',
+        status: 'active',
+        isPaid: false,
+        isCostPaid: false,
+        expirationDate: expDate.toISOString().split('T')[0],
+        ownerId: user?.uid,
+        createdAt: new Date().toISOString()
+      });
+
+      // Show gorgeous custom dialog
+      setFabStatusMessage({
+        type: 'success',
+        title: 'Servicio Cuenta Guardado',
+        description: `La venta del servicio digital para "${fabDsClientName}" se ha registrado exitosamente. Se sincronizó de forma automática en su catálogo de CRM.`
+      });
+
+      // Clear states
+      setFabDsName('');
+      setFabDsEmail('');
+      setFabDsPassword('');
+      setFabDsPin('');
+      setFabDsProfileName('');
+      setFabDsClientName('');
+      setFabDsClientContact('');
+      setFabDsFinalClientName('');
+      setFabDsFinalClientContact('');
+      setFabDsSupplierId('');
+      setIsFabOpen(false);
+    } catch (err) {
+      console.error(err);
+      setFabStatusMessage({
+        type: 'error',
+        title: 'Error de Guardado',
+        description: err instanceof Error ? err.message : String(err)
+      });
+    } finally {
+      setFabSubmitting(false);
+    }
+  };
+
+  const proceedSavingAntUpdate = async () => {
+    setFabSubmitting(true);
+    try {
+      const inter = entities.find(ent => ent.id === fabAntIntermediaryId);
+      const upd = entities.find(ent => ent.id === fabAntUpdaterId);
+      const costVal = parseFloat(fabAntBaseCost) || 0;
+      const revVal = parseFloat(fabAntChargedRate) || 0;
+
+      // CRM Auto-Registration for new final client if not present in entities list
+      if (fabAntFinalClientName && fabAntFinalClientName.trim() !== '') {
+        const trimmedClientName = fabAntFinalClientName.trim();
+        const existingEntity = entities.find(
+          (ent) =>
+            ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
+            ent.type === 'client'
+        );
+
+        if (!existingEntity) {
+          await addDoc(collection(db, 'entities'), {
+            name: trimmedClientName,
+            contact: '',
+            type: 'client',
+            rate: 0,
+            isAntUpdater: false,
+            antUpdateCost: 0,
+            ownerId: user?.uid,
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
+
+      await addDoc(collection(db, 'transactions'), {
+        intermediaryId: fabAntIntermediaryId,
+        intermediaryName: inter?.name || 'Distribuidor',
+        updaterId: fabAntUpdaterId,
+        updaterName: upd?.name || 'Proveedor',
+        finalClientName: fabAntFinalClientName,
+        warehouse: fabAntWarehouse,
+        billingDate: new Date().toISOString().split('T')[0],
+        baseCost: costVal,
+        chargedRate: revVal,
+        isPaid: false,
+        status: 'pending',
+        ownerId: user?.uid,
+        createdAt: new Date().toISOString()
+      });
+
+      // Show gorgeous custom dialog
+      setFabStatusMessage({
+        type: 'success',
+        title: 'Trámite ANT Registrado',
+        description: `El trámite de placa ANT para "${fabAntFinalClientName}" se ha guardado exitosamente de forma pendiente de cobranza.`
+      });
+
+      setFabAntFinalClientName('');
+      setFabAntWarehouse('');
+      setIsFabOpen(false);
+    } catch (err) {
+      console.error(err);
+      setFabStatusMessage({
+        type: 'error',
+        title: 'Error ANT de Guardado',
+        description: err instanceof Error ? err.message : String(err)
+      });
+    } finally {
+      setFabSubmitting(false);
+    }
+  };
+
   const handleFabSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || fabSubmitting || !quickAddType) return;
-    setFabSubmitting(true);
 
     try {
       if (['client', 'reseller', 'intermediary', 'supplier'].includes(quickAddType)) {
+        setFabSubmitting(true);
         await addDoc(collection(db, 'entities'), {
           name: fabEntityName,
           contact: fabEntityContact,
@@ -430,187 +686,120 @@ export function QuickAddFAB() {
           ownerId: user.uid,
           createdAt: new Date().toISOString()
         });
-        alert("Entidad registrada correctamente ✓");
+
+        setFabStatusMessage({
+          type: 'success',
+          title: 'Registro Exitoso en CRM',
+          description: `La entidad "${fabEntityName}" ha sido agregada exitosamente como ${
+            quickAddType === 'client' ? 'Cliente' :
+            quickAddType === 'reseller' ? 'Revendedor' :
+            quickAddType === 'intermediary' ? 'Intermediario' : 'Proveedor'
+          }.`
+        });
+        resetFabForm();
+        setIsFabOpen(false);
       }
       else if (quickAddType === 'digital_service') {
-        const costVal = parseFloat(fabDsCost) || 0;
-        const revVal = parseFloat(fabDsRevenue) || 0;
-        const expDate = new Date();
-        expDate.setDate(expDate.getDate() + parseInt(fabDsDurationDays || '30'));
-
-        // Check duplicates
-        const { getDocs } = await import('firebase/firestore');
-        const q = query(
-          collection(db, 'digital_services'),
-          where('ownerId', '==', user.uid),
-          where('email', '==', fabDsEmail.trim())
+        const trimmedClientName = fabDsClientName.trim() || 'Cliente Final';
+        const existingEntity = entities.find(
+          (ent) =>
+            ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
+            ent.type === fabDsClientType
         );
-        const querySnapshot = await getDocs(q);
-        const duplicate = querySnapshot.docs.find(docSnap => {
-          const s = docSnap.data();
-          return (
-            s.email?.trim().toLowerCase() === fabDsEmail.trim().toLowerCase() &&
-            s.password === fabDsPassword &&
-            s.pin === fabDsPin &&
-            (s.profileName || '') === fabDsProfileName &&
-            s.name?.trim().toLowerCase() === fabDsName.trim().toLowerCase()
-          );
-        });
 
-        if (duplicate) {
-          alert("¡Error de duplicado! Ya existe una venta de servicio digital registrada exactamente con la misma cuenta, correo, clave, pin y nombre de perfil.");
-          setFabSubmitting(false);
-          return;
-        }
-
-        // CRM Auto-Registration for new client if not present in entities list
-        if (fabDsClientName && fabDsClientName.trim() !== '') {
-          const trimmedClientName = fabDsClientName.trim();
-          const existingEntity = entities.find(
-            (ent) =>
-              ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
-              ent.type === fabDsClientType
-          );
-
-          if (!existingEntity) {
-            try {
-              await addDoc(collection(db, 'entities'), {
-                name: trimmedClientName,
-                contact: fabDsClientContact ? fabDsClientContact.trim() : '',
-                type: fabDsClientType,
-                rate: 0,
-                isAntUpdater: false,
-                antUpdateCost: 0,
-                ownerId: user.uid,
-                createdAt: new Date().toISOString()
-              });
-              console.log(`Cliente/Revendedor "${trimmedClientName}" registrado automáticamente desde Acceso Rápido FAB`);
-            } catch (crmErr) {
-              console.error("Error al registrar cliente automáticamente en CRM (FAB):", crmErr);
+        if (!existingEntity) {
+          // Open WhatsApp confirm selector first
+          setWhatsappConfirmModal({
+            isOpen: true,
+            entityName: trimmedClientName,
+            entityType: 'digital_service',
+            currentContact: fabDsClientContact || '',
+            onConfirm: async (confirmedPhone) => {
+              setWhatsappConfirmModal(null);
+              await proceedSavingDigitalService(confirmedPhone);
             }
-          }
+          });
+        } else {
+          await proceedSavingDigitalService(fabDsClientContact);
         }
-
-        // CRM Auto-Registration for final client if provided under reseller mode
-        if (fabDsClientType === 'reseller' && fabDsFinalClientName && fabDsFinalClientName.trim() !== '') {
-          const trimmedFinalName = fabDsFinalClientName.trim();
-          const existingFinalEntity = entities.find(
-            (ent) =>
-              ent.name?.trim().toLowerCase() === trimmedFinalName.toLowerCase() &&
-              ent.type === 'client'
-          );
-
-          if (!existingFinalEntity) {
-            try {
-              await addDoc(collection(db, 'entities'), {
-                name: trimmedFinalName,
-                contact: fabDsFinalClientContact ? fabDsFinalClientContact.trim() : '',
-                type: 'client',
-                rate: 0,
-                isAntUpdater: false,
-                antUpdateCost: 0,
-                ownerId: user.uid,
-                createdAt: new Date().toISOString()
-              });
-              console.log(`Cliente final "${trimmedFinalName}" registrado automáticamente en el CRM desde FAB`);
-            } catch (crmErr) {
-              console.error("Error al registrar cliente final automáticamente en CRM (FAB):", crmErr);
-            }
-          }
-        }
-
-        await addDoc(collection(db, 'digital_services'), {
-          name: fabDsName,
-          category: fabDsCategory,
-          cost: costVal,
-          revenue: revVal,
-          clientName: fabDsClientName,
-          clientContact: fabDsClientContact,
-          clientType: fabDsClientType,
-          finalClientName: fabDsClientType === 'reseller' ? fabDsFinalClientName : '',
-          finalClientContact: fabDsClientType === 'reseller' ? fabDsFinalClientContact : '',
-          email: fabDsEmail,
-          password: fabDsPassword,
-          pin: fabDsPin,
-          serviceType: fabDsServiceType,
-          profileName: fabDsProfileName,
-          status: 'active',
-          isPaid: false,
-          isCostPaid: false,
-          expirationDate: expDate.toISOString().split('T')[0],
-          ownerId: user.uid,
-          createdAt: new Date().toISOString()
-        });
-        alert("Servicio digital registrado correctamente ✓");
       }
       else if (quickAddType === 'ant_update') {
-        const inter = entities.find(ent => ent.id === fabAntIntermediaryId);
-        const upd = entities.find(ent => ent.id === fabAntUpdaterId);
-        const costVal = parseFloat(fabAntBaseCost) || 0;
-        const revVal = parseFloat(fabAntChargedRate) || 0;
+        const trimmedClientName = fabAntFinalClientName.trim() || 'Cliente Planilla';
+        const existingEntity = entities.find(
+          (ent) =>
+            ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
+            ent.type === 'client'
+        );
 
-        await addDoc(collection(db, 'transactions'), {
-          intermediaryId: fabAntIntermediaryId,
-          intermediaryName: inter?.name || 'Distribuidor',
-          updaterId: fabAntUpdaterId,
-          updaterName: upd?.name || 'Proveedor',
-          finalClientName: fabAntFinalClientName,
-          warehouse: fabAntWarehouse,
-          billingDate: new Date().toISOString().split('T')[0],
-          baseCost: costVal,
-          chargedRate: revVal,
-          isPaid: false,
-          status: 'pending',
-          ownerId: user.uid,
-          createdAt: new Date().toISOString()
-        });
-        alert("Actualización de placa ANT registrada correctamente ✓");
+        if (!existingEntity) {
+          // Open WhatsApp confirm selector first for new client
+          setWhatsappConfirmModal({
+            isOpen: true,
+            entityName: trimmedClientName,
+            entityType: 'ant_update',
+            currentContact: '',
+            onConfirm: async (confirmedPhone) => {
+              setWhatsappConfirmModal(null);
+              // Save
+              await proceedSavingAntUpdate();
+            }
+          });
+        } else {
+          await proceedSavingAntUpdate();
+        }
       }
       else if (['income', 'expense'].includes(quickAddType)) {
+        setFabSubmitting(true);
         const numericAmount = parseFloat(fabLedgerAmount) || 0;
         const signedAmount = quickAddType === 'expense' ? -Math.abs(numericAmount) : Math.abs(numericAmount);
 
-        const wallId = fabLedgerIsPending ? '' : fabLedgerWalletId;
-        const isPend = fabLedgerIsPending;
+         const wallId = fabLedgerIsPending ? '' : fabLedgerWalletId;
+         const isPend = fabLedgerIsPending;
 
-        // Update Wallet Balance only if not pending
-        if (!isPend && wallId) {
-          await updateDoc(doc(db, 'wallets', wallId), {
-            balance: increment(signedAmount)
-          });
+         if (!isPend && wallId) {
+           await updateDoc(doc(db, 'wallets', wallId), {
+             balance: increment(signedAmount)
+           });
 
-          if (fabLedgerIsCreditCardPayment && fabLedgerTargetWalletId) {
-            await updateDoc(doc(db, 'wallets', fabLedgerTargetWalletId), {
-              balance: increment(Math.abs(signedAmount))
-            });
-          }
-        }
+           if (fabLedgerIsCreditCardPayment && fabLedgerTargetWalletId) {
+             await updateDoc(doc(db, 'wallets', fabLedgerTargetWalletId), {
+               balance: increment(Math.abs(signedAmount))
+             });
+           }
+         }
 
-        // Add Ledger Entry
-        await addDoc(collection(db, 'ledger'), {
-          type: 'business',
-          category: fabLedgerCategory || (quickAddType === 'income' ? 'Ingreso Adicional' : 'Egreso de Caja'),
-          amount: signedAmount,
-          description: fabLedgerDescription,
-          walletId: wallId,
-          date: new Date().toISOString().split('T')[0],
-          ownerId: user.uid,
-          isRecurring: fabLedgerIsRecurring,
-          isPending: isPend,
-          dueDate: (fabLedgerIsRecurring || isPend) ? fabLedgerDueDate : '',
-          installments: fabLedgerInstallments,
-          isCreditCardPayment: fabLedgerIsCreditCardPayment,
-          targetWalletId: fabLedgerIsCreditCardPayment ? fabLedgerTargetWalletId : '',
-          createdAt: new Date().toISOString()
-        });
-        alert("Transacción de Tesorería registrada correctamente ✓");
+         await addDoc(collection(db, 'ledger'), {
+           type: 'business',
+           category: fabLedgerCategory || (quickAddType === 'income' ? 'Ingreso Adicional' : 'Egreso de Caja'),
+           amount: signedAmount,
+           description: fabLedgerDescription,
+           walletId: wallId,
+           date: new Date().toISOString().split('T')[0],
+           ownerId: user.uid,
+           isRecurring: fabLedgerIsRecurring,
+           isPending: isPend,
+           dueDate: (fabLedgerIsRecurring || isPend) ? fabLedgerDueDate : '',
+           installments: fabLedgerInstallments,
+           isCreditCardPayment: fabLedgerIsCreditCardPayment,
+           targetWalletId: fabLedgerIsCreditCardPayment ? fabLedgerTargetWalletId : '',
+           createdAt: new Date().toISOString()
+         });
+
+         setFabStatusMessage({
+           type: 'success',
+           title: 'Movimiento Registrado',
+           description: `La transacción de tesorería por ${formatCurrency(numericAmount)} se guardó con éxito.`
+         });
+         resetFabForm();
+         setIsFabOpen(false);
       }
-
-      resetFabForm();
-      setIsFabOpen(false);
     } catch (err) {
       console.error("Error Quick Add:", err);
-      alert("Error al guardar: " + (err instanceof Error ? err.message : String(err)));
+      setFabStatusMessage({
+        type: 'error',
+        title: 'Error de Servidor',
+        description: err instanceof Error ? err.message : String(err)
+      });
     } finally {
       setFabSubmitting(false);
     }
@@ -970,210 +1159,184 @@ export function QuickAddFAB() {
                         </div>
                       </div>
 
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[8px] font-black uppercase tracking-widest text-indigo-500 block">Vincular con CRM</label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowFabNewClientForm(!showFabNewClientForm);
-                              setNewEntityName(fabDsClientName !== 'Cliente Final' ? fabDsClientName : '');
-                              setNewEntityContact(fabDsClientContact);
-                              setNewEntityType(fabDsClientType);
+                      <div className="grid grid-cols-2 gap-2 relative">
+                        <div className="space-y-1 relative">
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Nombre de Cliente</label>
+                          <input
+                            required
+                            type="text"
+                            value={fabDsClientName}
+                            onFocus={() => setShowDsClientSuggestions(true)}
+                            onBlur={() => {
+                              setTimeout(() => setShowDsClientSuggestions(false), 200);
                             }}
-                            className="text-[8px] font-black text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 uppercase tracking-widest flex items-center gap-0.5 cursor-pointer"
-                          >
-                            {showFabNewClientForm ? '✕ Cancelar' : '➕ Crear Nuevo'}
-                          </button>
+                            onChange={(e) => {
+                              setFabDsClientName(e.target.value);
+                              setShowDsClientSuggestions(true);
+                            }}
+                            className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
+                            placeholder="Escriba para buscar o registrar..."
+                          />
+                          {/* Autocomplete list */}
+                          {showDsClientSuggestions && fabDsClientName.trim() && (
+                            <div className={cn(
+                              "absolute left-0 right-0 top-full mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-xl z-50 text-left p-1 space-y-0.5 animate-in fade-in duration-150",
+                              isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
+                            )}>
+                              {entities
+                                .filter(e => e.type === fabDsClientType && e.name.toLowerCase().includes(fabDsClientName.toLowerCase()))
+                                .map(ent => (
+                                  <button
+                                    key={ent.id}
+                                    type="button"
+                                    onMouseDown={() => {
+                                      setFabDsClientName(ent.name);
+                                      setFabDsClientContact(ent.contact || '');
+                                      setShowDsClientSuggestions(false);
+                                    }}
+                                    className={cn(
+                                      "w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex justify-between items-center",
+                                      isDark ? "hover:bg-slate-800 text-slate-205" : "hover:bg-slate-100 text-slate-850"
+                                    )}
+                                  >
+                                    <span>{ent.name}</span>
+                                    {ent.contact && <span className="text-[10px] opacity-70">📞 {ent.contact}</span>}
+                                  </button>
+                                ))
+                              }
+                              {!entities.some(e => e.type === fabDsClientType && e.name.toLowerCase() === fabDsClientName.toLowerCase()) && (
+                                <div className="p-1.5 text-[8.5px] font-black uppercase text-indigo-500 text-center tracking-wide">
+                                  🆕 ¡Cliente Nuevo! Se guardará automáticamente en CRM
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {showFabNewClientForm ? (
-                          <div className="p-2 mt-1 rounded-lg border border-dashed border-indigo-500/30 bg-indigo-500/5 dark:bg-indigo-950/20 space-y-2 text-left animate-in fade-in slide-in-from-top-1 duration-250">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500 block">➕ Registrar nuevo en CRM</span>
-                            <div className="space-y-0.5">
-                              <label className="text-[7.5px] font-bold uppercase text-slate-500 block">Nombre Completo</label>
-                              <input
-                                type="text"
-                                value={newEntityName}
-                                onChange={(e) => setNewEntityName(e.target.value)}
-                                className={cn("w-full p-1.5 rounded border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 focus:border-indigo-500")}
-                                placeholder="Ej. Juan Pérez"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              <div className="space-y-0.5">
-                                <label className="text-[7.5px] font-bold uppercase text-slate-500 block">WhatsApp / Contacto</label>
-                                <input
-                                  type="text"
-                                  value={newEntityContact}
-                                  onChange={(e) => setNewEntityContact(e.target.value)}
-                                  className={cn("w-full p-1.5 rounded border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 focus:border-indigo-500")}
-                                  placeholder="Ej. +593..."
-                                />
-                              </div>
-                              <div className="space-y-0.5">
-                                <label className="text-[7.5px] font-bold uppercase text-slate-500 block">Tipo</label>
-                                <select
-                                  value={newEntityType}
-                                  onChange={(e) => setNewEntityType(e.target.value as 'client' | 'reseller')}
-                                  className={cn("w-full p-1.5 rounded border text-[10px] font-bold outline-none", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 focus:border-indigo-500")}
-                                >
-                                  <option value="client">👤 Cliente Final</option>
-                                  <option value="reseller">🤝 Revendedor</option>
-                                </select>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (!newEntityName.trim()) {
-                                  alert("Por favor ingrese el nombre del cliente/revendedor");
-                                  return;
-                                }
-                                try {
-                                  const trimmed = newEntityName.trim();
-                                  await addDoc(collection(db, 'entities'), {
-                                    name: trimmed,
-                                    contact: newEntityContact ? newEntityContact.trim() : '',
-                                    type: newEntityType,
-                                    rate: 0,
-                                    isAntUpdater: false,
-                                    antUpdateCost: 0,
-                                    ownerId: user.uid,
-                                    createdAt: new Date().toISOString()
-                                  });
-                                  setFabDsClientName(trimmed);
-                                  setFabDsClientContact(newEntityContact ? newEntityContact.trim() : '');
-                                  setFabDsClientType(newEntityType);
-                                  setShowFabNewClientForm(false);
-                                  setNewEntityName('');
-                                  setNewEntityContact('');
-                                } catch (err) {
-                                  console.error(err);
-                                }
-                              }}
-                              className="w-full py-1 text-center bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[8px] uppercase tracking-widest rounded cursor-pointer transition-colors shadow"
-                            >
-                              ✓ Guardar y Vincular
-                            </button>
-                          </div>
-                        ) : (
-                          <select
-                            onChange={(e) => {
-                              const entId = e.target.value;
-                              if (!entId) return;
-                              const selected = entities.find(ent => ent.id === entId);
-                              if (selected) {
-                                setFabDsClientName(selected.name);
-                                setFabDsClientContact(selected.contact || '');
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">WhatsApp de Cliente (Opcional)</label>
+                          <input
+                            type="text"
+                            value={fabDsClientContact}
+                            onChange={(e) => setFabDsClientContact(e.target.value)}
+                            className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
+                            placeholder="Ej. +593987654321"
+                          />
+                        </div>
+                      </div>
+
+                      {/* REGISTRAR CLIENTE / REVENDEDOR NUEVO EN CRM INSTANTÁNEAMENTE */}
+                      {fabDsClientName && fabDsClientName.trim() !== '' && !entities.some(e => e.name?.trim().toLowerCase() === fabDsClientName.trim().toLowerCase() && e.type === fabDsClientType) && (
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const trimmed = fabDsClientName.trim();
+                                await addDoc(collection(db, 'entities'), {
+                                  name: trimmed,
+                                  contact: fabDsClientContact ? fabDsClientContact.trim() : '',
+                                  type: fabDsClientType,
+                                  rate: 0,
+                                  isAntUpdater: false,
+                                  antUpdateCost: 0,
+                                  ownerId: user.uid,
+                                  createdAt: new Date().toISOString()
+                                });
+                                setFabStatusMessage({
+                                  type: 'success',
+                                  title: 'Contacto Guardado ✓',
+                                  description: `Se registró a "${trimmed}" en CRM como ${fabDsClientType === 'client' ? 'Cliente' : 'Revendedor'}.`
+                                });
+                              } catch (err) {
+                                console.error(err);
                               }
                             }}
-                            className={cn("w-full p-2 rounded-lg border text-[11px] font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
+                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-[9px] uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all border border-indigo-550 focus:outline-none"
                           >
-                            <option value="">-- Seleccionar registrado --</option>
-                            {entities
-                              .filter(e => e.type === fabDsClientType)
-                              .map(ent => (
-                                <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
-                              ))
-                            }
-                          </select>
-                        )}
-                      </div>
-                    </div>
+                            ➕ Guardar "{fabDsClientName}" en CRM ({fabDsClientType === 'client' ? 'Cliente' : 'Revendedor'})
+                          </button>
+                        </div>
+                      )}
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Nombre de Cliente</label>
-                        <input
-                          required
-                          type="text"
-                          value={fabDsClientName}
-                          onChange={(e) => setFabDsClientName(e.target.value)}
-                          className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
-                          placeholder="Ej. Galo Peralta"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">WhatsApp de Cliente</label>
-                        <input
-                          type="text"
-                          value={fabDsClientContact}
-                          onChange={(e) => setFabDsClientContact(e.target.value)}
-                          className={cn("w-full p-2 rounded-lg border text-xs font-bold transition-all outline-none shadow-inner text-left", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white focus:border-indigo-500")}
-                          placeholder="Ej. +593987654321"
-                        />
-                      </div>
-                    </div>
-
-                    {/* REGISTRAR CLIENTE / REVENDEDOR NUEVO EN CRM INSTANTÁNEAMENTE */}
-                    {fabDsClientName && fabDsClientName.trim() !== '' && !entities.some(e => e.name?.trim().toLowerCase() === fabDsClientName.trim().toLowerCase() && e.type === fabDsClientType) && (
-                      <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const trimmed = fabDsClientName.trim();
-                              await addDoc(collection(db, 'entities'), {
-                                name: trimmed,
-                                contact: fabDsClientContact ? fabDsClientContact.trim() : '',
-                                type: fabDsClientType,
-                                rate: 0,
-                                isAntUpdater: false,
-                                antUpdateCost: 0,
-                                ownerId: user.uid,
-                                createdAt: new Date().toISOString()
-                              });
-                            } catch (err) {
-                              console.error(err);
+                      {/* PROVEEDOR SELECTOR (Requirement #6) */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Proveedor de la Cuenta (Opcional)</label>
+                        <select
+                          value={fabDsSupplierId}
+                          onChange={(e) => {
+                            const sId = e.target.value;
+                            setFabDsSupplierId(sId);
+                            // Auto-set cost if possible from the supplier's rate/cost
+                            const matchingSupplier = entities.find(sup => sup.id === sId);
+                            if (matchingSupplier && matchingSupplier.rate) {
+                              setFabDsCost(String(matchingSupplier.rate));
                             }
                           }}
-                          className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-[9px] uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all border border-indigo-550"
+                          className={cn("w-full p-2 rounded-lg border text-[11px] font-bold outline-none cursor-pointer", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
                         >
-                          ➕ Guardar "{fabDsClientName}" en CRM ({fabDsClientType === 'client' ? 'Cliente' : 'Revendedor'})
-                        </button>
+                          <option value="">-- Seleccionar Proveedor --</option>
+                          {entities
+                            .filter(e => e.type === 'supplier')
+                            .map(sup => (
+                              <option key={sup.id} value={sup.id}>{sup.name}</option>
+                            ))
+                          }
+                        </select>
                       </div>
-                    )}
+                    </div>
 
                     {/* INFO CLIENTE FINAL (OPCIONAL) PARA REVENDEDOR */}
                     {fabDsClientType === 'reseller' && (
                       <div className={cn("p-2 rounded-xl border space-y-1.5 animate-in fade-in duration-200 text-left", isDark ? "bg-slate-955/40 border-slate-800" : "bg-indigo-55/15 border-indigo-100/40")}>
                         <span className="text-[8.5px] font-black uppercase tracking-widest text-indigo-500 block">Información de Cliente Final (Opcional)</span>
-                        <div className="space-y-1">
-                          <label className="text-[8px] font-bold uppercase text-indigo-510/80 block">Vincular Cliente Final registrado en CRM</label>
-                          <select
-                            onChange={(e) => {
-                              const entId = e.target.value;
-                              if (!entId) return;
-                              const selected = entities.find(ent => ent.id === entId);
-                              if (selected) {
-                                setFabDsFinalClientName(selected.name);
-                                setFabDsFinalClientContact(selected.contact || '');
-                              }
-                            }}
-                            className={cn("w-full p-1.5 rounded-lg border text-[11px] font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
-                          >
-                            <option value="">-- Seleccionar registrado --</option>
-                            {entities
-                              .filter(e => e.type === 'client')
-                              .map(ent => (
-                                <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
-                              ))
-                            }
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
+                        
+                        <div className="grid grid-cols-2 gap-2 relative">
+                          <div className="space-y-1 relative">
                             <label className="text-[8px] font-bold text-slate-500">Nombre Cliente Final</label>
                             <input
                               type="text"
                               value={fabDsFinalClientName}
-                              onChange={(e) => setFabDsFinalClientName(e.target.value)}
+                              onFocus={() => setShowFinalClientSuggestions(true)}
+                              onBlur={() => {
+                                setTimeout(() => setShowFinalClientSuggestions(false), 200);
+                              }}
+                              onChange={(e) => {
+                                setFabDsFinalClientName(e.target.value);
+                                setShowFinalClientSuggestions(true);
+                              }}
                               className={cn("w-full p-1.5 rounded-lg border text-xs font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 focus:bg-white")}
-                              placeholder="Ej. Galo Peralta"
+                              placeholder="Buscar o registrar..."
                             />
+                            {showFinalClientSuggestions && fabDsFinalClientName.trim() && (
+                              <div className={cn(
+                                "absolute left-0 right-0 top-full mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-xl z-50 text-left p-1 space-y-0.5",
+                                isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
+                              )}>
+                                {entities
+                                  .filter(e => e.type === 'client' && e.name.toLowerCase().includes(fabDsFinalClientName.toLowerCase()))
+                                  .map(ent => (
+                                    <button
+                                      key={ent.id}
+                                      type="button"
+                                      onMouseDown={() => {
+                                        setFabDsFinalClientName(ent.name);
+                                        setFabDsFinalClientContact(ent.contact || '');
+                                        setShowFinalClientSuggestions(false);
+                                      }}
+                                      className={cn(
+                                        "w-full text-left px-2 py-1.5 rounded text-xs font-bold transition-all cursor-pointer flex justify-between items-center",
+                                        isDark ? "hover:bg-slate-800 text-slate-200" : "hover:bg-slate-100 text-slate-850"
+                                      )}
+                                    >
+                                      <span>{ent.name}</span>
+                                      {ent.contact && <span className="text-[10px] opacity-70">📞 {ent.contact}</span>}
+                                    </button>
+                                  ))}
+                              </div>
+                            )}
                           </div>
-                           <div className="space-y-1">
+                          <div className="space-y-1">
                             <label className="text-[8px] font-bold text-slate-500">WhatsApp Cliente Final</label>
                             <input
                               type="text"
@@ -1202,6 +1365,11 @@ export function QuickAddFAB() {
                                     antUpdateCost: 0,
                                     ownerId: user.uid,
                                     createdAt: new Date().toISOString()
+                                  });
+                                  setFabStatusMessage({
+                                    type: 'success',
+                                    title: 'Cliente Guardado ✓',
+                                    description: `Se registró a "${trimmed}" como Cliente Final en su CRM de contactos.`
                                   });
                                 } catch (err) {
                                   console.error(err);
@@ -1634,6 +1802,139 @@ export function QuickAddFAB() {
       >
         <Plus className="w-6 h-6 transition-transform duration-200" />
       </motion.button>
+
+      {/* WHATSAPP CONFIRM MODAL (Requirement #1) */}
+      <AnimatePresence>
+        {whatsappConfirmModal?.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setWhatsappConfirmModal(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm shadow-xl"
+            />
+            
+            {/* Modal Box */}
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className={cn(
+                "w-full max-w-sm rounded-3xl border p-6 relative z-10 shadow-2xl space-y-4 text-center",
+                isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-150 text-slate-900"
+              )}
+            >
+              <div className="mx-auto w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-950/25 flex items-center justify-center text-indigo-500 scale-105 animate-pulse">
+                <MessageCircle className="w-6 h-6" />
+              </div>
+              
+              <div className="space-y-1.5">
+                <h3 className="font-sans font-black text-sm tracking-tight text-slate-900 dark:text-white">📞 Confirmar / Añadir WhatsApp</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Hemos detectado que estás guardando al cliente nuevo <strong className="text-indigo-550 dark:text-indigo-400">"{whatsappConfirmModal.entityName}"</strong>. ¿Deseas confirmar o agregar su número de WhatsApp/contacto? (Este paso es opcional)
+                </p>
+              </div>
+
+              <div className="space-y-1 text-left">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Número de WhatsApp</label>
+                <input
+                  type="text"
+                  defaultValue={whatsappConfirmModal.currentContact}
+                  id="whatsapp_modal_phone_input"
+                  className={cn(
+                    "w-full p-2.5 rounded-xl border text-xs font-bold font-mono outline-none shadow-inner",
+                    isDark ? "bg-slate-800 border-slate-700 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500"
+                  )}
+                  placeholder="Ej. +593987654321"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inputEl = document.getElementById('whatsapp_modal_phone_input') as HTMLInputElement;
+                    whatsappConfirmModal.onConfirm(inputEl?.value || '');
+                  }}
+                  className="py-2.5 px-4 bg-indigo-650 hover:bg-indigo-700 active:bg-indigo-800 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
+                >
+                  Confirmar ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    whatsappConfirmModal.onConfirm('');
+                  }}
+                  className={cn(
+                    "py-2.5 px-4 border text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer",
+                    isDark ? "border-slate-700 hover:bg-slate-800 text-slate-405" : "border-slate-200 hover:bg-slate-100 text-slate-500"
+                  )}
+                >
+                  Omitir Paso
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CUSTOM STATUS MESSAGE DIALOG (Requirement #7) */}
+      <AnimatePresence>
+        {fabStatusMessage && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFabStatusMessage(null)}
+              className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+            />
+            
+            {/* Overlay Box */}
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className={cn(
+                "w-full max-w-xs rounded-3xl border p-6 relative z-10 shadow-2xl space-y-4 text-center",
+                isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-150 text-slate-900"
+              )}
+            >
+              <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center">
+                {fabStatusMessage.type === 'success' ? (
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/20 flex items-center justify-center text-emerald-500">
+                    <CheckCircle2 className="w-6 h-6 animate-bounce" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500">
+                    <X className="w-6 h-6 animate-pulse" />
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="font-sans font-black text-xs uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                  {fabStatusMessage.title}
+                </h3>
+                <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  {fabStatusMessage.description}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setFabStatusMessage(null)}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl cursor-pointer shadow-md transition-colors focus:outline-none"
+              >
+                Entendido
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

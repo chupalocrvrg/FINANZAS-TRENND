@@ -1683,11 +1683,21 @@ export function AIAssistant() {
 
       let responseText = '';
 
+      let idToken = '';
+      if (user) {
+        try {
+          idToken = await user.getIdToken();
+        } catch (tokenErr) {
+          console.error("No se pudo obtener el ID Token de Firebase para el asistente inteligente:", tokenErr);
+        }
+      }
+
       try {
         const response = await fetch(`${apiUrl}/api/assistant`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': idToken ? `Bearer ${idToken}` : '',
           },
           body: JSON.stringify({
             messages: updatedMessages.map(m => ({ 

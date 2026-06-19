@@ -239,7 +239,10 @@ export function DigitalServices() {
     const qSer = query(collection(db, 'digital_services'), where('ownerId', '==', user.uid));
     const unsubSer = onSnapshot(qSer, (snapshot) => {
       const allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DigitalServiceItem));
-      setServices(allServices.filter(s => !s.deletedFromModule));
+      const sorted = allServices
+        .filter(s => !s.deletedFromModule)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setServices(sorted);
       setLoading(false);
     });
 

@@ -73,17 +73,17 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     // Canvas scaling for high resolution (Retina support)
     const scale = 2;
     canvas.width = 400 * scale;
-    canvas.height = (v.status === 'paid' ? 510 : 780) * scale;
+    canvas.height = (v.status === 'paid' ? 580 : 780) * scale;
     ctx.scale(scale, scale);
 
     // Context drawing settings
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 400, v.status === 'paid' ? 510 : 780);
+    ctx.fillRect(0, 0, 400, v.status === 'paid' ? 580 : 780);
 
     // Draw solid border accent
     ctx.strokeStyle = v.status === 'paid' ? '#10b981' : v.status === 'expired' ? '#f43f5e' : '#f59e0b';
     ctx.lineWidth = 6;
-    ctx.strokeRect(10, 10, 380, (v.status === 'paid' ? 490 : 760));
+    ctx.strokeRect(10, 10, 380, (v.status === 'paid' ? 560 : 760));
 
     // Header Company Name
     ctx.fillStyle = '#0f172a';
@@ -283,7 +283,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
     
     codePattern.forEach((width, index) => {
       if (index % 2 === 0) {
-        ctx.fillRect(startX, currentY, width * 1.8, barHeight);
+        ctx.fillRect(startX, currentY, width * itemStep, barHeight);
       }
       startX += width * itemStep;
     });
