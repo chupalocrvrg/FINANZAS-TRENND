@@ -184,3 +184,29 @@ export const PAYMENT_INSTRUCTIONS_TXT = `💵 *MÉTODOS DE PAGO* 💵
 • *Enlace:* https://paypal.me/trennd07
 📌 *Verificar:* Marcelo Gutama`;
 
+/**
+ * Registra un evento de seguridad de forma local/offline para fines de auditoría OWASP
+ */
+export function addSecurityAuditLog(type: string, description: string) {
+  try {
+    const logsJson = localStorage.getItem('secure_audit_trail_v2');
+    const logs = logsJson ? JSON.parse(logsJson) : [];
+    
+    const newLog = {
+      id: `sec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      timestamp: getGMT5DateTimeString(),
+      type, // 'unlock_success', 'unlock_failed', 'credential_disclosed', 'backup_exported', 'settings_changed'
+      description: description,
+    };
+    
+    logs.unshift(newLog);
+    
+    // Limitar a máximo 200 registros de auditoría
+    const trimmedLogs = logs.slice(0, 200);
+    localStorage.setItem('secure_audit_trail_v2', JSON.stringify(trimmedLogs));
+  } catch (err) {
+    console.warn("No se pudo agregar el registro de auditoría de seguridad:", err);
+  }
+}
+
+

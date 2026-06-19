@@ -4,7 +4,7 @@ import { logout, db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings as SettingsIcon, Globe, Palette, Shield, LogOut, Smartphone, Building2, Plus, Trash2, X, Save, Edit2, Loader2, CreditCard, Info, CheckCircle, HelpCircle, ShieldCheck, User, Languages, Type, Upload, CheckCircle2 as Check, Database, Download, Sparkles, Key, ChevronLeft, ChevronRight, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, addSecurityAuditLog } from '../lib/utils';
 import { Wallet } from '../types';
 import { SYSTEM_UPDATES } from '../data/updates';
 import { ConfirmModal } from './ConfirmModal';
@@ -38,6 +38,8 @@ export function Settings() {
   // Cascading/collapsible accordion states for Privacy & Security
   const [isIdentityExpanded, setIsIdentityExpanded] = useState(false);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
+  const [isAuditLogExpanded, setIsAuditLogExpanded] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isAssistantExpanded, setIsAssistantExpanded] = useState(false);
   const [isPurgeExpanded, setIsPurgeExpanded] = useState(false);
   const [isBackupExpanded, setIsBackupExpanded] = useState(false);
@@ -78,6 +80,17 @@ export function Settings() {
       onConfirm
     });
   };
+
+  useEffect(() => {
+    if (isAuditLogExpanded) {
+      try {
+        const stored = localStorage.getItem('secure_audit_trail_v2');
+        setAuditLogs(stored ? JSON.parse(stored) : []);
+      } catch (err) {
+        setAuditLogs([]);
+      }
+    }
+  }, [isAuditLogExpanded]);
 
   const handleOpenPurgeModal = () => {
     if (!settings?.securityPin || settings.securityPin.trim().length !== 4) {
@@ -167,6 +180,7 @@ export function Settings() {
       link.download = `Copia_Seguridad_ControlFinanciero_${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
+      addSecurityAuditLog('backup_exported', 'Se generó y descargó un respaldo físico completo de la cuenta en formato estructurado JSON.');
     } catch (err: any) {
       console.error("Error exporting backup:", err);
       alert("Error al exportar la copia de seguridad: " + err.message);
@@ -227,6 +241,7 @@ export function Settings() {
       link.download = `Copia_Seguridad_ControlFinanciero_${new Date().toISOString().split('T')[0]}.xlsx`;
       link.click();
       URL.revokeObjectURL(url);
+      addSecurityAuditLog('backup_exported', 'Se exportó un respaldo completo consolidado en formato de hoja de cálculo Excel (.XLSX) con tablas de transacciones y catálogo.');
     } catch (err: any) {
       console.error("Error exporting excel backup:", err);
       alert("Error al exportar la copia de seguridad en Excel: " + err.message);
@@ -300,6 +315,7 @@ export function Settings() {
             text: `¡Restauración Excel Completada Con Éxito! Se cargaron ${importedTotal} registros desde las hojas de cálculo.`
           });
           setImportStatus('');
+          addSecurityAuditLog('backup_imported', `Restauración de base de datos satisfactoria desde archivo Excel. Se recargaron un total de ${importedTotal} registros.`);
         } catch (err: any) {
           console.error("Error importing Excel file:", err);
           setImportFeedback({
@@ -352,6 +368,7 @@ export function Settings() {
             text: `¡Restauración Completada Exitosamente! Se cargaron ${importedTotal} registros correctamente en su base de datos comercial.`
           });
           setImportStatus('');
+          addSecurityAuditLog('backup_imported', `Restauración completa realizada con éxito desde formato JSON. Se insertaron un total de ${importedTotal} entidades en Firestore.`);
         } catch (err: any) {
           console.error("Error importing backup file:", err);
           setImportFeedback({
@@ -536,6 +553,7 @@ export function Settings() {
           biometricEnabled: true,
           biometricCredentialId: b64Id
         });
+        addSecurityAuditLog('settings_changed', 'Plataforma biométrica vinculada con éxito. Se registró el ID criptográfico del sensor.');
         window.alert("¡Biometría registrada y activada correctamente!");
 
       } catch (err: any) {
@@ -553,9 +571,13 @@ export function Settings() {
         biometricEnabled: false,
         biometricCredentialId: ''
       });
+      addSecurityAuditLog('settings_changed', 'Se desactivó el método de acceso mediante lector biométrico y se purgó la clave de registro local.');
       window.alert("Biometría desactivada correctamente.");
     } else {
       await updateSettings({ [field]: value });
+      if (field === 'autoLockTimer') {
+        addSecurityAuditLog('settings_changed', `Temporizador de inactividad modificado de forma segura. Nuevo límite: ${value} minutos.`);
+      }
     }
   };
 
@@ -930,6 +952,114 @@ export function Settings() {
                         </div>
                         <p className="text-[10px] text-slate-400 font-semibold mt-1">El sistema solicitará el PIN o biometría después de transcurrido este tiempo sin registrar pulsaciones.</p>
                       </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* PANEL CASCADA NUEVO: REGISTRO DE AUDITORÍA Y SEGURIDAD OWASP */}
+            <div className={cn("rounded-2xl border overflow-hidden transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+              <button
+                type="button"
+                onClick={() => setIsAuditLogExpanded(!isAuditLogExpanded)}
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-400">Auditoría OWASP</h3>
+                    <p className={cn("text-xs font-bold sm:text-sm", isDark ? "text-slate-100" : "text-slate-800")}>Registro de Eventos y Accesos</p>
+                  </div>
+                </div>
+                {isAuditLogExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isAuditLogExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden border-t border-slate-100/10"
+                  >
+                    <div className="p-5 space-y-4">
+                      <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-500/10">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Historial de Operaciones Críticas (Máx 200)</span>
+                        {auditLogs.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm("¿Está seguro de que desea purgar permanentemente los logs de auditoría de seguridad?")) {
+                                localStorage.removeItem('secure_audit_trail_v2');
+                                setAuditLogs([]);
+                              }
+                            }}
+                            className="text-[9px] font-black uppercase tracking-wider text-red-500 hover:text-red-650 hover:underline transition-colors cursor-pointer"
+                          >
+                            Vaciar Logs
+                          </button>
+                        )}
+                      </div>
+
+                      {auditLogs.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-slate-400 font-semibold space-y-1">
+                          <p>No se registran eventos de seguridad en esta sesión.</p>
+                          <p className="text-[9px] font-medium text-slate-400">Las acciones críticas como desbloqueos o visualización de claves se guardarán aquí de inmediato.</p>
+                        </div>
+                      ) : (
+                        <div className="max-h-[350px] overflow-y-auto space-y-2.5 pr-1 font-mono text-[10px]">
+                          {auditLogs.map((log: any) => {
+                            const isFailed = log.type === 'unlock_failed';
+                            const isSuccess = log.type === 'unlock_success';
+                            const isReveal = log.type === 'credential_disclosed';
+                            const isBackup = log.type === 'backup_exported' || log.type === 'backup_imported';
+                            return (
+                              <div
+                                key={log.id}
+                                className={cn(
+                                  "p-3 rounded-xl border flex gap-3 items-start",
+                                  isDark ? "bg-slate-950/40 border-slate-850" : "bg-slate-50 border-slate-100"
+                                )}
+                              >
+                                <div className={cn(
+                                  "p-1.5 rounded-lg shrink-0 mt-0.5",
+                                  isFailed ? "bg-red-500/10 text-red-500" :
+                                  isSuccess ? "bg-emerald-500/10 text-emerald-500" :
+                                  isReveal ? "bg-indigo-500/10 text-indigo-400" :
+                                  isBackup ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-500"
+                                )}>
+                                  {isFailed ? <Shield className="w-3.5 h-3.5" /> : 
+                                   isSuccess ? <CheckCircle className="w-3.5 h-3.5" /> :
+                                   isReveal ? <Eye className="w-3.5 h-3.5" /> :
+                                   isBackup ? <Database className="w-3.5 h-3.5" /> : <Key className="w-3.5 h-3.5" />}
+                                </div>
+                                <div className="space-y-0.5 flex-1 select-text">
+                                  <div className="flex justify-between items-center gap-2">
+                                    <span className={cn(
+                                      "font-black text-[9px] uppercase tracking-wider",
+                                      isFailed ? "text-red-400" :
+                                      isSuccess ? "text-emerald-400" :
+                                      isReveal ? "text-indigo-400" :
+                                      isBackup ? "text-blue-400" : "text-amber-400"
+                                    )}>
+                                      {isFailed ? "Intento Denegado" :
+                                       isSuccess ? "Acceso Concedido" :
+                                       isReveal ? "Revelación Credencial" :
+                                       isBackup ? "Copia de Seguridad" : "Ajuste Sistema"}
+                                    </span>
+                                    <span className="text-slate-400 text-[8px] font-sans font-semibold shrink-0">{log.timestamp}</span>
+                                  </div>
+                                  <p className={cn("font-medium text-xs leading-relaxed font-sans mt-0.5", isDark ? "text-slate-300" : "text-slate-705")}>{log.description}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

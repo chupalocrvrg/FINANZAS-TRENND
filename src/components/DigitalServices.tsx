@@ -19,10 +19,12 @@ import {
   FileText,
   TrendingUp,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
-import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate } from '../lib/utils';
+import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate, addSecurityAuditLog } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
@@ -100,6 +102,8 @@ export function DigitalServices() {
   }, []);
 
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+  const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({});
   const [suppliers, setSuppliers] = useState<Entity[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [wallets, setWallets] = useState<WalletType[]>([]);
@@ -1434,9 +1438,29 @@ export function DigitalServices() {
                           </div>
                         )}
                         {service.password && (
-                          <div className="flex justify-between items-center gap-4 truncate">
+                          <div className="flex justify-between items-center gap-2 truncate">
                             <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">Clave:</span>
-                            <span className={cn("font-black select-all font-mono tracking-wider", isDark ? "text-indigo-300" : "text-slate-800")}>{service.password}</span>
+                            <div className="flex items-center gap-1.5 shrink-0 max-w-full">
+                              <span className={cn("font-black font-mono tracking-wider select-all", isDark ? "text-indigo-300" : "text-slate-800")}>
+                                {revealedPasswords[service.id] ? service.password : "••••••••"}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  const wasRevealed = !!revealedPasswords[service.id];
+                                  if (!wasRevealed) {
+                                    addSecurityAuditLog('credential_disclosed', `Revelación de contraseña del servicio de ${service.clientName || 'Cliente'} (${service.name || 'Digital'}).`);
+                                  }
+                                  setRevealedPasswords({
+                                    ...revealedPasswords,
+                                    [service.id]: !wasRevealed
+                                  });
+                                }}
+                                className="p-1 rounded hover:bg-slate-500/10 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
+                                title={revealedPasswords[service.id] ? "Ocultar Clave" : "Revelar de forma segura"}
+                              >
+                                {revealedPasswords[service.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+                            </div>
                           </div>
                         )}
                         {(service as any).profileName && (
@@ -1446,11 +1470,31 @@ export function DigitalServices() {
                           </div>
                         )}
                         {service.pin && (
-                          <div className="flex justify-between items-center gap-4">
+                          <div className="flex justify-between items-center gap-2">
                             <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">PIN / Acceso:</span>
-                            <span className={cn("font-bold bg-indigo-500/10 text-indigo-500 rounded font-mono",
-                              gridCols === 1 ? "px-2.5 py-0.5 text-base" : gridCols === 2 ? "px-1.5 py-0.3 text-sm" : "px-1 py-0.2"
-                            )}>{service.pin}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={cn("font-bold bg-indigo-500/10 text-indigo-500 rounded font-mono select-all",
+                                gridCols === 1 ? "px-2.5 py-0.5 text-base" : gridCols === 2 ? "px-1.5 py-0.3 text-sm" : "px-1 py-0.2"
+                              )}>
+                                {revealedPins[service.id] ? service.pin : "••••"}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  const wasRevealed = !!revealedPins[service.id];
+                                  if (!wasRevealed) {
+                                    addSecurityAuditLog('credential_disclosed', `Revelación de PIN del servicio de ${service.clientName || 'Cliente'} (${service.name || 'Digital'}).`);
+                                  }
+                                  setRevealedPins({
+                                    ...revealedPins,
+                                    [service.id]: !wasRevealed
+                                  });
+                                }}
+                                className="p-1 rounded hover:bg-slate-500/10 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
+                                title={revealedPins[service.id] ? "Ocultar PIN" : "Revelar PIN de acceso"}
+                              >
+                                {revealedPins[service.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>

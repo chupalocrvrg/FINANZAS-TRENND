@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Fingerprint, Lock, CheckCircle, AlertOctagon, LogOut, KeyRound, Check } from 'lucide-react';
 import { logout, signInWithGoogle } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
+import { addSecurityAuditLog } from '../lib/utils';
 
 interface LockScreenProps {
   settings: any;
@@ -65,6 +66,7 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
           setScanProgress(100);
           setBiometricStatus('success');
           setErrorMessage('');
+          addSecurityAuditLog('unlock_success', 'Acceso biométrico concedido (desbloqueado con hardware biométrico WebAuthn/FIDO).');
           setTimeout(() => {
             onUnlock();
           }, 450);
@@ -101,8 +103,10 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
       if (nextPin.length === 4) {
         const expectedPin = settings?.securityPin || '0000';
         if (nextPin === expectedPin) {
+          addSecurityAuditLog('unlock_success', 'Acceso concedido al panel mediante el uso correcto del PIN de 4 dígitos.');
           onUnlock();
         } else {
+          addSecurityAuditLog('unlock_failed', 'Intento denegado de desbloqueo: se introdujo un PIN de seguridad incorrecto.');
           setTimeout(() => {
             setErrorCount((prev) => prev + 1);
             setErrorMessage('PIN Incorrecto. Reinte de nuevo.');
@@ -136,6 +140,7 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
   const handleNewPinSubmit = async (newPinVal: string) => {
     try {
       await updateSettings({ securityPin: newPinVal });
+      addSecurityAuditLog('settings_changed', 'PIN de seguridad restablecido y guardado correctamente tras la verificación federada con Google Auth.');
       onUnlock();
     } catch (err) {
       console.error("Error al guardar nuevo PIN:", err);

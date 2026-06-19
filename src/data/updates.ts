@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_4_0_owasp_audit_logging_credential_masking",
+    version: "V6.4.0",
+    title: "V6.4.0 • Escudo de Privacidad de Credenciales, Prevención Shoulder-Surfing y Auditoría de Seguridad OWASP (A09)",
+    date: "19-Junio-2026, 10:00:00",
+    description: "Fortalece la seguridad visual mediante el enmascaramiento automático de credenciales (claves y PINs de acceso) en las fichas de servicios digitales contra miradas indiscretas, introduciendo botones de revelación temporal. Además, despliega el nuevo panel modular de Auditoría OWASP (Categoría A09:2021) que genera de manera local un rastro no repudiable de eventos críticos, registrando intentos de bloqueo, accesos exitosos/fallidos, restablecimientos y descargas de copias de seguridad.",
+    type: "security"
+  },
+  {
     id: "v_6_3_0_owasp_security_hardening",
     version: "V6.3.0",
     title: "V6.3.0 • Blindaje de Seguridad Integral OWASP (Zero-Trust, Sanitización e ID Validation)",
