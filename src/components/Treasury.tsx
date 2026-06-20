@@ -115,18 +115,9 @@ export function Treasury() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!formData.isPending && !formData.walletId) {
-      alert("Seleccione una billetera si no es un pago pendiente.");
-      return;
-    }
-    setIsSubmitting(true);
 
-    const amount = parseFloat(formData.amount) * (formData.isExpense ? -1 : 1);
-    
-    // Capture values into local scope before resetting form state to prevent race conditions
     const cat = formData.category;
     const desc = formData.description;
-    const wallId = formData.isPending ? '' : formData.walletId;
     const isRec = formData.isRecurring;
     const isPend = formData.isPending;
     const dDate = formData.dueDate;
@@ -134,9 +125,26 @@ export function Treasury() {
     const isCcPaid = formData.isCreditCardPayment;
     const tWallId = formData.targetWalletId;
 
-    const editingId = formData.id;
     const categoryLower = cat.toLowerCase();
     const isLoanFlag = categoryLower.includes('préstamo') || categoryLower.includes('prestamo');
+
+    if (!isPend && !formData.walletId) {
+      alert("Seleccione una billetera si no es un pago pendiente.");
+      return;
+    }
+    if (isLoanFlag && !formData.walletId) {
+      alert("Para registrar un préstamo, por favor seleccione la billetera u origen de fondos de donde se debitará de forma inmediata.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const amount = parseFloat(formData.amount) * (formData.isExpense ? -1 : 1);
+    
+    // Capture values into local scope before resetting form state to prevent race conditions
+    const wallId = (isPend && !isLoanFlag) ? '' : formData.walletId;
+
+    const editingId = formData.id;
 
     // Reset UI state immediately (optimistic offline-first pattern)
     setIsModalOpen(false);
@@ -160,14 +168,14 @@ export function Treasury() {
             updatedAt: new Date().toISOString()
          });
          // Revert old
-         if (!editingLedgerEntry.isPending && editingLedgerEntry.walletId) {
+         if ((!editingLedgerEntry.isPending || editingLedgerEntry.isLoan) && editingLedgerEntry.walletId) {
              await updateDoc(doc(db, 'wallets', editingLedgerEntry.walletId), { balance: increment(-editingLedgerEntry.amount) });
              if (editingLedgerEntry.isCreditCardPayment && editingLedgerEntry.targetWalletId) {
                  await updateDoc(doc(db, 'wallets', editingLedgerEntry.targetWalletId), { balance: increment(-Math.abs(editingLedgerEntry.amount)) });
              }
          }
          // Apply new
-         if (!isPend && wallId) {
+         if ((!isPend || isLoanFlag) && wallId) {
              await updateDoc(doc(db, 'wallets', wallId), { balance: increment(amount) });
              if (isCcPaid && tWallId) {
                  await updateDoc(doc(db, 'wallets', tWallId), { balance: increment(Math.abs(amount)) });
@@ -191,9 +199,9 @@ export function Treasury() {
           isCreditCardPayment: isCcPaid,
           targetWalletId: tWallId,
           createdAt: new Date().toISOString()
-        });
+         });
 
-        if (!isPend && wallId) {
+        if ((!isPend || isLoanFlag) && wallId) {
           ledgerPromise.then(async () => {
             await updateDoc(doc(db, 'wallets', wallId), {
               balance: increment(amount)

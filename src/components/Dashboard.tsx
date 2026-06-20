@@ -769,12 +769,21 @@ export function Dashboard() {
           });
         } else if (item.isLedger) {
           const ledgerRef = doc(db, 'ledger', item.id);
-          await updateDoc(ledgerRef, {
-            isPending: false,
-            walletId: selectedWalletId,
-            description: `${item.description || ''} (Saldado)`,
-            updatedAt: new Date().toISOString()
-          });
+          const itemPending = Math.abs(item.amount);
+          if (amount >= itemPending - 0.005) {
+            await updateDoc(ledgerRef, {
+              isPending: false,
+              walletId: selectedWalletId,
+              description: `${item.description || ''} (Saldado)`,
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            const newPending = itemPending - amount;
+            await updateDoc(ledgerRef, {
+              amount: -newPending,
+              updatedAt: new Date().toISOString()
+            });
+          }
         } else {
           const serviceRef = doc(db, 'digital_services', item.id);
           const newAmountPaid = (item.amountPaid || 0) + amount;
@@ -787,8 +796,9 @@ export function Dashboard() {
         }
 
         if (item.isLedger) {
+          const walletChange = isCollection ? amount : -amount;
           await updateDoc(walletRef, {
-            balance: increment(item.amount) 
+            balance: increment(walletChange) 
           });
         } else {
           const ledgerAmount = isCollection ? amount : -amount;

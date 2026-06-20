@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_5_1_loans_wallet_refinement",
+    version: "V6.5.1",
+    title: "V6.5.1 • Precisión Contable en Préstamos (Débito Inmediato y Abono de Retorno)",
+    date: "19-Junio-2026, 18:55:00",
+    description: "Corrige y perfecciona el flujo de caja para Préstamos en Tesorería. Al registrar el préstamo, el sistema ahora exige la billetera origen y deduce el dinero de inmediato (débito). Al cobrarse el préstamo de vuelta en el panel de Cuentas por Cobrar (AR), se abona (incrementa) la billetera seleccionada por el usuario con el monto devuelto, soportando adecuadamente amortizaciones parciales o totales de la cartera.",
+    type: "feature"
+  },
+  {
     id: "v_6_5_0_notification_linking_whatsapp_billing_loans",
     version: "V6.5.0",
     title: "V6.5.0 • Enrutamiento por Service Worker, Credenciales en Recoratorios de WhatsApp y Módulo de Préstamos en Tesorería",

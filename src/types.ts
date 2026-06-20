@@ -94,6 +94,7 @@ export interface LedgerEntry {
   installments?: number; // Cuotas a pagar
   isCreditCardPayment?: boolean;
   targetWalletId?: string;
+  isLoan?: boolean;
 }
 
 export interface DashboardStats {
