@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_6_0_offline_resilience_receipt_privacy",
+    version: "V6.6.0",
+    title: "V6.6.0 • Resiliencia Offline sin Internet, Contraste de Cobros y Privacidad Selectiva de Cuentas en Recibos",
+    date: "21-Junio-2026, 19:45:00",
+    description: "Despliega una arquitectura Offline robusta: el Service Worker ahora intercepta y resuelve peticiones de navegación directamente desde la caché local, y el proveedor de autenticación inicia inmediatamente desde el almacenamiento persistente los datos de usuario y preferencias si no hay cobertura de internet. Incrementa el contraste de texto/fondo del selector de cajas y entrada de saldo en el panel de Cobros. Adicionalmente, implementa el filtro de Privacidad Selectiva de Cuentas: los destinatarios liquidados o sin balances pendientes (no endeudados) ya no recibirán ni visualizarán los números de cuentas bancarias y códigos de pago en ningún formato (texto WhatsApp, imagen de alta resolución o PDF de liquidación).",
+    type: "feature"
+  },
+  {
     id: "v_6_5_1_loans_wallet_refinement",
     version: "V6.5.1",
     title: "V6.5.1 • Precisión Contable en Préstamos (Débito Inmediato y Abono de Retorno)",

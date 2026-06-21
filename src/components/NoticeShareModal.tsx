@@ -90,6 +90,8 @@ export function NoticeShareModal({
     accentColorRgb = [99, 102, 241]; // Indigo
   }
 
+  const showBankAccounts = type === 'receivable' && statusLabel === 'PENDIENTE';
+
   // Prepares standard plain text payload
   const getPlainText = () => {
     let text = `*${title.toUpperCase()}*\n`;
@@ -102,7 +104,10 @@ export function NoticeShareModal({
     });
     text += `\n*Total:* *${formatCurrency(totalAmount)}*\n`;
     if (paymentInstructions) text += `\n_${paymentInstructions}_\n`;
-    text += `\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
+    
+    if (showBankAccounts) {
+      text += `\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
+    }
     return text;
   };
 
@@ -126,14 +131,15 @@ export function NoticeShareModal({
 
     const scale = 2;
     canvas.width = 450 * scale;
-    canvas.height = (520 + Math.min(items.length, 10) * 35) * scale;
+    const computedHeight = (showBankAccounts ? 520 : 310) + Math.min(items.length, 10) * 35;
+    canvas.height = computedHeight * scale;
     
     // Reset transform & scale
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(scale, scale);
 
     const width = 450;
-    const height = 520 + Math.min(items.length, 10) * 35;
+    const height = computedHeight;
 
     // Background
     ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
@@ -253,74 +259,79 @@ export function NoticeShareModal({
     ctx.fillStyle = `rgb(${accentColorRgb[0]}, ${accentColorRgb[1]}, ${accentColorRgb[2]})`;
     ctx.fillText(formatCurrency(totalAmount), 350, currentY + 32);
 
-    // PAYMENT METHODS ON CANVAS DE CUENTAS POR COBRAR
-    currentY += 55;
-    ctx.fillStyle = isDark ? '#1e293b' : '#f8fafc';
-    ctx.beginPath();
-    ctx.roundRect(25, currentY, width - 50, 185, 6);
-    ctx.fill();
-    ctx.strokeStyle = isDark ? '#334155' : '#cbd5e1';
-    ctx.strokeRect(25, currentY, width - 50, 185);
+    if (showBankAccounts) {
+      // PAYMENT METHODS ON CANVAS DE CUENTAS POR COBRAR
+      currentY += 55;
+      ctx.fillStyle = isDark ? '#1e293b' : '#f8fafc';
+      ctx.beginPath();
+      ctx.roundRect(25, currentY, width - 50, 185, 6);
+      ctx.fill();
+      ctx.strokeStyle = isDark ? '#334155' : '#cbd5e1';
+      ctx.strokeRect(25, currentY, width - 50, 185);
 
-    ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
-    ctx.font = 'bold 9.5px sans-serif';
-    ctx.fillText('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 35, currentY + 16);
+      ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.fillText('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 35, currentY + 16);
 
-    ctx.font = 'bold italic 7.5px sans-serif';
-    ctx.fillStyle = '#4f46e5';
-    ctx.fillText('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 35, currentY + 28);
+      ctx.font = 'bold italic 7.5px sans-serif';
+      ctx.fillStyle = '#4f46e5';
+      ctx.fillText('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 35, currentY + 28);
 
-    ctx.font = 'normal 8.2px sans-serif';
-    ctx.fillStyle = isDark ? '#cbd5e1' : '#475569';
-    ctx.fillText('• Ahorros Pichincha: 2203066545', 35, currentY + 40);
-    ctx.fillText('• Ahorros Guayaquil: 0032481285', 35, currentY + 51);
-    ctx.fillText('• Ahorros Coop JEP: 406002489704', 35, currentY + 62);
-    ctx.fillText('• Binance ID: 717956622', 35, currentY + 73);
-    ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com', 35, currentY + 84);
+      ctx.font = 'normal 8.2px sans-serif';
+      ctx.fillStyle = isDark ? '#cbd5e1' : '#475569';
+      ctx.fillText('• Ahorros Pichincha: 2203066545', 35, currentY + 40);
+      ctx.fillText('• Ahorros Guayaquil: 0032481285', 35, currentY + 51);
+      ctx.fillText('• Ahorros Coop JEP: 406002489704', 35, currentY + 62);
+      ctx.fillText('• Binance ID: 717956622', 35, currentY + 73);
+      ctx.fillText('• PayPal ID: marcelogutama3eroa@gmail.com', 35, currentY + 84);
 
-    ctx.font = 'bold italic 7.5px sans-serif';
-    ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
-    ctx.fillText('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 35, currentY + 97);
+      ctx.font = 'bold italic 7.5px sans-serif';
+      ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
+      ctx.fillText('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 35, currentY + 97);
 
-    // Side-by-side QR Codes
-    if (binanceImgRef.current && qrImagesLoaded) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(80, currentY + 106, 55, 55);
-      ctx.strokeStyle = '#ca8a04';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(80, currentY + 106, 55, 55);
-      try {
-        ctx.drawImage(binanceImgRef.current, 82, currentY + 108, 51, 51);
-      } catch (err) {
-        console.error("Canvas drawImage Binance error:", err);
+      // Side-by-side QR Codes
+      if (binanceImgRef.current && qrImagesLoaded) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(80, currentY + 106, 55, 55);
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(80, currentY + 106, 55, 55);
+        try {
+          ctx.drawImage(binanceImgRef.current, 82, currentY + 108, 51, 51);
+        } catch (err) {
+          console.error("Canvas drawImage Binance error:", err);
+        }
+        ctx.fillStyle = '#ca8a04';
+        ctx.font = 'bold 7.5px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('QR BINANCE PAY', 107, currentY + 172);
       }
-      ctx.fillStyle = '#ca8a04';
-      ctx.font = 'bold 7.5px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('QR BINANCE PAY', 107, currentY + 172);
+
+      if (paypalImgRef.current && qrImagesLoaded) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(260, currentY + 106, 55, 55);
+        ctx.strokeStyle = '#003087';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(260, currentY + 106, 55, 55);
+        try {
+          ctx.drawImage(paypalImgRef.current, 262, currentY + 108, 51, 51);
+        } catch (err) {
+          console.error("Canvas drawImage PayPal error:", err);
+        }
+        ctx.fillStyle = '#003087';
+        ctx.font = 'bold 7.5px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('QR PAYPAL ME', 287, currentY + 172);
+      }
+
+      ctx.textAlign = 'left';
+      currentY += 205;
+    } else {
+      currentY += 25;
     }
 
-    if (paypalImgRef.current && qrImagesLoaded) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(260, currentY + 106, 55, 55);
-      ctx.strokeStyle = '#003087';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(260, currentY + 106, 55, 55);
-      try {
-        ctx.drawImage(paypalImgRef.current, 262, currentY + 108, 51, 51);
-      } catch (err) {
-        console.error("Canvas drawImage PayPal error:", err);
-      }
-      ctx.fillStyle = '#003087';
-      ctx.font = 'bold 7.5px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('QR PAYPAL ME', 287, currentY + 172);
-    }
-
-    ctx.textAlign = 'left';
     ctx.fillStyle = '#64748b';
     ctx.font = 'italic 8px sans-serif';
-    currentY += 205;
     ctx.fillText('Consulte los canales autorizados para transferencias.', 25, currentY);
     ctx.fillText('Comprobante digital provisto de manera segura.', 25, currentY + 11);
   };
@@ -343,16 +354,17 @@ export function NoticeShareModal({
   };
 
   const handleDownloadPDF = () => {
+    const pdfHeight = showBankAccounts ? 260 : 180;
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [110, 260] 
+      format: [110, pdfHeight] 
     });
 
     // Outer Border
     doc.setDrawColor(accentColorRgb[0], accentColorRgb[1], accentColorRgb[2]);
     doc.setLineWidth(1.2);
-    doc.rect(4, 4, 102, 252);
+    doc.rect(4, 4, 102, pdfHeight - 8);
 
     // Title / Header
     doc.setTextColor(15, 23, 42);
@@ -452,65 +464,70 @@ export function NoticeShareModal({
     doc.setTextColor(accentColorRgb[0], accentColorRgb[1], accentColorRgb[2]);
     doc.text(formatCurrency(totalAmount), 58, startY + 13);
 
-    // Payment info box in pdf de cuentas por cobrar
-    startY = Math.max(startY, 120);
-    doc.setFillColor(248, 250, 252);
-    doc.rect(10, startY + 22, 90, 60, 'F');
-    doc.setDrawColor(226, 232, 240);
-    doc.rect(10, startY + 22, 90, 60, 'D');
+    if (showBankAccounts) {
+      // Payment info box in pdf de cuentas por cobrar
+      startY = Math.max(startY, 120);
+      doc.setFillColor(248, 250, 252);
+      doc.rect(10, startY + 22, 90, 60, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(10, startY + 22, 90, 60, 'D');
 
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 14, startY + 27);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('MÉTODOS DE PAGO / CUENTAS BANCARIAS', 14, startY + 27);
 
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(6);
-    doc.setTextColor(79, 70, 229);
-    doc.text('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 14, startY + 32);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(6);
+      doc.setTextColor(79, 70, 229);
+      doc.text('Todos los depósitos, transferencias y pagos son a nombre de Marcelo Gutama', 14, startY + 32);
 
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('• Pichincha Ahorros: 2203066545', 14, startY + 37);
-    doc.text('• Guayaquil Ahorros: 0032481285', 14, startY + 42);
-    doc.text('• Coop JEP Ahorros: 406002489704', 14, startY + 47);
-    doc.text('• Binance ID: 717956622', 14, startY + 52);
-    doc.text('• PayPal ID: marcelogutama3eroa@gmail.com', 14, startY + 57);
+      doc.setFont('Helvetica', 'normal');
+      doc.setTextColor(51, 65, 85);
+      doc.text('• Pichincha Ahorros: 2203066545', 14, startY + 37);
+      doc.text('• Guayaquil Ahorros: 0032481285', 14, startY + 42);
+      doc.text('• Coop JEP Ahorros: 406002489704', 14, startY + 47);
+      doc.text('• Binance ID: 717956622', 14, startY + 52);
+      doc.text('• PayPal ID: marcelogutama3eroa@gmail.com', 14, startY + 57);
 
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 14, startY + 63);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Una vez hecho el depósito, transferencia o pago envíe la foto para corroborar.', 14, startY + 63);
 
-    // QRs on PDF
-    if (binanceImgRef.current && qrImagesLoaded) {
-      try {
-        doc.addImage(binanceImgRef.current, 'PNG', 20, startY + 66, 11, 11);
-        doc.setFontSize(4.5);
-        doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(202, 138, 4); // Binance Pay Golden Yellow
-        doc.text('QR BINANCE PAY', 25.5, startY + 79, { align: 'center' });
-      } catch (err) {
-        console.error("Error drawing PDF QR Binance:", err);
+      // QRs on PDF
+      if (binanceImgRef.current && qrImagesLoaded) {
+        try {
+          doc.addImage(binanceImgRef.current, 'PNG', 20, startY + 66, 11, 11);
+          doc.setFontSize(4.5);
+          doc.setFont('Helvetica', 'bold');
+          doc.setTextColor(202, 138, 4); // Binance Pay Golden Yellow
+          doc.text('QR BINANCE PAY', 25.5, startY + 79, { align: 'center' });
+        } catch (err) {
+          console.error("Error drawing PDF QR Binance:", err);
+        }
       }
-    }
-    if (paypalImgRef.current && qrImagesLoaded) {
-      try {
-        doc.addImage(paypalImgRef.current, 'PNG', 62, startY + 66, 11, 11);
-        doc.setFontSize(4.5);
-        doc.setFont('Helvetica', 'bold');
-        doc.setTextColor(0, 48, 135); // PayPal Deep Blue
-        doc.text('QR PAYPAL ME', 67.5, startY + 79, { align: 'center' });
-      } catch (err) {
-        console.error("Error drawing PDF QR PayPal:", err);
+      if (paypalImgRef.current && qrImagesLoaded) {
+        try {
+          doc.addImage(paypalImgRef.current, 'PNG', 62, startY + 66, 11, 11);
+          doc.setFontSize(4.5);
+          doc.setFont('Helvetica', 'bold');
+          doc.setTextColor(0, 48, 135); // PayPal Deep Blue
+          doc.text('QR PAYPAL ME', 67.5, startY + 79, { align: 'center' });
+        } catch (err) {
+          console.error("Error drawing PDF QR PayPal:", err);
+        }
       }
+      startY += 84;
+    } else {
+      startY += 10;
     }
 
     // Footnotes
     doc.setFont('Helvetica', 'oblique');
     doc.setFontSize(6.5);
     doc.setTextColor(148, 163, 184);
-    doc.text('No corresponde a una factura fiscal de bienes.', 10, startY + 89);
-    doc.text('Documento emitido dinámicamente y firmado de forma íntegra.', 10, startY + 92);
+    doc.text('No corresponde a una factura fiscal de bienes.', 10, startY + 5);
+    doc.text('Documento emitido dinámicamente y firmado de forma íntegra.', 10, startY + 8);
 
     doc.save(`Notificacion_${recipientName.replace(/\s+/g, '_')}.pdf`);
   };

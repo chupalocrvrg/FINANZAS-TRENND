@@ -1682,7 +1682,7 @@ export function Dashboard() {
                         max={paymentTarget.item.pendingAmount}
                         value={paymentAmount}
                         onChange={(e) => setPaymentAmount(e.target.value)}
-                        className="w-full text-xs font-black p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full text-xs font-black p-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
 
@@ -1693,11 +1693,11 @@ export function Dashboard() {
                       <select
                         value={selectedWalletId}
                         onChange={(e) => setSelectedWalletId(e.target.value)}
-                        className="w-full text-xs font-black p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full text-xs font-black p-2.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
-                        <option value="">-- Elige una billetera --</option>
+                        <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">-- Elige una billetera --</option>
                         {wallets.map(w => (
-                          <option key={w.id} value={w.id}>
+                          <option key={w.id} value={w.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                             {w.name} (Saldo: {formatCurrency(w.balance)})
                           </option>
                         ))}

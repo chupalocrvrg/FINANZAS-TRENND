@@ -34,8 +34,24 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Always return /index.html for navigation requests offline
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('/index.html').then((cachedResponse) => {
+         return cachedResponse || fetch(event.request).catch(() => caches.match('/index.html'));
+      })
+    );
+    return;
+  }
+
   // Skip api requests, Firestore sockets or Firebase-auth calls
-  if (event.request.method !== 'GET' || url.pathname.startsWith('/api') || !url.pathname.match(/\.(html|js|css|png|jpg|jpeg|svg|woff2|json|webmanifest)$/) && url.pathname !== '/') {
+  if (event.request.method !== 'GET' || url.pathname.startsWith('/api') || url.hostname.includes('firestore') || url.hostname.includes('firebase')) {
+    return;
+  }
+
+  // Check file extensions and cache dynamic assets from our own hostname
+  const isMatchableExtension = url.pathname.match(/\.(html|js|css|png|jpg|jpeg|svg|woff2|json|webmanifest)$/) || url.pathname === '/';
+  if (!isMatchableExtension && url.hostname !== self.location.hostname) {
     return;
   }
 
@@ -51,7 +67,13 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      return fetch(event.request).catch(() => {
+      return fetch(event.request).then((networkResponse) => {
+        if (networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        }
+        return networkResponse;
+      }).catch(() => {
         if (event.request.mode === 'navigate') {
           return caches.match('/index.html');
         }

@@ -41,16 +41,46 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem('auth_cached_user');
+      if (cached) {
+        return JSON.parse(cached) as User;
+      }
+    } catch (e) {
+      console.warn("Failed parsing cached auth user:", e);
+    }
+    return null;
+  });
   const [impersonatedUser, setImpersonatedUser] = useState<{ uid: string; email: string; displayName: string } | null>(null);
-  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [settings, setSettings] = useState<UserSettings | null>(() => {
+    try {
+      const cached = localStorage.getItem('auth_cached_settings');
+      if (cached) {
+        return JSON.parse(cached) as UserSettings;
+      }
+    } catch (e) {
+      console.warn("Failed parsing cached settings:", e);
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
   const [onboarding, setOnboarding] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (!u) {
+      if (u) {
+        const minimalUser = {
+          uid: u.uid,
+          email: u.email || '',
+          displayName: u.displayName || '',
+          photoURL: u.photoURL || null
+        };
+        localStorage.setItem('auth_cached_user', JSON.stringify(minimalUser));
+      } else {
+        localStorage.removeItem('auth_cached_user');
+        localStorage.removeItem('auth_cached_settings');
         setImpersonatedUser(null);
         setSettings(null);
         setLoading(false);
@@ -74,10 +104,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setLoading(true);
     const settingsRef = doc(db, 'users', targetUid);
+
+    // If offline, check if settings cache exists for this target user and load immediately
+    const cachedSettingsStr = localStorage.getItem('auth_cached_settings');
+    if (cachedSettingsStr) {
+      try {
+        const cached = JSON.parse(cachedSettingsStr) as UserSettings;
+        if (cached && cached.uid === targetUid) {
+          setSettings(cached);
+          setOnboarding(!cached.isOnboarded);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.warn("Failed parsing cached settings local fallback:", e);
+      }
+    }
+
     const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as UserSettings;
         setSettings(data);
+        localStorage.setItem('auth_cached_settings', JSON.stringify(data));
         setOnboarding(!data.isOnboarded);
       } else {
         // Documento de configuración inicial
@@ -104,11 +151,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setDoc(settingsRef, initialSettings);
         setSettings(initialSettings);
+        localStorage.setItem('auth_cached_settings', JSON.stringify(initialSettings));
         setOnboarding(true);
       }
       setLoading(false);
     }, (error) => {
-       console.error("Firestore settings error:", error);
+       console.error("Firestore settings error, using cache if available:", error);
+       const fallbackStr = localStorage.getItem('auth_cached_settings');
+       if (fallbackStr) {
+         try {
+           const cached = JSON.parse(fallbackStr) as UserSettings;
+           setSettings(cached);
+           setOnboarding(!cached.isOnboarded);
+         } catch (e) {
+           console.error("Failed to parse fallback cached settings", e);
+         }
+       }
        setLoading(false);
     });
 
