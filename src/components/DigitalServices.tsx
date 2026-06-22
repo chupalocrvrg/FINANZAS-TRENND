@@ -782,14 +782,14 @@ export function DigitalServices() {
 
   const categories = ['Streaming', 'Música', 'Gaming', 'Software', 'Otros'];
 
-  // Determinar si una suscripción está por expirar (en los próximos 5 días)
+  // Determinar si una suscripción está por expirar (en los próximos 2 días)
   const isExpiringSoon = (expDate?: string) => {
     if (!expDate) return false;
     const now = new Date();
     const expiry = new Date(expDate);
     const diffTime = expiry.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 && diffDays <= 5;
+    return diffDays >= 0 && diffDays <= 2;
   };
 
   // Enviar mensaje de recordatorio de cobro/corte por WhatsApp

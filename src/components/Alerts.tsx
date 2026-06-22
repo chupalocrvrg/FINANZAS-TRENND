@@ -127,7 +127,7 @@ export function Alerts() {
             const diffTime = expiry.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
-            return diffDays <= 3; // Expira pronto o ya expiró
+            return diffDays <= 2; // Expira pronto o ya expiró (máximo 2 días de anticipación)
           }).map(ser => {
             const expDate = new Date(ser.expirationDate);
             const isOverdu = expDate < now || ser.status === 'expired';

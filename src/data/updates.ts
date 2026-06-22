@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_6_1_expiration_warning_threshold_refinement",
+    version: "V6.6.1",
+    title: "V6.6.1 • Optimización del Umbral de Anticipación para Alertas de Cuentas por Vencer",
+    date: "21-Junio-2026, 18:00:00",
+    description: "Ajusta con precisión milimétrica el sistema de alertas tempranas de vencimiento. Modifica los umbrales de anticipación a un máximo estricto de 2 días de antelación previo a la fecha de corte, alineando de forma íntegra las notificaciones push locales, el popover de resumen y el estado cromático de aviso en el módulo de suscripciones digitales.",
+    type: "feature"
+  },
+  {
     id: "v_6_6_0_offline_resilience_receipt_privacy",
     version: "V6.6.0",
     title: "V6.6.0 • Resiliencia Offline sin Internet, Contraste de Cobros y Privacidad Selectiva de Cuentas en Recibos",

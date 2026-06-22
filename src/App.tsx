@@ -283,7 +283,7 @@ export default function App() {
 
           const isOverduOrExp = ser.status === 'expired' || (diffDays !== -999 && diffDays < 0);
 
-          if (isOverduOrExp || (diffDays !== -999 && diffDays <= 3)) {
+          if (isOverduOrExp || (diffDays !== -999 && diffDays <= 2)) {
             count++;
 
             const sessionNotifKey = `notified_expired_${ser.id}`;

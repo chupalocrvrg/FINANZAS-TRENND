@@ -86,7 +86,7 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
             const expiry = new Date(ser.expirationDate);
             const diffTime = expiry.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays <= 3;
+            return diffDays <= 2;
           }).map(ser => {
             const expDate = new Date(ser.expirationDate);
             const isOverdu = expDate < now || ser.status === 'expired';
