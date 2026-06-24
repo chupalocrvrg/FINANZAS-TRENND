@@ -35,5 +35,5 @@ export function FixDb({ user }: { user: any }) {
     fix();
   }, [user]);
 
-  return <div style={{position: 'fixed', bottom: 10, left: 10, background: 'black', color: 'lime', padding: 10, zIndex: 99999, borderRadius: 8}}>{status}</div>;
+  return null;
 }

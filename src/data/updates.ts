@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_7_2_ai_assistant_key_config_removed",
+    version: "V6.7.2",
+    title: "V6.7.2 • Centralización de Clave API y Correcciones Visuales",
+    date: "24-Junio-2026, 13:45:00",
+    description: "Se ha eliminado la opción de agregar la clave de API directamente en la interfaz del asistente para simplificarla. La configuración ahora se realiza exclusivamente desde el menú de Configuración. También se removió un mensaje emergente de mantenimiento que se mostraba en la interfaz.",
+    type: "feature"
+  },
+  {
     id: "v_6_7_1_ai_assistant_fab_restored",
     version: "V6.7.1",
     title: "V6.7.1 • Restauración del Botón Flotante para Asistente Inteligente",
