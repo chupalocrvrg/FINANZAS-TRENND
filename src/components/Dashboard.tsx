@@ -318,7 +318,7 @@ export function Dashboard() {
 
         // Add Ledger Entry
         await addDoc(collection(db, 'ledger'), {
-          type: 'business',
+          type: quickAddType === 'income' ? 'income' : 'expense',
           category: fabLedgerCategory || (quickAddType === 'income' ? 'Ingreso Adicional' : 'Egreso de Caja'),
           amount: signedAmount,
           description: fabLedgerDescription,
@@ -725,6 +725,7 @@ export function Dashboard() {
 
         await addDoc(collection(db, 'ledger'), {
           amount: ledgerAmount,
+          type: isCollection ? 'income' : 'expense',
           category: categoryLabel,
           description: descriptionLabel,
           date: new Date().toISOString().split('T')[0],
@@ -811,6 +812,7 @@ export function Dashboard() {
 
           await addDoc(collection(db, 'ledger'), {
             amount: ledgerAmount,
+            type: isCollection ? 'income' : 'expense',
             category: categoryLabel,
             description: descriptionLabel,
             date: new Date().toISOString().split('T')[0],
@@ -905,6 +907,7 @@ export function Dashboard() {
         // Add Ledger
         await addDoc(collection(db, 'ledger'), {
           amount: amountToPay,
+          type: 'income',
           category: 'Recaudo de Servicio Digital',
           description: `Cobro adelantado vía Calendario: ${s.name} - ${s.clientName}`,
           date: new Date().toISOString().split('T')[0],

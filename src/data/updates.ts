@@ -9,6 +9,38 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_6_7_1_ai_assistant_fab_restored",
+    version: "V6.7.1",
+    title: "V6.7.1 • Restauración del Botón Flotante para Asistente Inteligente",
+    date: "24-Junio-2026, 12:22:00",
+    description: "Se ha restaurado el botón flotante dedicado exclusivamente al Asistente Inteligente (IA), luego de remover las otras funcionalidades del botón principal.",
+    type: "feature"
+  },
+  {
+    id: "v_6_7_0_quickadd_removal",
+    version: "V6.7.0",
+    title: "V6.7.0 • Remoción de Botón Flotante (Quick Add)",
+    date: "24-Junio-2026, 12:17:00",
+    description: "Se ha eliminado el componente Botón Flotante (Quick Add) por solicitud del usuario para simplificar la interfaz. Se mantiene únicamente el Asistente Inteligente (IA) como botón flotante de acciones avanzadas.",
+    type: "feature"
+  },
+  {
+    id: "v_6_6_3_quick_add_wallet_sync_fix",
+    version: "V6.6.3",
+    title: "V6.6.3 • Sincronización Automática de Tesorería en Módulo Rápido",
+    date: "24-Junio-2026, 11:47:00",
+    description: "Corrección y optimización del Botón Flotante Inteligente. Las ventas (Servicios Digitales y Trámites ANT) ahora detectan automáticamente intención de pago en lenguaje natural ('pagado', 'transferencia', 'cancelado') y habilitan un selector de caja destino. Adicionalmente, se integra un script de auto-reparación en tiempo real que sincroniza las ventas del día actual con su respectiva caja principal.",
+    type: "feature"
+  },
+  {
+    id: "v_6_6_2_pdf_accounts_receivable_sync",
+    version: "V6.6.2",
+    title: "V6.6.2 • Sincronización Integral de Cuentas por Cobrar en Estados de Cuenta PDF",
+    date: "24-Junio-2026, 11:45:00",
+    description: "Expande la estructura del motor de reportes en PDF (Estados de Cuenta) para consolidar y visualizar absolutamente todas las cuentas por cobrar pendientes. Ahora, el reporte final correlaciona de forma unificada las ventas de servicios digitales, préstamos directos y trámites ingresados mediante el Botón Flotante (Quick Add) que aún no han sido liquidados, otorgando un estado financiero exacto y transparente.",
+    type: "feature"
+  },
+  {
     id: "v_6_6_1_expiration_warning_threshold_refinement",
     version: "V6.6.1",
     title: "V6.6.1 • Optimización del Umbral de Anticipación para Alertas de Cuentas por Vencer",

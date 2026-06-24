@@ -16,11 +16,11 @@ import { Reports } from './components/Reports';
 import { Login } from './components/Login';
 import { Onboarding } from './components/Onboarding';
 import { AIAssistant } from './components/AIAssistant';
-import { QuickAddFAB } from './components/QuickAddFAB';
 import { LockScreen } from './components/LockScreen';
 import { WelcomeUpdateModal } from './components/WelcomeUpdateModal';
 import { TutorialModal } from './components/TutorialModal';
 import { ReportSelectorModal } from './components/ReportSelectorModal';
+import { FixDb } from './fixDb';
 import { AsyncRunner } from './lib/asyncRunner';
 import { useAuth } from './lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -550,8 +550,8 @@ export default function App() {
           </AnimatePresence>
         </div>
         {!settings?.disabledFeatures?.includes('ai_assistant') && <AIAssistant />}
-        <QuickAddFAB />
         <WelcomeUpdateModal theme={settings?.theme} />
+        <FixDb user={user} />
         <TutorialModal />
         <ReportSelectorModal 
           isOpen={isReportModalOpen}

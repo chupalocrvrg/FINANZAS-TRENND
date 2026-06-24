@@ -89,7 +89,11 @@ export const generateBalanceSheetPDF = async (userId: string, companyName: strin
     .filter((ds: any) => !ds.isPaid)
     .reduce((sum: number, ds: any) => sum + ((ds.revenue || 0) - (ds.amountPaid || 0)), 0);
 
-  const totalReceivables = pendingTxReceivables + pendingDsReceivables;
+  const pendingLedgerReceivables = ledgerEntries
+    .filter((e: any) => e.isPending && (e.isLoan || e.category?.toLowerCase().includes('préstamo') || e.category?.toLowerCase().includes('prestamo')))
+    .reduce((sum: number, e: any) => sum + Math.abs(e.amount), 0);
+
+  const totalReceivables = pendingTxReceivables + pendingDsReceivables + pendingLedgerReceivables;
 
   // Payables (Cuentas por Pagar & Costos Pendientes)
   const pendingTxPayables = transactions
@@ -397,18 +401,43 @@ export const generateBalanceSheetPDF = async (userId: string, companyName: strin
   }
 
   // --- LAST PAGE: OUTSTANDING ACCOUNTS RECEIVABLES ---
-  const pendingTx = transactions.filter((tx: any) => !tx.isPaid);
-  if (pendingTx.length > 0) {
+  const allPendingReceivables: any[] = [];
+  
+  transactions.filter((tx: any) => !tx.isPaid).forEach((tx: any) => {
+    allPendingReceivables.push({
+      ref: tx.intermediaryName || 'Venta ANT',
+      client: tx.finalClientName || 'S/N',
+      amount: (tx.chargedRate || 0) - (tx.amountPaid || 0)
+    });
+  });
+
+  digitalServices.filter((ds: any) => !ds.isPaid).forEach((ds: any) => {
+    allPendingReceivables.push({
+      ref: ds.name || 'Servicio Digital',
+      client: ds.clientName || 'S/N',
+      amount: (ds.revenue || 0) - (ds.amountPaid || 0)
+    });
+  });
+
+  ledgerEntries.filter((e: any) => e.isPending && (e.isLoan || e.category?.toLowerCase().includes('préstamo') || e.category?.toLowerCase().includes('prestamo'))).forEach((e: any) => {
+    allPendingReceivables.push({
+      ref: 'Préstamo / Crédito',
+      client: e.description || 'Prestatario',
+      amount: Math.abs(e.amount)
+    });
+  });
+
+  if (allPendingReceivables.length > 0) {
     doc.addPage();
     doc.setFontSize(14);
-    doc.text('Cuentas por Cobrar Pendientes (Actualizaciones y Otros)', 14, 20);
+    doc.text('Cuentas por Cobrar Pendientes (CRM, Suscripciones, Préstamos)', 14, 20);
     autoTable(doc, {
       startY: 25,
       head: [['Origen / Ref', 'Cliente Final', 'Monto Pendiente']],
-      body: pendingTx.map(tx => [
-        tx.intermediaryName, 
-        tx.finalClientName, 
-        formatCurrency((tx.chargedRate || 0) - (tx.amountPaid || 0))
+      body: allPendingReceivables.map(rx => [
+        rx.ref, 
+        rx.client, 
+        formatCurrency(rx.amount)
       ]),
       theme: 'striped',
       headStyles: { fillColor: [16, 185, 129] }

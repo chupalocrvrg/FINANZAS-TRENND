@@ -290,6 +290,7 @@ export function Transactions() {
       // 2. Add Audit Ledger Record
       await addDoc(collection(db, 'ledger'), {
         amount: amount,
+        type: 'income',
         category: 'Cobro de Actualización ANT',
         description: `${fullyPaid ? 'Cobro Total' : 'Cobro Parcial'} por actualización ANT de ${paymentTx.finalClientName} (${paymentTx.intermediaryName})`,
         walletId: targetWalletId,

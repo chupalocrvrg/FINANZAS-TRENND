@@ -155,6 +155,7 @@ export function ServiceRenewalModal({
       if (clientPaymentType === 'paid' && clientWalletId) {
         await addDoc(collection(db, 'ledger'), {
           amount: parsedPrice,
+          type: 'income',
           category: 'Venta de Servicio Digital',
           description: `Cobro Renovación ${selectedMonths / 30} mes(es): ${service.name} de ${service.clientName || 'Cliente'}`,
           date: getGMT5DateString(),
@@ -173,6 +174,7 @@ export function ServiceRenewalModal({
       if (supplierPaymentType === 'paid' && supplierWalletId) {
         await addDoc(collection(db, 'ledger'), {
           amount: -parsedCost,
+          type: 'expense',
           category: 'Costo de Servicio Digital',
           description: `Pago Costo Renovación ${selectedMonths / 30} mes(es) a proveedor: ${service.name} de ${service.clientName || 'Cliente'}`,
           date: getGMT5DateString(),

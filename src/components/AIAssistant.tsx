@@ -2102,6 +2102,7 @@ export function AIAssistant() {
       if (data.isPaid && data.revenueWalletId) {
         await addDoc(collection(db, 'ledger'), {
           amount: Number(data.revenue),
+          type: 'income',
           category: 'Venta de Servicio Digital',
           description: `Cobro de ${data.name} a ${finalClient} (Vía Asistente AI)`,
           date: new Date().toISOString().split('T')[0],
@@ -2120,6 +2121,7 @@ export function AIAssistant() {
       if (data.isCostPaid && data.costWalletId) {
         await addDoc(collection(db, 'ledger'), {
           amount: -Number(data.cost),
+          type: 'expense',
           category: 'Costo de Servicio Digital',
           description: `Pago de costo por ${data.name} a proveedor (Vía Asistente AI)`,
           date: new Date().toISOString().split('T')[0],
@@ -2609,6 +2611,21 @@ export function AIAssistant() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Floating Action Button for AI Assistant */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "fixed bottom-6 right-6 lg:bottom-10 lg:right-10 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-40 transition-all duration-300",
+          isDark ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"
+        )}
+      >
+        <Sparkles className="w-6 h-6" />
+      </motion.button>
     </>
   );
 }

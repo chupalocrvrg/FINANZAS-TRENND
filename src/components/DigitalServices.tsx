@@ -469,6 +469,7 @@ export function DigitalServices() {
           try {
             await addDoc(collection(db, 'ledger'), {
               amount: parseFloat(formData.revenue) || 0,
+              type: 'income',
               category: 'Venta de Servicio Digital',
               description: `Cobro de ${formData.name} a ${formData.clientName || 'Cliente'}`,
               date: new Date().toISOString().split('T')[0],
@@ -491,6 +492,7 @@ export function DigitalServices() {
           try {
             await addDoc(collection(db, 'ledger'), {
               amount: -(parseFloat(formData.cost) || 0),
+              type: 'expense',
               category: 'Costo de Servicio Digital',
               description: `Pago de costo por ${formData.name} a proveedor`,
               date: new Date().toISOString().split('T')[0],
@@ -646,6 +648,7 @@ export function DigitalServices() {
         
         await addDoc(collection(db, 'ledger'), {
           amount: amount,
+          type: 'income',
           category: 'Venta de Servicio Digital',
           description: `Cobro parcial de ${formatCurrency(amount)} por ${paymentService.name} a ${paymentService.clientName || 'Cliente'}`,
           date: new Date().toISOString().split('T')[0],
@@ -674,6 +677,7 @@ export function DigitalServices() {
         
         await addDoc(collection(db, 'ledger'), {
           amount: -amount,
+          type: 'expense',
           category: 'Costo de Servicio Digital',
           description: `Pago parcial de costo por ${formatCurrency(amount)}: de ${paymentService.name} a proveedor`,
           date: new Date().toISOString().split('T')[0],
@@ -872,6 +876,7 @@ export function DigitalServices() {
               if (defaultWallet && pendingAmt > 0) {
                 await addDoc(collection(db, 'ledger'), {
                   amount: pendingAmt,
+                  type: 'income',
                   category: 'Recaudo de Servicio Digital',
                   description: `Pago completo masivo de suscripción para ${s.clientName || 'Cliente'}: ${s.name}`,
                   date: new Date().toISOString().split('T')[0],
