@@ -22,6 +22,7 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 import { useTranslation } from '../lib/translations';
 import { ConfirmModal } from './ConfirmModal';
 import { sanitizeString, checkRateLimit } from '../lib/security';
+import { generateSecureToken, getClientPortalUrl } from './ClientPublicPortal';
 
 export function CRM() {
   const { user, settings } = useAuth();
@@ -414,13 +415,27 @@ export function CRM() {
                   </button>
                   {entity.contact && (
                     <a 
-                      href={generateWhatsAppUrl(entity.contact, `Hola ${entity.name}, le escribe Control Financiero.`)}
+                      href={generateWhatsAppUrl(entity.contact, `Hola *${entity.name}*, te comparto tu Portal de Consulta Online donde puedes ver tus servicios activos, claves de acceso y saldos actualizados en tiempo real: ${getClientPortalUrl(user?.uid || '', entity.name || '', entities)}`)}
                       target="_blank"
                       rel="noreferrer"
-                      className={cn("p-2.5 rounded-xl transition-colors border", isDark ? "bg-emerald-950/20 text-emerald-500 border-emerald-900/50" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-100 shadow-sm shadow-emerald-500/10")}
+                      title="Compartir Estado de Cuenta por WhatsApp"
+                      className={cn("p-2.5 rounded-xl transition-colors border flex items-center justify-center", isDark ? "bg-emerald-950/20 text-emerald-500 border-emerald-900/50" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-100 shadow-sm shadow-emerald-500/10")}
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>
+                  )}
+                  {entity.type !== 'supplier' && (
+                    <button 
+                      onClick={() => {
+                        const portalUrl = getClientPortalUrl(user?.uid || '', entity.name || '', entities);
+                        navigator.clipboard.writeText(portalUrl);
+                        alert(`Enlace de portal general copiado para: ${entity.name}`);
+                      }}
+                      title="Copiar Enlace de Portal de Cliente"
+                      className={cn("p-2.5 rounded-xl transition-colors border flex items-center justify-center text-indigo-400 hover:text-indigo-300", isDark ? "bg-slate-900 border-slate-800" : "bg-slate-100 border-slate-200")}
+                    >
+                      <span className="text-xs font-black">🔗</span>
+                    </button>
                   )}
                   <button 
                     onClick={() => handleDelete(entity.id)}

@@ -9,6 +9,38 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_2_0_payment_gateways_and_randomized_portal",
+    version: "V7.2.0",
+    title: "V7.2.0 • Métodos de Pago Flexibles, Enlaces de Portal Ofuscados y QR Scanner Autonómo",
+    date: "01-Julio-2026, 06:10:00",
+    description: "Se integró soporte multi-moneda y pasarelas de cobro personalizadas en Ajustes (Mejora 1) donde los comercios configuran sus números de cuenta o enlaces de Binance Pay y PayPal. Para máxima seguridad de datos (Mejora 2), se reemplazó la estructura de enlaces públicos legibles por tokens de acceso de un solo uso ofuscados, vinculando automáticamente cada cliente a su propio identificador único aleatorio e indescifrable en Firestore. Finalmente, se diseñó el nuevo generador interactivo de Códigos QR de Pago (Mejora 4) para escaneos directos sin dependencias, acelerando la conciliación de saldos.",
+    type: "feature"
+  },
+  {
+    id: "v_7_1_0_security_signatures_and_branding",
+    version: "V7.1.0",
+    title: "V7.1.0 • Seguridad Avanzada, Firma Digital de Enlaces y Personalización de Marca",
+    date: "01-Julio-2026, 05:45:00",
+    description: "Se implementó un motor de firma criptográfica local para proteger los enlaces del portal público de clientes (anti-peeking), impidiendo que se modifiquen parámetros de consulta para ver información ajena. Asimismo, se integró personalización de marca inteligente que carga dinámicamente el logotipo y el nombre de la tienda del comercio en la cabecera del portal. Finalmente, se diseñó la nueva plantilla ultra-reducida y estética de WhatsApp con soporte para negritas nativas y emojis informativos para el envío de cuentas.",
+    type: "security"
+  },
+  {
+    id: "v_7_0_0_client_public_portal",
+    version: "V7.0.0",
+    title: "V7.0.0 • Lanzamiento de Portal de Consulta de Clientes y Recibos Online",
+    date: "01-Julio-2026, 04:45:00",
+    description: "Se diseñó y desplegó el nuevo Portal Público de Consulta para Clientes y comprobantes online. Este portal permite a los clientes finales consultar en tiempo real el estado detallado de todas sus cuentas, visualizar credenciales de acceso de forma segura contra miradas indiscretas, y revisar todas las cuentas por cobrar pendientes (servicios digitales, trámites ANT y préstamos personales en curso). Adicionalmente, se habilitó la emisión y descarga de recibos digitales de caja y estados de cuenta en PDF directamente en el cliente, eliminando la necesidad de adjuntar o transferir archivos PDF pesados por WhatsApp.",
+    type: "feature"
+  },
+  {
+    id: "v_6_8_0_advanced_filters_and_offline_fixes",
+    version: "V6.8.0",
+    title: "V6.8.0 • Filtros Avanzados de Búsqueda y Estabilización Offline",
+    date: "30-Junio-2026, 21:55:00",
+    description: "Se implementó un completo motor de filtros avanzados en la sección de búsqueda de Servicios Digitales, permitiendo filtrar de forma precisa por proveedor, producto, rangos de fecha de corte o vencimiento, y fecha de venta/registro. Adicionalmente, se robusteció la estabilidad del modo offline al remover importaciones dinámicas de Firestore en eventos y asegurar que las notificaciones locales se ejecuten de manera no bloqueante, evitando que el sistema quede en estados de carga permanentes.",
+    type: "feature"
+  },
+  {
     id: "v_6_7_2_ai_assistant_key_config_removed",
     version: "V6.7.2",
     title: "V6.7.2 • Centralización de Clave API y Correcciones Visuales",

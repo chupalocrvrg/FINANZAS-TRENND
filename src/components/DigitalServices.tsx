@@ -21,7 +21,10 @@ import {
   Calendar,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Filter,
+  RotateCcw,
+  Link
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
 import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate, addSecurityAuditLog } from '../lib/utils';
@@ -32,6 +35,7 @@ import { Wallet as WalletType } from '../types';
 import { sendLocalPushNotification } from '../lib/notifications';
 import { ConfirmModal } from './ConfirmModal';
 import { ServiceRenewalModal } from './ServiceRenewalModal';
+import { generateSecureToken, getClientPortalUrl } from './ClientPublicPortal';
 
 interface Entity {
   id: string;
@@ -197,6 +201,15 @@ export function DigitalServices() {
 
   // Expiration / status filter for contract management
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired'>('all');
+
+  // Advanced Filter States
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [filterSupplierId, setFilterSupplierId] = useState<string>('');
+  const [filterServiceName, setFilterServiceName] = useState<string>('');
+  const [filterCutoffStart, setFilterCutoffStart] = useState<string>('');
+  const [filterCutoffEnd, setFilterCutoffEnd] = useState<string>('');
+  const [filterSaleStart, setFilterSaleStart] = useState<string>('');
+  const [filterSaleEnd, setFilterSaleEnd] = useState<string>('');
 
   const [formData, setFormData] = useState({
     id: '', // for edit mode
@@ -453,7 +466,6 @@ export function DigitalServices() {
 
       if (formData.id) {
         // Edit Mode
-        const { updateDoc, doc } = await import('firebase/firestore');
         await updateDoc(doc(db, 'digital_services', formData.id), serviceData);
         await logServiceHistory(formData.id, 'updated', serviceData);
       } else {
@@ -478,7 +490,6 @@ export function DigitalServices() {
               ownerId: user.uid,
               createdAt: new Date().toISOString()
             });
-            const { doc, updateDoc, increment } = await import('firebase/firestore');
             await updateDoc(doc(db, 'wallets', formData.revenueWalletId), {
               balance: increment(parseFloat(formData.revenue) || 0)
             });
@@ -501,7 +512,6 @@ export function DigitalServices() {
               ownerId: user.uid,
               createdAt: new Date().toISOString()
             });
-            const { doc, updateDoc, increment } = await import('firebase/firestore');
             await updateDoc(doc(db, 'wallets', formData.costWalletId), {
               balance: increment(-(parseFloat(formData.cost) || 0))
             });
@@ -603,7 +613,6 @@ export function DigitalServices() {
   const handleToggleStatus = async (service: DigitalServiceItem) => {
     try {
       const nextStatus = service.status === 'active' ? 'expired' : 'active';
-      const { updateDoc, doc } = await import('firebase/firestore');
       await updateDoc(doc(db, 'digital_services', service.id), {
         status: nextStatus,
         updatedAt: new Date().toISOString()
@@ -632,8 +641,6 @@ export function DigitalServices() {
 
     setIsProcessingPayment(true);
     try {
-      const { updateDoc, doc, addDoc, collection, increment } = await import('firebase/firestore');
-      
       if (paymentType === 'revenue') {
         const newAmountPaid = (paymentService.amountPaid || 0) + amount;
         const fullyPaid = newAmountPaid >= paymentService.revenue - 0.005;
@@ -721,7 +728,6 @@ export function DigitalServices() {
         newDateStr = fallbackDate.toISOString().split('T')[0];
       }
 
-      const { updateDoc, doc } = await import('firebase/firestore');
       await updateDoc(doc(db, 'digital_services', service.id), {
         status: 'active',
         expirationDate: newDateStr,
@@ -804,7 +810,19 @@ export function DigitalServices() {
       alert(`No se encontró número registrado para "${service.clientName || 'el cliente'}". Por favor edite el servicio y guarde su número.`);
       return;
     }
-    const msg = `Hola *${service.clientName || 'Cliente'}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nTe recordamos amablemente que tu servicio de *${service.name}* (${service.email || 'N/A'}) está por vencer o venció el *${service.expirationDate}*.\n\nEl valor de renovación es de *${formatCurrency(service.revenue)}*.\n\nPor favor, confírmanos si deseas renovarlo para coordinar el pago. ¡Muchas gracias!`;
+    
+    // Generate secure public links for individual account / voucher & general statement
+    const origin = window.location.origin;
+    const voucherUrl = `${origin}/?view=voucher&id=${service.id}`;
+    const portalUrl = getClientPortalUrl(user?.uid || '', service.clientName || '', allEntities);
+
+    let valorLine = '';
+    if (!service.isPaid) {
+      const pendingVal = service.revenue - (service.amountPaid || 0);
+      valorLine = `💵 *VALOR PENDIENTE:* ${formatCurrency(pendingVal)}\n`;
+    }
+
+    const msg = `📌 *SUSCRIPCIÓN:* ${service.name}\n📨 *CORREO/USUARIO:* ${service.email || 'N/A'}\n🤫 *Contraseña:* ${service.password || 'N/A'}\n♻️ *Fecha de renovación:* ${service.expirationDate}\n${valorLine}\n*IMPORTANTE* 🧏👀\n\n🙅 No cambiar datos de acceso tales como correo o contraseña, caso contrario perderá garantía y no se ofrece reembolso ni devoluciones.\n\n📸 En caso de tener algún inconveniente con la cuenta, notificarlo con imagen para darle solución lo más pronto posible.\n\n🔗 *Recibo Online:* ${voucherUrl}\n💼 *Mi Portal:* ${portalUrl}`;
     const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -974,6 +992,29 @@ export function DigitalServices() {
     window.open(url, '_blank');
   };
 
+  // Extract unique service names from services to populate the Service filter dropdown
+  const uniqueServiceNames = Array.from(new Set(services.map(s => s.name).filter(Boolean))).sort();
+
+  const isAnyFilterActive = !!(
+    filterSupplierId ||
+    filterServiceName ||
+    filterCutoffStart ||
+    filterCutoffEnd ||
+    filterSaleStart ||
+    filterSaleEnd ||
+    searchTerm
+  );
+
+  const handleClearFilters = () => {
+    setFilterSupplierId('');
+    setFilterServiceName('');
+    setFilterCutoffStart('');
+    setFilterCutoffEnd('');
+    setFilterSaleStart('');
+    setFilterSaleEnd('');
+    setSearchTerm('');
+  };
+
   // Filter digital services lists dynamically (Mejora: Status/Expiration tab categorization and Search combined)
   const filteredServices = services.filter(service => {
     // 1. Apply status filter
@@ -985,7 +1026,22 @@ export function DigitalServices() {
     if (statusFilter === 'expiring' && !expiring) return false;
     if (statusFilter === 'expired' && !expired) return false;
 
-    // 2. Apply search filter
+    // 2. Apply advanced filters
+    if (filterSupplierId && service.supplierId !== filterSupplierId) return false;
+    if (filterServiceName && service.name !== filterServiceName) return false;
+
+    if (filterCutoffStart && (!service.expirationDate || service.expirationDate < filterCutoffStart)) return false;
+    if (filterCutoffEnd && (!service.expirationDate || service.expirationDate > filterCutoffEnd)) return false;
+
+    if (service.createdAt) {
+      const saleDate = service.createdAt.split('T')[0];
+      if (filterSaleStart && saleDate < filterSaleStart) return false;
+      if (filterSaleEnd && saleDate > filterSaleEnd) return false;
+    } else {
+      if (filterSaleStart || filterSaleEnd) return false;
+    }
+
+    // 3. Apply search filter
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (service.name?.toLowerCase().includes(term)) ||
@@ -1122,22 +1178,44 @@ export function DigitalServices() {
 
       {/* Centered Search & Expiration Tabs Controller */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center w-full">
-        <div className="relative w-full md:max-w-md">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
-            <Search className="w-5 h-5 text-indigo-500" />
-          </span>
-          <input
-            type="text"
-            placeholder="🔍 Buscar por convenio, perfil de cliente, correo..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+        <div className="flex gap-2 w-full md:max-w-md">
+          <div className="relative flex-1">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+              <Search className="w-5 h-5 text-indigo-500" />
+            </span>
+            <input
+              type="text"
+              placeholder="🔍 Buscar por convenio, perfil de cliente, correo..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={cn(
+                "w-full pl-11 pr-4 py-3 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner",
+                isDark 
+                  ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                  : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+              )}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
             className={cn(
-              "w-full pl-11 pr-4 py-3 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner",
-              isDark 
-                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
-                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+              "px-4 rounded-2xl border text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all shrink-0",
+              showFilters
+                ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                : isAnyFilterActive
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-500 font-bold"
+                  : isDark
+                    ? "border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-800/30"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm"
             )}
-          />
+          >
+            <Filter className="w-4 h-4" />
+            <span className="hidden sm:inline">Filtros</span>
+            {isAnyFilterActive && (
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            )}
+          </button>
         </div>
 
         {/* Dynamic Categorization Filter Tabs */}
@@ -1207,6 +1285,128 @@ export function DigitalServices() {
           </div>
         )}
       </div>
+
+      {/* Collapsible Advanced Filters Panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              "overflow-hidden w-full rounded-2xl border p-4 lg:p-6 text-left shadow-inner flex flex-col gap-4",
+              isDark ? "bg-slate-900/50 border-slate-850" : "bg-slate-50/50 border-slate-200"
+            )}
+          >
+            <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800">
+              <span className={cn("text-xs font-black uppercase tracking-wider", isDark ? "text-indigo-400" : "text-indigo-600")}>
+                ⚙️ Filtros Avanzados de Búsqueda
+              </span>
+              {isAnyFilterActive && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1.5 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Limpiar Filtros
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Proveedor */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Proveedor</label>
+                <select
+                  value={filterSupplierId}
+                  onChange={(e) => setFilterSupplierId(e.target.value)}
+                  className={cn(
+                    "w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
+                    isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                  )}
+                >
+                  <option value="">Todos los Proveedores</option>
+                  {suppliers.map(sup => (
+                    <option key={sup.id} value={sup.id}>{sup.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Servicio */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Servicio / Producto</label>
+                <select
+                  value={filterServiceName}
+                  onChange={(e) => setFilterServiceName(e.target.value)}
+                  className={cn(
+                    "w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
+                    isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                  )}
+                >
+                  <option value="">Todos los Servicios</option>
+                  {uniqueServiceNames.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Fecha de Corte */}
+              <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rango de Vencimiento (Corte)</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={filterCutoffStart}
+                    onChange={(e) => setFilterCutoffStart(e.target.value)}
+                    className={cn(
+                      "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                    )}
+                  />
+                  <span className="text-slate-400 text-xs">al</span>
+                  <input
+                    type="date"
+                    value={filterCutoffEnd}
+                    onChange={(e) => setFilterCutoffEnd(e.target.value)}
+                    className={cn(
+                      "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Fecha de Venta */}
+              <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rango de Venta / Registro</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={filterSaleStart}
+                    onChange={(e) => setFilterSaleStart(e.target.value)}
+                    className={cn(
+                      "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                    )}
+                  />
+                  <span className="text-slate-400 text-xs">al</span>
+                  <input
+                    type="date"
+                    value={filterSaleEnd}
+                    onChange={(e) => setFilterSaleEnd(e.target.value)}
+                    className={cn(
+                      "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Selection Control Panel (Mejora 3) */}
       {!loading && filteredServices.length > 0 && (
@@ -1598,6 +1798,21 @@ export function DigitalServices() {
                           )}
                         >
                           <Receipt className={cn(gridCols === 1 ? "w-5.5 h-5.5" : "w-4.5 h-4.5")} />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const portalUrl = getClientPortalUrl(user?.uid || '', service.clientName || '', allEntities);
+                            navigator.clipboard.writeText(portalUrl);
+                            alert(`Enlace de portal del cliente copiado para: ${service.clientName}`);
+                          }}
+                          title="Copiar Enlace Portal de Cliente"
+                          className={cn(
+                            "border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0",
+                            gridCols === 1 ? "w-12 h-12 rounded-2xl" : gridCols === 2 ? "w-10 h-10 rounded-xl" : "w-9 h-9 rounded-xl"
+                          )}
+                        >
+                          <Link className={cn(gridCols === 1 ? "w-5 h-5" : "w-4 h-4")} />
                         </button>
                         <button 
                           onClick={(e) => handleDelete(service.id, e)}

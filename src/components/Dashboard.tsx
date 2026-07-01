@@ -638,8 +638,6 @@ export function Dashboard() {
       return;
     }
 
-    const { doc, updateDoc, addDoc, collection, increment } = await import('firebase/firestore');
-
     try {
       const walletRef = doc(db, 'wallets', selectedWalletId);
       const isCollection = type === 'receivables';
@@ -855,7 +853,6 @@ export function Dashboard() {
 
   const logServiceHistory = async (serviceId: string, action: string, details: any) => {
     try {
-      const { addDoc, collection } = await import('firebase/firestore');
       await addDoc(collection(db, 'digital_services', serviceId, 'service_history'), {
         action,
         details,
@@ -877,8 +874,6 @@ export function Dashboard() {
       alert("Monto inválido.");
       return;
     }
-
-    const { doc, updateDoc, addDoc, collection, increment } = await import('firebase/firestore');
 
     try {
       if (inlinePayTarget.type === 'service') {
@@ -963,7 +958,6 @@ export function Dashboard() {
         newDateStr = fallbackDate.toISOString().split('T')[0];
       }
 
-      const { updateDoc, doc } = await import('firebase/firestore');
       await updateDoc(doc(db, 'digital_services', service.id), {
         status: 'active',
         expirationDate: newDateStr,

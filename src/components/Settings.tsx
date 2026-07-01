@@ -836,6 +836,37 @@ export function Settings() {
                           placeholder="Ej. +593987654321"
                         />
                       </div>
+
+                      {/* Payment Account / Identifier / URL */}
+                      <div className="space-y-2 md:col-span-2 border-t border-slate-100/10 pt-4 mt-2">
+                        <label className={cn("text-xs font-black uppercase tracking-wider block text-indigo-400")}>
+                          💳 Cuenta de Pago o Enlace Virtual (Mejora 1)
+                        </label>
+                        <input 
+                          type="text"
+                          value={settings?.paymentAccount || ''}
+                          onChange={(e) => updateSettings({ paymentAccount: e.target.value })}
+                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold font-mono", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
+                          placeholder="Ej. Cuenta de Ahorros Banco Pichincha 2203948576, o URL https://paypal.me/usuario, o Binance Pay ID 12345678"
+                        />
+                        <p className={cn("text-[10px] font-semibold", isDark ? "text-slate-400" : "text-slate-500")}>
+                          Los clientes verán esto en su portal público para copiarlo con un clic o abrir enlaces directos (como PayPal o Binance).
+                        </p>
+                      </div>
+
+                      {/* Payment Instructions */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className={cn("text-xs font-black uppercase tracking-wider block text-indigo-400")}>
+                          📝 Instrucciones detalladas de Pago o Conciliación
+                        </label>
+                        <textarea 
+                          rows={3}
+                          value={settings?.paymentInstructions || ''}
+                          onChange={(e) => updateSettings({ paymentInstructions: e.target.value })}
+                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold resize-none", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
+                          placeholder="Ej. Realizar transferencia bancaria y enviar el comprobante de pago por WhatsApp con su número de cédula para agilizar la activación."
+                        />
+                      </div>
                     </div>
                   </motion.div>
                 )}

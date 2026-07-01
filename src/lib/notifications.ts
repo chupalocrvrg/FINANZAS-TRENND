@@ -51,23 +51,41 @@ export async function sendLocalPushNotification(title: string, body: string, url
     }
   };
 
-  if ('serviceWorker' in navigator) {
-    const reg = await navigator.serviceWorker.ready;
-    reg.showNotification(title, options);
-  } else {
-    const notif = new Notification(title, { body, icon: '/icon-192.png', data: { url: urlPath || '/' } });
-    notif.onclick = (e) => {
-      e.preventDefault();
-      window.focus();
-      const query = urlPath?.split('?')[1];
-      if (query) {
-        const params = new URLSearchParams(query);
-        const tabParam = params.get('tab');
-        const searchParam = params.get('search');
-        if (tabParam) {
-          window.dispatchEvent(new CustomEvent('app-tab-navigation', { detail: { tab: tabParam, search: searchParam } }));
+  // Run asynchronously and non-blocking
+  (async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        // Race service worker ready promise with a 500ms timeout to avoid infinite hanging when offline or unregistered
+        const swReady = navigator.serviceWorker.ready;
+        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 500));
+        const reg = await Promise.race([swReady, timeout]);
+
+        if (reg) {
+          await reg.showNotification(title, options);
+          return;
         }
       }
-    };
-  }
+
+      // Fallback: standard web notification
+      const notif = new Notification(title, { body, icon: '/icon-192.png', data: { url: urlPath || '/' } });
+      notif.onclick = (e) => {
+        e.preventDefault();
+        window.focus();
+        const query = urlPath?.split('?')[1];
+        if (query) {
+          const params = new URLSearchParams(query);
+          const tabParam = params.get('tab');
+          const searchParam = params.get('search');
+          if (tabParam) {
+            window.dispatchEvent(new CustomEvent('app-tab-navigation', { detail: { tab: tabParam, search: searchParam } }));
+          }
+        }
+      };
+    } catch (err) {
+      console.warn("Notification dispatch failed (expected in some restricted frames/offline):", err);
+      try {
+        new Notification(title, { body, icon: '/icon-192.png' });
+      } catch (e) {}
+    }
+  })();
 }

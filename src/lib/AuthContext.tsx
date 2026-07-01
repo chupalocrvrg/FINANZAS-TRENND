@@ -24,6 +24,8 @@ interface UserSettings {
   autoLockTimer: number; // minutes: 0 means Never, 1, 5, 10
   isOnboarded: boolean;
   hasCompletedTutorial?: boolean;
+  paymentAccount?: string;
+  paymentInstructions?: string;
   updatedAt: string;
 }
 

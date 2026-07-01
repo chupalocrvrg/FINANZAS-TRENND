@@ -20,6 +20,7 @@ import { LockScreen } from './components/LockScreen';
 import { WelcomeUpdateModal } from './components/WelcomeUpdateModal';
 import { TutorialModal } from './components/TutorialModal';
 import { ReportSelectorModal } from './components/ReportSelectorModal';
+import { ClientPublicPortal } from './components/ClientPublicPortal';
 import { FixDb } from './fixDb';
 import { AsyncRunner } from './lib/asyncRunner';
 import { useAuth } from './lib/AuthContext';
@@ -335,6 +336,21 @@ export default function App() {
       />
     </div>
   );
+
+  // Bypasess authentication checks for the public Customer Consultation Portal and individual vouchers
+  const urlParams = new URLSearchParams(window.location.search);
+  const portalView = urlParams.get('view');
+  if (portalView === 'client-portal' || portalView === 'voucher') {
+    return (
+      <ClientPublicPortal 
+        onBackToApp={user ? () => {
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, '', cleanUrl);
+          window.location.reload();
+        } : undefined} 
+      />
+    );
+  }
 
   if (!user) return <Login />;
   if (onboarding) return <Onboarding />;
