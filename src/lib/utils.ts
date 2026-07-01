@@ -184,6 +184,44 @@ export const PAYMENT_INSTRUCTIONS_TXT = `💵 *MÉTODOS DE PAGO* 💵
 • *Enlace:* https://paypal.me/trennd07
 📌 *Verificar:* Marcelo Gutama`;
 
+export function formatSalesMessage(
+  template: string | undefined,
+  serviceData: {
+    clientName: string;
+    name: string;
+    email?: string;
+    password?: string;
+    pin?: string;
+    expirationDate: string;
+  },
+  companyName: string
+): string {
+  const defaultTemplate = `Hola *{cliente}*, te saludamos de *{empresa}*.\n\nConfirmamos la activación de tu servicio de *{servicio}*.\n👤 Usuario: {usuario}\n🔑 Clave: {clave}\n🔒 PIN/Mesa: {pin}\n\nFecha de vencimiento: *{vencimiento}*.\n\n¡Gracias por tu compra! 🎉`;
+  
+  const textToProcess = template && template.trim() ? template : defaultTemplate;
+
+  return textToProcess
+    .replace(/{cliente}/g, serviceData.clientName || 'Cliente')
+    .replace(/{servicio}/g, serviceData.name || 'Servicio')
+    .replace(/{usuario}/g, serviceData.email || 'N/A')
+    .replace(/{clave}/g, serviceData.password || 'N/A')
+    .replace(/{pin}/g, serviceData.pin || 'N/A')
+    .replace(/{vencimiento}/g, serviceData.expirationDate || 'N/A')
+    .replace(/{empresa}/g, companyName || 'Control Financiero');
+}
+
+export function getDynamicPaymentInstructions(settings: any): string {
+  if (settings?.paymentAccount && settings?.paymentAccount.trim()) {
+    let text = `💵 *MÉTODOS DE PAGO* 💵\n--------------------------------\n🏦 *DATOS DE PAGO AUTORIZADOS:*`;
+    text += `\n• *Cuenta / Enlace:* ${settings.paymentAccount}`;
+    if (settings.paymentInstructions && settings.paymentInstructions.trim()) {
+      text += `\n• *Instrucciones:* ${settings.paymentInstructions}`;
+    }
+    return text;
+  }
+  return PAYMENT_INSTRUCTIONS_TXT;
+}
+
 /**
  * Registra un evento de seguridad de forma local/offline para fines de auditoría OWASP
  */

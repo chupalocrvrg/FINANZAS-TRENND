@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Share2, FileText, Image as ImageIcon, Copy, Check } from 'lucide-react';
-import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT } from '../lib/utils';
+import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT, getDynamicPaymentInstructions } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import jsPDF from 'jspdf';
 
@@ -106,7 +106,7 @@ export function NoticeShareModal({
     if (paymentInstructions) text += `\n_${paymentInstructions}_\n`;
     
     if (showBankAccounts) {
-      text += `\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
+      text += `\n${getDynamicPaymentInstructions(settings).replace(/\*/g, '')}`;
     }
     return text;
   };

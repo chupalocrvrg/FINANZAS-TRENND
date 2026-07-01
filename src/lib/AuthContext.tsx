@@ -26,6 +26,7 @@ interface UserSettings {
   hasCompletedTutorial?: boolean;
   paymentAccount?: string;
   paymentInstructions?: string;
+  salesMessageTemplate?: string;
   updatedAt: string;
 }
 

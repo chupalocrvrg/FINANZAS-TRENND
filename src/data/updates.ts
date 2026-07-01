@@ -9,10 +9,18 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_3_0_custom_sales_templates_and_payment_centralization",
+    version: "V7.3.0",
+    title: "V7.3.0 • Plantillas Dinámicas de WhatsApp, Consolidación de Cobros y Horarios Ecuador",
+    date: "01-Julio-2026, 08:31:51",
+    description: "Se implementó el nuevo motor de plantillas personalizables de WhatsApp para ventas de servicios en Ajustes, soportando etiquetas inteligentes como {cliente}, {servicio}, {usuario}, {clave}, {pin}, {vencimiento} y {empresa} para automatizar la redacción con un solo clic. Se centralizó la configuración de números de cuentas bancarias y enlaces de pago directamente dentro de la sección de Cuentas Bancarias y Billeteras, reestructurando el formulario de Configuración para mayor coherencia operativa. Finalmente, se sincronizaron los registros e historiales de actualización de sistema bajo la zona horaria oficial de Ecuador continental (GMT-5).",
+    type: "feature"
+  },
+  {
     id: "v_7_2_0_payment_gateways_and_randomized_portal",
     version: "V7.2.0",
     title: "V7.2.0 • Métodos de Pago Flexibles, Enlaces de Portal Ofuscados y QR Scanner Autonómo",
-    date: "01-Julio-2026, 06:10:00",
+    date: "01-Julio-2026, 08:10:00",
     description: "Se integró soporte multi-moneda y pasarelas de cobro personalizadas en Ajustes (Mejora 1) donde los comercios configuran sus números de cuenta o enlaces de Binance Pay y PayPal. Para máxima seguridad de datos (Mejora 2), se reemplazó la estructura de enlaces públicos legibles por tokens de acceso de un solo uso ofuscados, vinculando automáticamente cada cliente a su propio identificador único aleatorio e indescifrable en Firestore. Finalmente, se diseñó el nuevo generador interactivo de Códigos QR de Pago (Mejora 4) para escaneos directos sin dependencias, acelerando la conciliación de saldos.",
     type: "feature"
   },
@@ -20,7 +28,7 @@ export const SYSTEM_UPDATES: UpdateItem[] = [
     id: "v_7_1_0_security_signatures_and_branding",
     version: "V7.1.0",
     title: "V7.1.0 • Seguridad Avanzada, Firma Digital de Enlaces y Personalización de Marca",
-    date: "01-Julio-2026, 05:45:00",
+    date: "01-Julio-2026, 07:45:00",
     description: "Se implementó un motor de firma criptográfica local para proteger los enlaces del portal público de clientes (anti-peeking), impidiendo que se modifiquen parámetros de consulta para ver información ajena. Asimismo, se integró personalización de marca inteligente que carga dinámicamente el logotipo y el nombre de la tienda del comercio en la cabecera del portal. Finalmente, se diseñó la nueva plantilla ultra-reducida y estética de WhatsApp con soporte para negritas nativas y emojis informativos para el envío de cuentas.",
     type: "security"
   },
@@ -28,7 +36,7 @@ export const SYSTEM_UPDATES: UpdateItem[] = [
     id: "v_7_0_0_client_public_portal",
     version: "V7.0.0",
     title: "V7.0.0 • Lanzamiento de Portal de Consulta de Clientes y Recibos Online",
-    date: "01-Julio-2026, 04:45:00",
+    date: "01-Julio-2026, 06:45:00",
     description: "Se diseñó y desplegó el nuevo Portal Público de Consulta para Clientes y comprobantes online. Este portal permite a los clientes finales consultar en tiempo real el estado detallado de todas sus cuentas, visualizar credenciales de acceso de forma segura contra miradas indiscretas, y revisar todas las cuentas por cobrar pendientes (servicios digitales, trámites ANT y préstamos personales en curso). Adicionalmente, se habilitó la emisión y descarga de recibos digitales de caja y estados de cuenta en PDF directamente en el cliente, eliminando la necesidad de adjuntar o transferir archivos PDF pesados por WhatsApp.",
     type: "feature"
   },

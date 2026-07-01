@@ -27,7 +27,7 @@ import {
   Link
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
-import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate, addSecurityAuditLog } from '../lib/utils';
+import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate, addSecurityAuditLog, formatSalesMessage } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
@@ -527,7 +527,14 @@ export function DigitalServices() {
           createdAt: new Date().toISOString()
         };
         const phone = serviceData.clientContact || '';
-        const text = `Hola *${serviceData.clientName || 'Cliente'}*, te saludamos de *${settings?.companyName || 'Control Financiero'}*.\n\nConfirmamos la activación de tu servicio de *${serviceData.name}*.\n👤 Usuario: ${serviceData.email || 'N/A'}\n🔑 Clave: ${serviceData.password || 'N/A'}\n🔒 PIN/Mesa: ${serviceData.pin || 'N/A'}\n\nFecha de vencimiento: *${serviceData.expirationDate}*.\n\n¡Gracias por tu compra! 🎉`;
+        const text = formatSalesMessage(settings?.salesMessageTemplate, {
+          clientName: serviceData.clientName || '',
+          name: serviceData.name || '',
+          email: serviceData.email || '',
+          password: serviceData.password || '',
+          pin: serviceData.pin || '',
+          expirationDate: serviceData.expirationDate || ''
+        }, settings?.companyName || 'Control Financiero');
         setSuccessMsg({ show: true, phone, text, service: createdService });
       }
       

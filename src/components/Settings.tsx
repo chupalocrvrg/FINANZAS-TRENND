@@ -37,6 +37,7 @@ export function Settings() {
 
   // Cascading/collapsible accordion states for Privacy & Security
   const [isIdentityExpanded, setIsIdentityExpanded] = useState(false);
+  const [isMessagingExpanded, setIsMessagingExpanded] = useState(false);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [isAuditLogExpanded, setIsAuditLogExpanded] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -662,6 +663,46 @@ export function Settings() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* CONFIGURACIÓN ADICIONAL DE CUENTAS DE PAGO / ENLACES PARA EL CLIENTE */}
+          <div className={cn("p-5 border rounded-2xl space-y-4 shadow-sm mt-4", isDark ? "bg-slate-900/20 border-slate-800" : "bg-slate-50/50 border-slate-205/60")}>
+            <div>
+              <h4 className={cn("text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5")}>
+                <CreditCard className="w-4 h-4 text-indigo-505" /> Cuenta de Pago o Enlace Virtual para Clientes (Portal Público)
+              </h4>
+              <p className={cn("text-[10px] font-semibold mt-1", isDark ? "text-slate-400" : "text-slate-505")}>
+                Configure la cuenta bancaria principal o el enlace de pago (Binance Pay, PayPal, etc.) que se mostrará en el Portal Público del cliente para copiar con un solo clic.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className={cn("text-[9px] font-black uppercase tracking-wider block text-slate-400")}>
+                  💳 Número de Cuenta, ID o Enlace Virtual
+                </label>
+                <input 
+                  type="text"
+                  value={settings?.paymentAccount || ''}
+                  onChange={(e) => updateSettings({ paymentAccount: e.target.value })}
+                  className={cn("w-full border p-3 rounded-xl text-xs outline-none focus:border-indigo-505 transition-colors shadow-sm font-semibold font-mono", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800")}
+                  placeholder="Ej. Ahorros Pichincha 2203948576, o URL https://paypal.me/usuario"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className={cn("text-[9px] font-black uppercase tracking-wider block text-slate-400")}>
+                  📝 Instrucciones de Pago Cortas o Conciliación
+                </label>
+                <textarea 
+                  rows={2}
+                  value={settings?.paymentInstructions || ''}
+                  onChange={(e) => updateSettings({ paymentInstructions: e.target.value })}
+                  className={cn("w-full border p-3 rounded-xl text-xs outline-none focus:border-indigo-505 transition-colors shadow-sm font-semibold resize-none", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800")}
+                  placeholder="Ej. Envíe el comprobante de pago por WhatsApp para agilizar la activación."
+                />
+              </div>
+            </div>
+          </div>
         </motion.section>
 
         {/* CREDIT CARDS SECTION */}
@@ -836,36 +877,93 @@ export function Settings() {
                           placeholder="Ej. +593987654321"
                         />
                       </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-                      {/* Payment Account / Identifier / URL */}
-                      <div className="space-y-2 md:col-span-2 border-t border-slate-100/10 pt-4 mt-2">
-                        <label className={cn("text-xs font-black uppercase tracking-wider block text-indigo-400")}>
-                          💳 Cuenta de Pago o Enlace Virtual (Mejora 1)
-                        </label>
-                        <input 
-                          type="text"
-                          value={settings?.paymentAccount || ''}
-                          onChange={(e) => updateSettings({ paymentAccount: e.target.value })}
-                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold font-mono", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
-                          placeholder="Ej. Cuenta de Ahorros Banco Pichincha 2203948576, o URL https://paypal.me/usuario, o Binance Pay ID 12345678"
+            {/* PANEL CASCADA: PLANTILLAS DE WHATSAPP */}
+            <div className={cn("rounded-2xl border overflow-hidden transition-all duration-300", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
+              <button
+                type="button"
+                onClick={() => setIsMessagingExpanded(!isMessagingExpanded)}
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                    <Languages className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-400">Mensajería</h3>
+                    <p className={cn("text-xs font-bold sm:text-sm", isDark ? "text-slate-100" : "text-slate-800")}>Plantillas de Mensajes de WhatsApp</p>
+                  </div>
+                </div>
+                {isMessagingExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isMessagingExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden border-t border-slate-100/10"
+                  >
+                    <div className="p-5 space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className={cn("text-xs font-bold block", isDark ? "text-slate-300" : "text-slate-655")}>
+                            Mensaje para Ventas Digitales
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => updateSettings({ salesMessageTemplate: '' })}
+                            className="text-[10px] font-bold text-indigo-505 hover:text-indigo-600 uppercase tracking-wider transition-colors cursor-pointer"
+                          >
+                            Restablecer Predeterminado
+                          </button>
+                        </div>
+                        <textarea 
+                          rows={6}
+                          value={settings?.salesMessageTemplate || ''}
+                          onChange={(e) => updateSettings({ salesMessageTemplate: e.target.value })}
+                          className={cn("w-full border p-3 rounded-xl text-xs outline-none focus:border-indigo-505 transition-colors shadow-sm font-semibold font-mono leading-relaxed", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800")}
+                          placeholder="Hola *{cliente}*, te saludamos de *{empresa}*... (Deje en blanco para usar la plantilla predeterminada)"
                         />
-                        <p className={cn("text-[10px] font-semibold", isDark ? "text-slate-400" : "text-slate-500")}>
-                          Los clientes verán esto en su portal público para copiarlo con un clic o abrir enlaces directos (como PayPal o Binance).
-                        </p>
                       </div>
 
-                      {/* Payment Instructions */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className={cn("text-xs font-black uppercase tracking-wider block text-indigo-400")}>
-                          📝 Instrucciones detalladas de Pago o Conciliación
-                        </label>
-                        <textarea 
-                          rows={3}
-                          value={settings?.paymentInstructions || ''}
-                          onChange={(e) => updateSettings({ paymentInstructions: e.target.value })}
-                          className={cn("w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold resize-none", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-205 text-slate-800")}
-                          placeholder="Ej. Realizar transferencia bancaria y enviar el comprobante de pago por WhatsApp con su número de cédula para agilizar la activación."
-                        />
+                      <div className={cn("p-4 rounded-xl space-y-2 border", isDark ? "bg-slate-950/40 border-slate-800" : "bg-indigo-50/20 border-indigo-100/40")}>
+                        <p className={cn("text-[10px] font-black uppercase tracking-wider text-indigo-505")}>
+                          🏷️ Etiquetas Dinámicas Soportadas:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {[
+                            { tag: '{cliente}', desc: 'Nombre del Cliente' },
+                            { tag: '{servicio}', desc: 'Nombre del Servicio' },
+                            { tag: '{usuario}', desc: 'Usuario / Cuenta' },
+                            { tag: '{clave}', desc: 'Clave / Contraseña' },
+                            { tag: '{pin}', desc: 'PIN / Perfil' },
+                            { tag: '{vencimiento}', desc: 'Vencimiento' },
+                            { tag: '{empresa}', desc: 'Nombre de su Empresa' },
+                          ].map((t) => (
+                            <span 
+                              key={t.tag}
+                              title={t.desc}
+                              onClick={() => {
+                                const currentVal = settings?.salesMessageTemplate || '';
+                                updateSettings({ salesMessageTemplate: currentVal + t.tag });
+                              }}
+                              className="px-2 py-1 bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-slate-600 dark:text-slate-350 rounded text-[9px] font-mono font-bold cursor-pointer transition-all border border-slate-200/50 dark:border-slate-800"
+                            >
+                              {t.tag}
+                            </span>
+                          ))}
+                        </div>
+                        <p className={cn("text-[9px] font-semibold text-slate-405 mt-1")}>
+                          Consejo: Puede dar formato en WhatsApp usando asteriscos para negritas (ej: *texto*) o guiones bajos para cursiva (ej: _texto_). Haga clic en cualquier etiqueta para insertarla al final.
+                        </p>
                       </div>
                     </div>
                   </motion.div>

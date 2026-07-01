@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Share2, FileText, Image as ImageIcon, Send, Copy, Check } from 'lucide-react';
-import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT } from '../lib/utils';
+import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT, getDynamicPaymentInstructions } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import { SYSTEM_UPDATES } from '../data/updates';
 import jsPDF from 'jspdf';
@@ -502,7 +502,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
   const handleShareWhatsApp = () => {
     const isPaid = voucher.status === 'paid';
     const detailsTxt = filteredDetails.map(d => `*${d.label}:* ${d.value}`).join('\n');
-    const instructions = isPaid ? '' : `\n\n${PAYMENT_INSTRUCTIONS_TXT}`;
+    const instructions = isPaid ? '' : `\n\n${getDynamicPaymentInstructions(settings)}`;
     const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*${isDigitalService ? 'Valor PVP' : 'Monto Total'}:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!${instructions}`;
     const encoded = encodeURIComponent(text);
     
@@ -515,7 +515,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
   const handleCopyText = () => {
     const isPaid = voucher.status === 'paid';
     const detailsTxt = filteredDetails.map(d => `${d.label}: ${d.value}`).join('\n');
-    const instructions = isPaid ? '' : `\n\n${PAYMENT_INSTRUCTIONS_TXT.replace(/\*/g, '')}`;
+    const instructions = isPaid ? '' : `\n\n${getDynamicPaymentInstructions(settings).replace(/\*/g, '')}`;
     const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n${isDigitalService ? 'Valor PVP' : 'Monto Total'}: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}\n\n¡Gracias por su preferencia!${instructions}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
