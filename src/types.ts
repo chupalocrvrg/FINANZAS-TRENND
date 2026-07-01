@@ -78,6 +78,7 @@ export interface Wallet {
   type: WalletType;
   balance: number;
   totalLimit?: number;
+  accountNumber?: string;
 }
 
 export interface LedgerEntry {

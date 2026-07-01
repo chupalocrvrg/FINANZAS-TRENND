@@ -25,7 +25,7 @@ export function Settings() {
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [walletForm, setWalletForm] = useState({ id: '', name: '', type: 'bank', balance: '0', totalLimit: '0' });
+  const [walletForm, setWalletForm] = useState({ id: '', name: '', type: 'bank', balance: '0', totalLimit: '0', accountNumber: '' });
   const [showRegisteredWallets, setShowRegisteredWallets] = useState(false);
   const [showRegisteredCards, setShowRegisteredCards] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
@@ -450,6 +450,7 @@ export function Settings() {
         type: walletForm.type,
         balance: parseFloat(walletForm.balance) || 0,
         totalLimit: walletForm.type === 'credit_card' ? (parseFloat(walletForm.totalLimit) || 0) : 0,
+        accountNumber: walletForm.accountNumber || '',
         ownerId: user.uid
       };
 
@@ -472,7 +473,7 @@ export function Settings() {
   };
 
   const resetWalletForm = () => {
-    setWalletForm({ id: '', name: '', type: 'bank', balance: '0', totalLimit: '0' });
+    setWalletForm({ id: '', name: '', type: 'bank', balance: '0', totalLimit: '0', accountNumber: '' });
   };
 
   const handleEditWallet = (wallet: any) => {
@@ -482,7 +483,8 @@ export function Settings() {
       name: wallet.name || '',
       type: wallet.type || 'bank',
       balance: (wallet.balance !== undefined && wallet.balance !== null ? wallet.balance : 0).toString(),
-      totalLimit: (wallet.totalLimit !== undefined && wallet.totalLimit !== null ? wallet.totalLimit : 0).toString()
+      totalLimit: (wallet.totalLimit !== undefined && wallet.totalLimit !== null ? wallet.totalLimit : 0).toString(),
+      accountNumber: wallet.accountNumber || ''
     });
     setIsWalletModalOpen(true);
   };
@@ -664,45 +666,7 @@ export function Settings() {
             )}
           </AnimatePresence>
 
-          {/* CONFIGURACIÓN ADICIONAL DE CUENTAS DE PAGO / ENLACES PARA EL CLIENTE */}
-          <div className={cn("p-5 border rounded-2xl space-y-4 shadow-sm mt-4", isDark ? "bg-slate-900/20 border-slate-800" : "bg-slate-50/50 border-slate-205/60")}>
-            <div>
-              <h4 className={cn("text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5")}>
-                <CreditCard className="w-4 h-4 text-indigo-505" /> Cuenta de Pago o Enlace Virtual para Clientes (Portal Público)
-              </h4>
-              <p className={cn("text-[10px] font-semibold mt-1", isDark ? "text-slate-400" : "text-slate-505")}>
-                Configure la cuenta bancaria principal o el enlace de pago (Binance Pay, PayPal, etc.) que se mostrará en el Portal Público del cliente para copiar con un solo clic.
-              </p>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className={cn("text-[9px] font-black uppercase tracking-wider block text-slate-400")}>
-                  💳 Número de Cuenta, ID o Enlace Virtual
-                </label>
-                <input 
-                  type="text"
-                  value={settings?.paymentAccount || ''}
-                  onChange={(e) => updateSettings({ paymentAccount: e.target.value })}
-                  className={cn("w-full border p-3 rounded-xl text-xs outline-none focus:border-indigo-505 transition-colors shadow-sm font-semibold font-mono", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800")}
-                  placeholder="Ej. Ahorros Pichincha 2203948576, o URL https://paypal.me/usuario"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className={cn("text-[9px] font-black uppercase tracking-wider block text-slate-400")}>
-                  📝 Instrucciones de Pago Cortas o Conciliación
-                </label>
-                <textarea 
-                  rows={2}
-                  value={settings?.paymentInstructions || ''}
-                  onChange={(e) => updateSettings({ paymentInstructions: e.target.value })}
-                  className={cn("w-full border p-3 rounded-xl text-xs outline-none focus:border-indigo-505 transition-colors shadow-sm font-semibold resize-none", isDark ? "bg-slate-950 border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800")}
-                  placeholder="Ej. Envíe el comprobante de pago por WhatsApp para agilizar la activación."
-                />
-              </div>
-            </div>
-          </div>
         </motion.section>
 
         {/* CREDIT CARDS SECTION */}
@@ -1997,6 +1961,11 @@ export function Settings() {
                     <input required type="number" step="0.01" value={walletForm.totalLimit} onChange={e => setWalletForm({...walletForm, totalLimit: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border focus:border-indigo-500 outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800")} />
                   </div>
                 )}
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-500">Número de Cuenta / Enlace de Pago (Opcional)</label>
+                  <input type="text" value={walletForm.accountNumber || ''} onChange={e => setWalletForm({...walletForm, accountNumber: e.target.value})} className={cn("w-full mt-1 p-3 rounded-xl border focus:border-indigo-500 outline-none text-sm font-bold", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-800")} placeholder="Ej. Ahorros Pichincha 2203948576, o URL PayPal" />
+                  <p className="text-[9px] text-slate-400 mt-1 font-semibold leading-snug">Si ingresa el número o URL, esta cuenta se mostrará en el portal de sus clientes y comprobantes de pago.</p>
+                </div>
                 <button disabled={isSubmitting} type="submit" className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-700 cursor-pointer">
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {walletForm.id ? 'Guardar Cambios' : (walletForm.type === 'credit_card' ? 'Registrar Tarjeta' : 'Registrar Cuenta')}
                 </button>

@@ -210,13 +210,13 @@ export function formatSalesMessage(
     .replace(/{empresa}/g, companyName || 'Control Financiero');
 }
 
-export function getDynamicPaymentInstructions(settings: any): string {
-  if (settings?.paymentAccount && settings?.paymentAccount.trim()) {
+export function getDynamicPaymentInstructions(wallets: any[]): string {
+  const activeWallets = (wallets || []).filter((w: any) => w.accountNumber && w.accountNumber.trim() !== '');
+  if (activeWallets.length > 0) {
     let text = `💵 *MÉTODOS DE PAGO* 💵\n--------------------------------\n🏦 *DATOS DE PAGO AUTORIZADOS:*`;
-    text += `\n• *Cuenta / Enlace:* ${settings.paymentAccount}`;
-    if (settings.paymentInstructions && settings.paymentInstructions.trim()) {
-      text += `\n• *Instrucciones:* ${settings.paymentInstructions}`;
-    }
+    activeWallets.forEach((w: any) => {
+      text += `\n• *${w.name}:* ${w.accountNumber}`;
+    });
     return text;
   }
   return PAYMENT_INSTRUCTIONS_TXT;

@@ -5,6 +5,9 @@ import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT, getDynamicPaymentInstruct
 import { useAuth } from '../lib/AuthContext';
 import { SYSTEM_UPDATES } from '../data/updates';
 import jsPDF from 'jspdf';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { Wallet } from '../types';
 
 export interface VoucherDetail {
   label: string;
@@ -31,8 +34,20 @@ interface VoucherModalProps {
 }
 
 export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
-  const { settings } = useAuth();
+  const { user, settings } = useAuth();
   const isDark = settings?.theme === 'dark';
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'wallets'), where('ownerId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const walletsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Wallet));
+      setWallets(walletsData);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [qrImagesLoaded, setQrImagesLoaded] = useState(false);
@@ -502,7 +517,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
   const handleShareWhatsApp = () => {
     const isPaid = voucher.status === 'paid';
     const detailsTxt = filteredDetails.map(d => `*${d.label}:* ${d.value}`).join('\n');
-    const instructions = isPaid ? '' : `\n\n${getDynamicPaymentInstructions(settings)}`;
+    const instructions = isPaid ? '' : `\n\n${getDynamicPaymentInstructions(wallets)}`;
     const text = `*COMPROBANTE DE TRANSACCIÓN* ✅\n--------------------------------\n*Empresa:* ${settings?.companyName || 'Caja Digital'}\n*Servicio:* ${voucher.title}\n*Comprobante:* #${voucher.id.slice(0, 8).toUpperCase()}\n*Fecha:* ${voucher.date}\n*Cliente:* ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n*${isDigitalService ? 'Valor PVP' : 'Monto Total'}:* *${formatCurrency(voucher.amount)}*\n*Estado:* ${voucher.status === 'paid' ? 'PAGADO ✅' : 'PENDIENTE ⚠️'}\n\n¡Gracias por su preferencia!${instructions}`;
     const encoded = encodeURIComponent(text);
     
@@ -515,7 +530,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
   const handleCopyText = () => {
     const isPaid = voucher.status === 'paid';
     const detailsTxt = filteredDetails.map(d => `${d.label}: ${d.value}`).join('\n');
-    const instructions = isPaid ? '' : `\n\n${getDynamicPaymentInstructions(settings).replace(/\*/g, '')}`;
+    const instructions = isPaid ? '' : `\n\n${getDynamicPaymentInstructions(wallets).replace(/\*/g, '')}`;
     const text = `COMPROBANTE DE TRANSACCIÓN\n--------------------------------\nEmpresa: ${settings?.companyName || 'Caja Digital'}\nServicio: ${voucher.title}\nComprobante: #${voucher.id.slice(0, 8).toUpperCase()}\nFecha: ${voucher.date}\nCliente: ${voucher.clientName}\n${detailsTxt}\n--------------------------------\n${isDigitalService ? 'Valor PVP' : 'Monto Total'}: ${formatCurrency(voucher.amount)}\nEstado: ${voucher.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}\n\n¡Gracias por su preferencia!${instructions}`;
     navigator.clipboard.writeText(text);
     setCopied(true);

@@ -4,6 +4,9 @@ import { X, Download, Share2, FileText, Image as ImageIcon, Copy, Check } from '
 import { cn, formatCurrency, PAYMENT_INSTRUCTIONS_TXT, getDynamicPaymentInstructions } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
 import jsPDF from 'jspdf';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { Wallet } from '../types';
 
 export interface NoticeItemDetail {
   concept: string;
@@ -38,8 +41,20 @@ export function NoticeShareModal({
   paymentInstructions,
   type = 'receivable'
 }: NoticeShareModalProps) {
-  const { settings } = useAuth();
+  const { user, settings } = useAuth();
   const isDark = settings?.theme === 'dark';
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'wallets'), where('ownerId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const walletsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Wallet));
+      setWallets(walletsData);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [qrImagesLoaded, setQrImagesLoaded] = useState(false);
@@ -106,7 +121,7 @@ export function NoticeShareModal({
     if (paymentInstructions) text += `\n_${paymentInstructions}_\n`;
     
     if (showBankAccounts) {
-      text += `\n${getDynamicPaymentInstructions(settings).replace(/\*/g, '')}`;
+      text += `\n${getDynamicPaymentInstructions(wallets).replace(/\*/g, '')}`;
     }
     return text;
   };

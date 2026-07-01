@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_4_0_payment_consolidation_and_public_portal_grids",
+    version: "V7.4.0",
+    title: "V7.4.0 • Multi-Cuentas en Portal de Clientes y Consolidación de Cuentas Bancarias",
+    date: "01-Julio-2026, 09:43:52",
+    description: "Se unificó y consolidó por completo la configuración de cuentas bancarias y billeteras de pago directamente en el módulo de Tesorería, eliminando la sección redundante de Ajustes. El Portal Público del Cliente y los comprobantes individuales de Vales/Recibos de Pago ahora listan dinámicamente todas las cuentas bancarias autorizadas que posean un número de cuenta registrado, ocultando automáticamente aquellas que no tengan datos configurados, asegurando la privacidad del comercio y facilitando los reportes de transferencias para los clientes.",
+    type: "feature"
+  },
+  {
     id: "v_7_3_0_custom_sales_templates_and_payment_centralization",
     version: "V7.3.0",
     title: "V7.3.0 • Plantillas Dinámicas de WhatsApp, Consolidación de Cobros y Horarios Ecuador",
