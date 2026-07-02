@@ -12,6 +12,7 @@ export interface Entity {
   id: string;
   name: string;
   type: EntityType;
+  types?: EntityType[];
   contact?: string;
   rate?: number; // Fixed per-update rate for intermediaries
   isAntUpdater?: boolean; // For suppliers

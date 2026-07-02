@@ -26,7 +26,7 @@ import { cn, calculateServiceExpirationDate, getGMT5DateString } from '../lib/ut
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, getDocs } from 'firebase/firestore';
-import { Entity } from '../types';
+import { Entity, EntityType } from '../types';
 import { GoogleGenAI } from '@google/genai';
 
 interface AIMessage {
@@ -1472,10 +1472,10 @@ export function AIAssistant() {
     );
     const unsubEnt = onSnapshot(qEnt, (snapshot) => {
       const allEnt = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entity));
-      setIntermediaries(allEnt.filter(e => e.type === 'intermediary'));
-      setClients(allEnt.filter(e => e.type === 'client'));
-      setSuppliers(allEnt.filter(e => e.type === 'supplier'));
-      setResellers(allEnt.filter(e => e.type === 'reseller'));
+      setIntermediaries(allEnt.filter(e => e.types ? e.types.includes('intermediary') : e.type === 'intermediary'));
+      setClients(allEnt.filter(e => e.types ? e.types.includes('client') : e.type === 'client'));
+      setSuppliers(allEnt.filter(e => e.types ? e.types.includes('supplier') : e.type === 'supplier'));
+      setResellers(allEnt.filter(e => e.types ? e.types.includes('reseller') : e.type === 'reseller'));
     }, (error) => {
       console.error("Error fetching context for AI assistant:", error);
     });
@@ -2041,18 +2041,23 @@ export function AIAssistant() {
         try {
           const entityQuery = query(
             collection(db, 'entities'),
-            where('ownerId', '==', user.uid),
-            where('type', '==', entityType)
+            where('ownerId', '==', user.uid)
           );
           const qSnap = await getDocs(entityQuery);
           const exists = qSnap.docs.some(
-            dSnap => dSnap.data().name?.trim().toLowerCase() === trimmedClientName.toLowerCase()
+            dSnap => {
+              const dData = dSnap.data();
+              const isNameMatch = dData.name?.trim().toLowerCase() === trimmedClientName.toLowerCase();
+              const hasRole = dData.types ? dData.types.includes(entityType) : dData.type === entityType;
+              return isNameMatch && hasRole;
+            }
           );
           if (!exists) {
             await addDoc(collection(db, 'entities'), {
               name: trimmedClientName,
               contact: finalContact ? finalContact.trim() : '',
               type: entityType,
+              types: [entityType as EntityType],
               rate: 0,
               isAntUpdater: false,
               antUpdateCost: 0,

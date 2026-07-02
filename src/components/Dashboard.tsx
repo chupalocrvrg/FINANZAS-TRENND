@@ -43,6 +43,7 @@ import { sendLocalPushNotification } from '../lib/notifications';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useTranslation } from '../lib/translations';
+import { EntityType } from '../types';
 
 interface StatCardProps {
   label: string;
@@ -199,8 +200,8 @@ export function Dashboard() {
     setFabAntUpdaterId('');
     setFabAntFinalClientName('');
     setFabAntWarehouse('');
-    const firstInter = entities.find(e => e.type === 'intermediary');
-    const firstUpdater = entities.find(e => e.type === 'supplier');
+    const firstInter = entities.find(e => e.types ? e.types.includes('intermediary') : e.type === 'intermediary');
+    const firstUpdater = entities.find(e => e.types ? e.types.includes('supplier') : e.type === 'supplier');
     setFabAntChargedRate(firstInter ? String(firstInter.rate || 0) : '0');
     setFabAntBaseCost(firstUpdater ? String(firstUpdater.antUpdateCost || 0) : '0');
 
@@ -221,6 +222,7 @@ export function Dashboard() {
           name: fabEntityName,
           contact: fabEntityContact,
           type: quickAddType,
+          types: [quickAddType as EntityType],
           rate: quickAddType === 'intermediary' ? parseFloat(fabEntityRate) : 0,
           isAntUpdater: quickAddType === 'supplier' ? fabEntityIsAntUpdater : false,
           antUpdateCost: (quickAddType === 'supplier' && fabEntityIsAntUpdater) ? parseFloat(fabEntityAntUpdateCost) : 0,
@@ -241,7 +243,7 @@ export function Dashboard() {
           const existingEntity = entities.find(
             (ent) =>
               ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
-              ent.type === 'client'
+              (ent.types ? ent.types.includes('client') : ent.type === 'client')
           );
 
           if (!existingEntity) {
@@ -250,6 +252,7 @@ export function Dashboard() {
                 name: trimmedClientName,
                 contact: fabDsClientContact ? fabDsClientContact.trim() : '',
                 type: 'client',
+                types: ['client' as EntityType],
                 rate: 0,
                 isAntUpdater: false,
                 antUpdateCost: 0,

@@ -132,8 +132,8 @@ export function Transactions() {
     const qEnt = query(collection(db, 'entities'), where('ownerId', '==', user.uid));
     const unsubEnt = onSnapshot(qEnt, (snapshot) => {
       const allEnts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entity));
-      setIntermediaries(allEnts.filter(e => e.type === 'intermediary'));
-      setUpdaters(allEnts.filter(e => e.type === 'supplier' && e.isAntUpdater));
+      setIntermediaries(allEnts.filter(e => e.types ? e.types.includes('intermediary') : e.type === 'intermediary'));
+      setUpdaters(allEnts.filter(e => (e.types ? e.types.includes('supplier') : e.type === 'supplier') && e.isAntUpdater));
     });
 
     // Fetch Transactions

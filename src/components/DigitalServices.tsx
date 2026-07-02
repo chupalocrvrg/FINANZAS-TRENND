@@ -31,7 +31,7 @@ import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate, 
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, increment, writeBatch } from 'firebase/firestore';
-import { Wallet as WalletType } from '../types';
+import { Wallet as WalletType, EntityType } from '../types';
 import { sendLocalPushNotification } from '../lib/notifications';
 import { ConfirmModal } from './ConfirmModal';
 import { ServiceRenewalModal } from './ServiceRenewalModal';
@@ -267,7 +267,7 @@ export function DigitalServices() {
     const unsubEnt = onSnapshot(qEnt, (snapshot) => {
       const allEnt = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       setAllEntities(allEnt);
-      setSuppliers(allEnt.filter(e => e.type === 'supplier') as Entity[]);
+      setSuppliers(allEnt.filter(e => e.types ? e.types.includes('supplier') : e.type === 'supplier') as Entity[]);
     });
 
     const qCat = query(collection(db, 'digital_catalog'), where('ownerId', '==', user.uid));
@@ -414,7 +414,7 @@ export function DigitalServices() {
         const existingEntity = allEntities.find(
           (ent) =>
             ent.name?.trim().toLowerCase() === trimmedClientName.toLowerCase() &&
-            ent.type === formData.clientType
+            (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType)
         );
 
         if (!existingEntity) {
@@ -423,6 +423,7 @@ export function DigitalServices() {
               name: trimmedClientName,
               contact: formData.clientContact ? formData.clientContact.trim() : '',
               type: formData.clientType, // 'client' or 'reseller'
+              types: [formData.clientType as EntityType],
               rate: 0,
               isAntUpdater: false,
               antUpdateCost: 0,
@@ -442,7 +443,7 @@ export function DigitalServices() {
         const existingEntity = allEntities.find(
           (ent) =>
             ent.name?.trim().toLowerCase() === trimmedFinalName.toLowerCase() &&
-            ent.type === 'client'
+            (ent.types ? ent.types.includes('client') : ent.type === 'client')
         );
 
         if (!existingEntity) {
@@ -451,6 +452,7 @@ export function DigitalServices() {
               name: trimmedFinalName,
               contact: formData.finalClientContact ? formData.finalClientContact.trim() : '',
               type: 'client', // Registration as a client
+              types: ['client' as EntityType],
               rate: 0,
               isAntUpdater: false,
               antUpdateCost: 0,
@@ -2008,7 +2010,7 @@ export function DigitalServices() {
                     >
                       <option value="">-- Seleccionar registrado --</option>
                       {allEntities
-                        .filter(e => e.type === formData.clientType)
+                        .filter(e => e.types ? e.types.includes(formData.clientType) : e.type === formData.clientType)
                         .map(ent => (
                           <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
                         ))
@@ -2070,7 +2072,7 @@ export function DigitalServices() {
                       >
                         <option value="">-- Seleccionar registrado --</option>
                         {allEntities
-                          .filter(e => e.type === 'client')
+                          .filter(e => e.types ? e.types.includes('client') : e.type === 'client')
                           .map(ent => (
                             <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
                           ))

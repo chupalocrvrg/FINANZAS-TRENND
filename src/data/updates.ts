@@ -9,6 +9,22 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_5_1_system_audit_and_offline_robustness",
+    version: "V7.5.1",
+    title: "V7.5.1 • Auditoría de Conexiones y Robustez Offline/Online",
+    date: "01-Julio-2026, 18:48:00",
+    description: "Se realizó una auditoría completa del sistema para garantizar la concordancia entre bases de datos de perfiles multi-categorías. Se actualizaron los filtros de referencias en módulos clave (Dashboard, DigitalServices, Transactions, Asistente AI) para buscar dentro de la matriz de tipos de entidad (types) en lugar de depender únicamente del campo de tipo unitario tradicional (type). Asimismo, se validó la configuración de persistencia Firestore offline garantizando que las consultas funcionen de forma idéntica en modo conectado y desconectado con sincronización asíncrona robusta.",
+    type: "core"
+  },
+  {
+    id: "v_7_5_0_crm_unified_multicategory_filters",
+    version: "V7.5.0",
+    title: "V7.5.0 • Unificación de CRM con Filtro Inteligente y Multi-Categorías",
+    date: "01-Julio-2026, 10:10:00",
+    description: "Se unificó por completo la interfaz del CRM en un listado global, eliminando las pestañas rígidas anteriores. En su lugar, se implementó un motor de Filtro Inteligente multi-selección que permite filtrar dinámicamente contactos por cualquier combinación de roles (Clientes, Revendedores, Intermediarios, Proveedores y Actualizadores ANT). Asimismo, se rediseñaron los formularios de creación y edición para permitir asignar múltiples categorías simultáneamente a una sola persona con casillas marcables de alta fidelidad, brindando total flexibilidad para contactos con múltiples roles comerciales.",
+    type: "feature"
+  },
+  {
     id: "v_7_4_0_payment_consolidation_and_public_portal_grids",
     version: "V7.4.0",
     title: "V7.4.0 • Multi-Cuentas en Portal de Clientes y Consolidación de Cuentas Bancarias",

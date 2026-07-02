@@ -27,13 +27,13 @@ import { generateSecureToken, getClientPortalUrl } from './ClientPublicPortal';
 export function CRM() {
   const { user, settings } = useAuth();
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<EntityType>('client');
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
   // Confirmation state
   const [confirmModalState, setConfirmModalState] = useState<{
@@ -63,6 +63,7 @@ export function CRM() {
     rate: '0',
     isAntUpdater: false,
     antUpdateCost: '0',
+    types: ['client'] as EntityType[],
   });
 
   const [services, setServices] = useState<any[]>([]);
@@ -111,7 +112,7 @@ export function CRM() {
 
       const exists = tempEntities.some(ent => 
         ent.name?.trim().toLowerCase() === trimmedName.toLowerCase() &&
-        ent.type === clientType
+        (ent.types ? ent.types.includes(clientType) : ent.type === clientType)
       );
 
       if (!exists) {
@@ -120,6 +121,7 @@ export function CRM() {
             name: trimmedName,
             contact: sale.clientContact ? sale.clientContact.trim() : '',
             type: clientType,
+            types: [clientType as EntityType],
             rate: 0,
             isAntUpdater: false,
             antUpdateCost: 0,
@@ -132,6 +134,7 @@ export function CRM() {
             name: trimmedName,
             contact: sale.clientContact ? sale.clientContact.trim() : '',
             type: clientType as any,
+            types: [clientType as EntityType],
             rate: 0,
             isAntUpdater: false,
             antUpdateCost: 0,
@@ -156,17 +159,35 @@ export function CRM() {
   }, [user, entitiesLoaded, servicesLoaded, autoSynced, isSyncing, services, entities]);
 
   const filteredEntities = entities.filter(e => {
-    const matchesTab = e.type === activeTab;
-    if (!matchesTab) return false;
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (e.name?.toLowerCase().includes(term)) || 
-           (e.contact?.toLowerCase().includes(term));
+    // Search Term match
+    const term = searchTerm.trim().toLowerCase();
+    const matchesSearch = !term || 
+      e.name?.toLowerCase().includes(term) || 
+      e.contact?.toLowerCase().includes(term);
+
+    if (!matchesSearch) return false;
+
+    // Selected Types filter
+    if (selectedTypes.length === 0) return true;
+
+    const eTypes = e.types || (e.type ? [e.type] : []);
+    
+    return selectedTypes.some(filterType => {
+      if (filterType === 'isAntUpdater') {
+        return e.isAntUpdater === true;
+      }
+      return eTypes.includes(filterType as EntityType);
+    });
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (formData.types.length === 0) {
+      alert("Debe seleccionar al menos una categoría para el contacto.");
+      return;
+    }
 
     // Check rate limit (Max 15 submissions per minute to prevent DB spam/flooding)
     if (!editingEntity) {
@@ -189,16 +210,18 @@ export function CRM() {
       return;
     }
 
-    const rate = activeTab === 'intermediary' ? parseFloat(formData.rate) : 0;
-    const isAntUpdater = activeTab === 'supplier' ? formData.isAntUpdater : false;
-    const antUpdateCost = (activeTab === 'supplier' && isAntUpdater) ? parseFloat(formData.antUpdateCost) : 0;
+    const types = formData.types;
+    const type = types[0] || 'client'; // main legacy type fallback
+    const rate = types.includes('intermediary') ? parseFloat(formData.rate) : 0;
+    const isAntUpdater = formData.isAntUpdater;
+    const antUpdateCost = isAntUpdater ? parseFloat(formData.antUpdateCost) : 0;
     const isEditing = !!editingEntity;
     const editingId = editingEntity?.id;
 
     // Reset UI state immediately
     setIsModalOpen(false);
     setEditingEntity(null);
-    setFormData({ name: '', contact: '', rate: '0', isAntUpdater: false, antUpdateCost: '0' });
+    setFormData({ name: '', contact: '', rate: '0', isAntUpdater: false, antUpdateCost: '0', types: ['client'] });
     setIsSubmitting(false);
 
     try {
@@ -206,6 +229,8 @@ export function CRM() {
         updateDoc(doc(db, 'entities', editingId), {
           name,
           contact,
+          type,
+          types,
           rate,
           isAntUpdater,
           antUpdateCost,
@@ -214,7 +239,8 @@ export function CRM() {
         addDoc(collection(db, 'entities'), {
           name,
           contact,
-          type: activeTab,
+          type,
+          types,
           rate,
           isAntUpdater,
           antUpdateCost,
@@ -230,12 +256,14 @@ export function CRM() {
 
   const handleEdit = (entity: Entity) => {
     setEditingEntity(entity);
+    const initialTypes = entity.types || (entity.type ? [entity.type] : []);
     setFormData({
       name: entity.name,
       contact: entity.contact || '',
       rate: entity.rate?.toString() || '0',
       isAntUpdater: entity.isAntUpdater || false,
       antUpdateCost: entity.antUpdateCost?.toString() || '0',
+      types: initialTypes,
     });
     setIsModalOpen(true);
   };
@@ -267,7 +295,7 @@ export function CRM() {
         <button 
           onClick={() => {
             setEditingEntity(null);
-            setFormData({ name: '', contact: '', rate: '0', isAntUpdater: false, antUpdateCost: '0' });
+            setFormData({ name: '', contact: '', rate: '0', isAntUpdater: false, antUpdateCost: '0', types: ['client'] });
             setIsModalOpen(true);
           }}
           className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95"
@@ -336,27 +364,77 @@ export function CRM() {
         </div>
       </div>
 
-      <div className={cn("flex flex-wrap gap-2 p-1 rounded-2xl w-fit", isDark ? "bg-slate-900 border border-slate-800" : "bg-slate-100")}>
-        {(['client', 'reseller', 'intermediary', 'supplier'] as EntityType[]).map((tab) => (
+      {/* Filtros Inteligentes de Categoría */}
+      <div className="space-y-3">
+        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Filtro Inteligente de Categorías / Roles</label>
+        <div className="flex flex-wrap gap-2">
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setSelectedTypes([])}
             className={cn(
-               "px-4 lg:px-8 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-widest",
-              activeTab === tab 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
+              "px-4 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider border",
+              selectedTypes.length === 0
+                ? "bg-indigo-600 text-white border-transparent shadow-md"
+                : (isDark ? "border-slate-800 text-slate-400 bg-slate-900 hover:text-white" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50")
             )}
           >
-            {tab === 'client' 
-              ? t('crm.tab_clients', 'Clientes') 
-              : tab === 'reseller' 
-              ? t('crm.tab_resellers', 'Revendedores') 
-              : tab === 'intermediary' 
-              ? t('crm.tab_intermediaries', 'Intermediarios') 
-              : t('crm.tab_suppliers', 'Proveedores')}
+            🌟 Todos los contactos ({entities.length})
           </button>
-        ))}
+          
+          {(['client', 'reseller', 'intermediary', 'supplier'] as EntityType[]).map((type) => {
+            const count = entities.filter(e => e.types ? e.types.includes(type) : e.type === type).length;
+            const isSelected = selectedTypes.includes(type);
+            const label = type === 'client' ? 'Clientes' : type === 'reseller' ? 'Revendedores' : type === 'intermediary' ? 'Intermediarios' : 'Proveedores';
+            return (
+              <button
+                key={type}
+                onClick={() => {
+                  if (isSelected) {
+                    setSelectedTypes(selectedTypes.filter(t => t !== type));
+                  } else {
+                    setSelectedTypes([...selectedTypes, type]);
+                  }
+                }}
+                className={cn(
+                  "px-4 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider border flex items-center gap-2",
+                  isSelected
+                    ? "bg-indigo-600 text-white border-transparent shadow-md"
+                    : (isDark ? "border-slate-800 text-slate-400 bg-slate-900 hover:text-white" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50")
+                )}
+              >
+                {type === 'client' && <User className="w-3.5 h-3.5" />}
+                {type === 'reseller' && <Users className="w-3.5 h-3.5" />}
+                {type === 'intermediary' && <Briefcase className="w-3.5 h-3.5" />}
+                {type === 'supplier' && <Truck className="w-3.5 h-3.5" />}
+                {label} ({count})
+              </button>
+            );
+          })}
+
+          {/* Actualizador ANT Filter */}
+          {(() => {
+            const count = entities.filter(e => e.isAntUpdater).length;
+            const isSelected = selectedTypes.includes('isAntUpdater');
+            return (
+              <button
+                onClick={() => {
+                  if (isSelected) {
+                    setSelectedTypes(selectedTypes.filter(t => t !== 'isAntUpdater'));
+                  } else {
+                    setSelectedTypes([...selectedTypes, 'isAntUpdater']);
+                  }
+                }}
+                className={cn(
+                  "px-4 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider border flex items-center gap-2",
+                  isSelected
+                    ? "bg-emerald-600 text-white border-transparent shadow-md"
+                    : (isDark ? "border-slate-800 text-slate-400 bg-slate-900 hover:text-white" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50")
+                )}
+              >
+                ⚡ Actualizadores ANT ({count})
+              </button>
+            );
+          })()}
+        </div>
       </div>
 
       {loading ? (
@@ -367,85 +445,113 @@ export function CRM() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           <AnimatePresence mode="popLayout">
-            {filteredEntities.map((entity) => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                key={entity.id}
-                className={cn(
-                  "p-6 rounded-2xl border flex flex-col transition-all duration-300 group",
-                  isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm hover:shadow-md"
-                )}
-              >
-                <div className="flex items-center gap-4 mb-6 text-left">
-                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border", isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-100")}>
-                    {entity.type === 'client' && <User className={isDark ? "text-indigo-400" : "text-slate-400"} />}
-                    {entity.type === 'reseller' && <Users className="text-amber-500" />}
-                    {entity.type === 'intermediary' && <Briefcase className="text-indigo-500" />}
-                    {entity.type === 'supplier' && <Truck className={isDark ? "text-slate-500" : "text-slate-400"} />}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className={cn("font-bold uppercase tracking-tight truncate", isDark ? "text-white" : "text-slate-900")}>{entity.name}</h4>
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest truncate">{entity.contact || 'Sin contacto'}</p>
-                  </div>
-                </div>
-
-                {entity.type === 'intermediary' && (
-                  <div className={cn("flex items-center justify-between p-4 rounded-lg border mb-6 font-bold tracking-tight", isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50 border-slate-100")}>
-                    <span className="text-slate-500 text-[10px] uppercase tracking-widest">Tasa de Actualización</span>
-                    <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-slate-900")}>{formatCurrency(entity.rate || 0)}</span>
-                  </div>
-                )}
-                {entity.type === 'supplier' && entity.isAntUpdater && (
-                  <div className={cn("flex items-center justify-between p-4 rounded-lg border mb-6 font-bold tracking-tight", isDark ? "bg-indigo-900/20 border-indigo-800/30" : "bg-indigo-50 border-indigo-100")}>
-                    <span className="text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-widest">Actualizador ANT (Costo)</span>
-                    <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-indigo-900")}>{formatCurrency(entity.antUpdateCost || 0)}</span>
-                  </div>
-                )}
-
-                <div className="flex gap-2 mt-auto">
-                  <button 
-                    onClick={() => handleEdit(entity)}
-                    className={cn("flex-1 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2", isDark ? "border-slate-800 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50")}
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    Editar
-                  </button>
-                  {entity.contact && (
-                    <a 
-                      href={generateWhatsAppUrl(entity.contact, `Hola *${entity.name}*, te comparto tu Portal de Consulta Online donde puedes ver tus servicios activos, claves de acceso y saldos actualizados en tiempo real: ${getClientPortalUrl(user?.uid || '', entity.name || '', entities)}`)}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Compartir Estado de Cuenta por WhatsApp"
-                      className={cn("p-2.5 rounded-xl transition-colors border flex items-center justify-center", isDark ? "bg-emerald-950/20 text-emerald-500 border-emerald-900/50" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-100 shadow-sm shadow-emerald-500/10")}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
+            {filteredEntities.map((entity) => {
+              const entityTypes = entity.types || (entity.type ? [entity.type] : []);
+              return (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  key={entity.id}
+                  className={cn(
+                    "p-6 rounded-2xl border flex flex-col transition-all duration-300 group",
+                    isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm hover:shadow-md"
                   )}
-                  {entity.type !== 'supplier' && (
+                >
+                  <div className="flex items-center gap-4 mb-6 text-left">
+                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border shrink-0", isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-100")}>
+                      {entityTypes.includes('client') && <User className={isDark ? "text-indigo-400" : "text-slate-400"} />}
+                      {!entityTypes.includes('client') && entityTypes.includes('reseller') && <Users className="text-amber-500" />}
+                      {!entityTypes.includes('client') && !entityTypes.includes('reseller') && entityTypes.includes('intermediary') && <Briefcase className="text-indigo-500" />}
+                      {!entityTypes.includes('client') && !entityTypes.includes('reseller') && !entityTypes.includes('intermediary') && entityTypes.includes('supplier') && <Truck className={isDark ? "text-slate-500" : "text-slate-400"} />}
+                      {entityTypes.length === 0 && <User className="text-slate-400" />}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className={cn("font-bold uppercase tracking-tight truncate", isDark ? "text-white" : "text-slate-900")}>{entity.name}</h4>
+                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest truncate">{entity.contact || 'Sin contacto'}</p>
+                      
+                      {/* Category Badges */}
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {entityTypes.map((t) => {
+                          let label = '';
+                          let colorClass = '';
+                          if (t === 'client') { label = 'Cliente'; colorClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20'; }
+                          else if (t === 'reseller') { label = 'Revendedor'; colorClass = 'bg-amber-500/10 text-amber-500 border-amber-500/20'; }
+                          else if (t === 'intermediary') { label = 'Intermediario'; colorClass = 'bg-purple-500/10 text-purple-400 border-purple-500/20'; }
+                          else if (t === 'supplier') { label = 'Proveedor'; colorClass = 'bg-slate-500/10 text-slate-400 border-slate-500/20'; }
+                          
+                          if (!label) return null;
+                          return (
+                            <span key={t} className={cn("px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border", colorClass)}>
+                              {label}
+                            </span>
+                          );
+                        })}
+                        {entity.isAntUpdater && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                            Actualizador ANT
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(entityTypes.includes('intermediary') || (entity.rate && entity.rate > 0)) && (
+                    <div className={cn("flex items-center justify-between p-4 rounded-lg border mb-6 font-bold tracking-tight", isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50 border-slate-100")}>
+                      <span className="text-slate-500 text-[10px] uppercase tracking-widest">Tasa de Actualización</span>
+                      <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-slate-900")}>{formatCurrency(entity.rate || 0)}</span>
+                    </div>
+                  )}
+                  {entity.isAntUpdater && (
+                    <div className={cn("flex items-center justify-between p-4 rounded-lg border mb-6 font-bold tracking-tight", isDark ? "bg-indigo-900/20 border-indigo-800/30" : "bg-indigo-50 border-indigo-100")}>
+                      <span className="text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-widest">Actualizador ANT (Costo)</span>
+                      <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-indigo-900")}>{formatCurrency(entity.antUpdateCost || 0)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 mt-auto">
                     <button 
-                      onClick={() => {
-                        const portalUrl = getClientPortalUrl(user?.uid || '', entity.name || '', entities);
-                        navigator.clipboard.writeText(portalUrl);
-                        alert(`Enlace de portal general copiado para: ${entity.name}`);
-                      }}
-                      title="Copiar Enlace de Portal de Cliente"
-                      className={cn("p-2.5 rounded-xl transition-colors border flex items-center justify-center text-indigo-400 hover:text-indigo-300", isDark ? "bg-slate-900 border-slate-800" : "bg-slate-100 border-slate-200")}
+                      onClick={() => handleEdit(entity)}
+                      className={cn("flex-1 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2", isDark ? "border-slate-800 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50")}
                     >
-                      <span className="text-xs font-black">🔗</span>
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Editar
                     </button>
-                  )}
-                  <button 
-                    onClick={() => handleDelete(entity.id)}
-                    className="p-2.5 rounded-xl text-rose-400 hover:text-rose-600 transition-colors hover:bg-rose-50 border border-transparent hover:border-rose-100"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
+                    {entity.contact && (
+                      <a 
+                        href={generateWhatsAppUrl(entity.contact, `Hola *${entity.name}*, te comparto tu Portal de Consulta Online donde puedes ver tus servicios activos, claves de acceso y saldos actualizados en tiempo real: ${getClientPortalUrl(user?.uid || '', entity.name || '', entities)}`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Compartir Estado de Cuenta por WhatsApp"
+                        className={cn("p-2.5 rounded-xl transition-colors border flex items-center justify-center", isDark ? "bg-emerald-950/20 text-emerald-500 border-emerald-900/50" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-100 shadow-sm shadow-emerald-500/10")}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                    {(!entityTypes.includes('supplier')) && (
+                      <button 
+                        onClick={() => {
+                          const portalUrl = getClientPortalUrl(user?.uid || '', entity.name || '', entities);
+                          navigator.clipboard.writeText(portalUrl);
+                          alert(`Enlace de portal general copiado para: ${entity.name}`);
+                        }}
+                        title="Copiar Enlace de Portal de Cliente"
+                        className={cn("p-2.5 rounded-xl transition-colors border flex items-center justify-center text-indigo-400 hover:text-indigo-300", isDark ? "bg-slate-900 border-slate-800" : "bg-slate-100 border-slate-200")}
+                      >
+                        <span className="text-xs font-black">🔗</span>
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => handleDelete(entity.id)}
+                      className="p-2.5 rounded-xl text-rose-400 hover:text-rose-600 transition-colors hover:bg-rose-50 border border-transparent hover:border-rose-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
           {filteredEntities.length === 0 && (
             <div className={cn("col-span-full py-24 text-center rounded-3xl border border-dashed", isDark ? "border-slate-800 text-slate-500" : "border-slate-200 text-slate-400")}>
@@ -474,13 +580,13 @@ export function CRM() {
             >
               <div className="flex justify-between items-center mb-6 text-left">
                 <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
-                  {editingEntity ? 'Editar' : 'Añadir'} {activeTab === 'client' ? 'Cliente' : activeTab === 'reseller' ? 'Revendedor' : activeTab === 'intermediary' ? 'Intermediario' : 'Proveedor'}
+                  {editingEntity ? 'Editar' : 'Añadir'} Contacto / Entidad
                 </h3>
                 <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <X />
                 </button>
               </div>
-
+ 
               <form onSubmit={handleSubmit} className="space-y-4 text-left">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Nombre Completo / Razón Social</label>
@@ -503,7 +609,90 @@ export function CRM() {
                     placeholder="Ej. +593987654321"
                   />
                 </div>
-                {activeTab === 'intermediary' && (
+
+                {/* Categorías Multi-Selección */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Categorías / Roles del Contacto</label>
+                  <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.types.includes('client')}
+                        onChange={(e) => {
+                          const current = [...formData.types];
+                          if (e.target.checked) {
+                            if (!current.includes('client')) current.push('client');
+                          } else {
+                            const index = current.indexOf('client');
+                            if (index > -1) current.splice(index, 1);
+                          }
+                          setFormData({ ...formData, types: current });
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span>Cliente</span>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.types.includes('reseller')}
+                        onChange={(e) => {
+                          const current = [...formData.types];
+                          if (e.target.checked) {
+                            if (!current.includes('reseller')) current.push('reseller');
+                          } else {
+                            const index = current.indexOf('reseller');
+                            if (index > -1) current.splice(index, 1);
+                          }
+                          setFormData({ ...formData, types: current });
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span>Revendedor</span>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.types.includes('intermediary')}
+                        onChange={(e) => {
+                          const current = [...formData.types];
+                          if (e.target.checked) {
+                            if (!current.includes('intermediary')) current.push('intermediary');
+                          } else {
+                            const index = current.indexOf('intermediary');
+                            if (index > -1) current.splice(index, 1);
+                          }
+                          setFormData({ ...formData, types: current });
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span>Intermediario</span>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={formData.types.includes('supplier')}
+                        onChange={(e) => {
+                          const current = [...formData.types];
+                          if (e.target.checked) {
+                            if (!current.includes('supplier')) current.push('supplier');
+                          } else {
+                            const index = current.indexOf('supplier');
+                            if (index > -1) current.splice(index, 1);
+                          }
+                          setFormData({ ...formData, types: current });
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span>Proveedor</span>
+                    </label>
+                  </div>
+                </div>
+
+                {formData.types.includes('intermediary') && (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Tasa por Actualización (USD)</label>
                     <input 
@@ -515,32 +704,31 @@ export function CRM() {
                     />
                   </div>
                 )}
-                {activeTab === 'supplier' && (
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border text-sm font-bold transition-all outline-none hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <input
-                        type="checkbox"
-                        checked={formData.isAntUpdater}
-                        onChange={(e) => setFormData({...formData, isAntUpdater: e.target.checked})}
-                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border text-sm font-bold transition-all outline-none hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <input
+                      type="checkbox"
+                      checked={formData.isAntUpdater}
+                      onChange={(e) => setFormData({...formData, isAntUpdater: e.target.checked})}
+                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Es un Actualizador ANT (Trámites)</span>
+                  </label>
+                  
+                  {formData.isAntUpdater && (
+                    <div className="space-y-1.5 p-4 rounded-xl border bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-800/30">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 px-1">Costo por Actualización (USD) cobrado por este Proveedor</label>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        value={formData.antUpdateCost}
+                        onChange={(e) => setFormData({...formData, antUpdateCost: e.target.value})}
+                        className={cn("w-full p-3 rounded-lg border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-indigo-500/20 text-white focus:bg-slate-700" : "bg-white border-indigo-200 focus:border-indigo-500")}
                       />
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Es un Actualizador ANT</span>
-                    </label>
-                    
-                    {formData.isAntUpdater && (
-                      <div className="space-y-1.5 p-4 rounded-xl border bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-800/30">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 px-1">Costo por Actualización (USD) cobrado por este Proveedor</label>
-                        <input 
-                          type="number"
-                          step="0.01"
-                          value={formData.antUpdateCost}
-                          onChange={(e) => setFormData({...formData, antUpdateCost: e.target.value})}
-                          className={cn("w-full p-3 rounded-lg border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-indigo-500/20 text-white focus:bg-slate-700" : "bg-white border-indigo-200 focus:border-indigo-500")}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
 
                 <button 
                   disabled={isSubmitting}
