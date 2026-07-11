@@ -230,8 +230,19 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
         (e.description?.toLowerCase().includes(decodedClient.toLowerCase()) || e.category?.toLowerCase().includes(decodedClient.toLowerCase()))
       );
 
-      // Categorize Active services
-      setActiveServices(clientServices.filter((s: any) => s.status === 'active'));
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+
+      // Categorize Active services: Only those where status is 'active' AND is not expired
+      const nonExpiredActiveServices = clientServices.filter((s: any) => {
+        if (s.status !== 'active') return false;
+        if (!s.expirationDate) return true;
+        return s.expirationDate >= todayStr;
+      });
+      setActiveServices(nonExpiredActiveServices);
 
       // Process receivables (everything unpaid or pending)
       const derivedReceivables: any[] = [];
@@ -251,10 +262,13 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
 
       // Unpaid Digital Services
       clientServices.filter((s: any) => !s.isPaid).forEach((s: any) => {
+        const isExpired = s.expirationDate && s.expirationDate < todayStr;
         derivedReceivables.push({
           id: s.id,
-          source: 'Servicio Digital',
-          description: `Suscripción Activa: ${s.name} • Perfil: ${s.pin || 'S/N'}`,
+          source: isExpired ? 'Servicio Vencido' : 'Servicio Digital',
+          description: isExpired 
+            ? `Suscripción Vencida: ${s.name} • Perfil: ${s.pin || 'S/N'}`
+            : `Suscripción Activa: ${s.name} • Perfil: ${s.pin || 'S/N'}`,
           totalAmount: s.revenue || 0,
           pendingAmount: (s.revenue || 0) - (s.amountPaid || 0),
           dueDate: s.expirationDate || 'S/N',
@@ -890,81 +904,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 </div>
               </div>
 
-              {/* PAYMENT ACCOUNTS (CONSOLIDATED FROM REGISTERED WALLETS) */}
-              {merchantWallets.length > 0 && (
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 inline-flex items-center gap-1">
-                      <CreditCard className="w-3 h-3" /> Cuentas de Pago Autorizadas
-                    </span>
-                    <h3 className="text-lg font-black text-white">
-                      Cuentas y Enlaces para Depósitos y Transferencias
-                    </h3>
-                    <p className="text-xs text-slate-400 font-semibold leading-relaxed">
-                      Realice su pago a cualquiera de las siguientes cuentas autorizadas y envíe el comprobante de transferencia a su asesor.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {merchantWallets.map((wallet) => (
-                      <div 
-                        key={wallet.id} 
-                        className="bg-gradient-to-br from-indigo-950/10 to-slate-900 border border-indigo-500/10 rounded-2xl p-5 text-left shadow-lg flex flex-col justify-between gap-4"
-                      >
-                        <div className="space-y-1">
-                          <span className="text-[9px] font-black uppercase text-indigo-400 tracking-wider">
-                            {wallet.type === 'bank' ? '🏦 Banco / Transferencia' : wallet.type === 'digital_wallet' ? '📱 Billetera Digital' : wallet.type === 'credit_card' ? '💳 Tarjeta de Crédito' : '💵 Caja / Efectivo'}
-                          </span>
-                          <h4 className="text-sm font-black text-white">{wallet.name}</h4>
-                        </div>
-
-                        <div className="bg-slate-950 border border-slate-850 p-3.5 rounded-xl flex items-center justify-between gap-3">
-                          <div className="flex flex-col gap-0.5 overflow-hidden">
-                            <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Número de Cuenta / ID</span>
-                            <span className="text-white text-xs font-black font-mono break-all pr-2">
-                              {wallet.accountNumber}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button 
-                              onClick={() => setQrModalData({ isOpen: true, title: `QR: ${wallet.name}`, data: wallet.accountNumber })}
-                              title="Mostrar Código QR"
-                              className="flex items-center justify-center p-2 rounded-lg bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/15 transition-colors cursor-pointer"
-                            >
-                              <QrCode className="w-3.5 h-3.5" />
-                            </button>
-
-                            {wallet.accountNumber.startsWith('http') ? (
-                              <a 
-                                href={wallet.accountNumber}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center justify-center p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
-                            ) : (
-                              <button 
-                                onClick={() => handleCopy(wallet.accountNumber, `wallet_copy_${wallet.id}`)}
-                                className="flex items-center justify-center p-2 rounded-lg bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/15 transition-all cursor-pointer"
-                              >
-                                {copiedId === `wallet_copy_${wallet.id}` ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                ) : (
-                                  <Copy className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Stat Summary Bento row */}
+              {/* 1. Stat Summary Bento row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 
                 {/* Active services box */}
@@ -1015,7 +955,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
 
               </div>
 
-              {/* Subscriptions Grid List */}
+              {/* 2. Subscriptions Grid List */}
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-900">
                   <span className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1118,7 +1058,81 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 )}
               </div>
 
-              {/* Outstanding Receivables Statement / Table */}
+              {/* 3. PAYMENT ACCOUNTS (CONSOLIDATED FROM REGISTERED WALLETS) */}
+              {merchantWallets.length > 0 && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 inline-flex items-center gap-1">
+                      <CreditCard className="w-3 h-3" /> Cuentas de Pago Autorizadas
+                    </span>
+                    <h3 className="text-lg font-black text-white">
+                      Cuentas y Enlaces para Depósitos y Transferencias
+                    </h3>
+                    <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                      Realice su pago a cualquiera de las siguientes cuentas autorizadas y envíe el comprobante de transferencia a su asesor.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {merchantWallets.map((wallet) => (
+                      <div 
+                        key={wallet.id} 
+                        className="bg-gradient-to-br from-indigo-950/10 to-slate-900 border border-indigo-500/10 rounded-2xl p-5 text-left shadow-lg flex flex-col justify-between gap-4"
+                      >
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-black uppercase text-indigo-400 tracking-wider">
+                            {wallet.type === 'bank' ? '🏦 Banco / Transferencia' : wallet.type === 'digital_wallet' ? '📱 Billetera Digital' : wallet.type === 'credit_card' ? '💳 Tarjeta de Crédito' : '💵 Caja / Efectivo'}
+                          </span>
+                          <h4 className="text-sm font-black text-white">{wallet.name}</h4>
+                        </div>
+
+                        <div className="bg-slate-950 border border-slate-850 p-3.5 rounded-xl flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-0.5 overflow-hidden">
+                            <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Número de Cuenta / ID</span>
+                            <span className="text-white text-xs font-black font-mono break-all pr-2">
+                              {wallet.accountNumber}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button 
+                              onClick={() => setQrModalData({ isOpen: true, title: `QR: ${wallet.name}`, data: wallet.accountNumber })}
+                              title="Mostrar Código QR"
+                              className="flex items-center justify-center p-2 rounded-lg bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/15 transition-colors cursor-pointer"
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                            </button>
+
+                            {wallet.accountNumber.startsWith('http') ? (
+                              <a 
+                                href={wallet.accountNumber}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center justify-center p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            ) : (
+                              <button 
+                                onClick={() => handleCopy(wallet.accountNumber, `wallet_copy_${wallet.id}`)}
+                                className="flex items-center justify-center p-2 rounded-lg bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/15 transition-all cursor-pointer"
+                              >
+                                {copiedId === `wallet_copy_${wallet.id}` ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Outstanding Receivables Statement / Table */}
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-900">
                   <span className="w-2 h-2 rounded-full bg-rose-500" />
@@ -1174,7 +1188,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 )}
               </div>
 
-              {/* Help Notes Footer */}
+              {/* 5. Help Notes Footer */}
               <div className="bg-slate-900/30 border border-slate-850 rounded-2xl p-5 text-left text-xs text-slate-400 flex gap-3 leading-relaxed font-semibold">
                 <HelpCircle className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
                 <div>

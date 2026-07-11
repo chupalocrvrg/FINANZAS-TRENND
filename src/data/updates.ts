@@ -9,6 +9,22 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_6_0_portal_layout_reorder_and_active_expiration_filter",
+    version: "V7.6.0",
+    title: "V7.6.0 • Reorganización de Portal de Clientes y Filtro Activo por Expiración",
+    date: "11-Julio-2026, 14:30:00",
+    description: "Se reestructuró por completo el orden visual de los de módulos en el Portal Público del Cliente para optimizar la navegación: primero se muestran las tarjetas Bento de resumen, seguidas de las suscripciones premium, las cuentas de pago autorizadas, la tabla de valores pendientes de pago o conciliación, y finalmente las instrucciones de abonos. Además, se actualizó la lógica de filtrado de suscripciones activas para excluir de la parte superior aquellas cuentas que ya hayan expirado en fecha (comparado con la fecha actual del sistema), manteniéndolas en la sección de cobros pendientes bajo la etiqueta de 'Servicio Vencido' si aún no se han pagado.",
+    type: "feature"
+  },
+  {
+    id: "v_7_5_2_crm_category_contrast_fix",
+    version: "V7.5.2",
+    title: "V7.5.2 • Corrección de Contraste en Categorías del CRM",
+    date: "01-Julio-2026, 19:02:00",
+    description: "Se corrigió un problema visual en el modal de registro y edición del CRM donde el listado de selección múltiple de categorías y casillas de verificación presentaba un contraste deficiente con texto claro sobre fondo claro. Se rediseñó el componente utilizando clases estrictamente reactivas que se adaptan dinámicamente al estado de modo oscuro (isDark) o modo claro, garantizando un texto charcoal/slate-800 altamente legible en modo claro y slate-300 en modo oscuro.",
+    type: "interface"
+  },
+  {
     id: "v_7_5_1_system_audit_and_offline_robustness",
     version: "V7.5.1",
     title: "V7.5.1 • Auditoría de Conexiones y Robustez Offline/Online",

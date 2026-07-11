@@ -613,8 +613,16 @@ export function CRM() {
                 {/* Categorías Multi-Selección */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Categorías / Roles del Contacto</label>
-                  <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
-                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <div className={cn(
+                    "grid grid-cols-2 gap-3 p-4 rounded-2xl border",
+                    isDark 
+                      ? "border-slate-800 bg-slate-950/40" 
+                      : "border-slate-200 bg-slate-50"
+                  )}>
+                    <label className={cn(
+                      "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
+                      isDark ? "text-slate-300" : "text-slate-800"
+                    )}>
                       <input
                         type="checkbox"
                         checked={formData.types.includes('client')}
@@ -633,7 +641,10 @@ export function CRM() {
                       <span>Cliente</span>
                     </label>
 
-                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label className={cn(
+                      "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
+                      isDark ? "text-slate-300" : "text-slate-800"
+                    )}>
                       <input
                         type="checkbox"
                         checked={formData.types.includes('reseller')}
@@ -652,7 +663,10 @@ export function CRM() {
                       <span>Revendedor</span>
                     </label>
 
-                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label className={cn(
+                      "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
+                      isDark ? "text-slate-300" : "text-slate-800"
+                    )}>
                       <input
                         type="checkbox"
                         checked={formData.types.includes('intermediary')}
@@ -671,7 +685,10 @@ export function CRM() {
                       <span>Intermediario</span>
                     </label>
 
-                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label className={cn(
+                      "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
+                      isDark ? "text-slate-300" : "text-slate-800"
+                    )}>
                       <input
                         type="checkbox"
                         checked={formData.types.includes('supplier')}
@@ -706,19 +723,35 @@ export function CRM() {
                 )}
 
                 <div className="space-y-4">
-                  <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border text-sm font-bold transition-all outline-none hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <label className={cn(
+                    "flex items-center gap-3 cursor-pointer p-4 rounded-xl border text-sm font-bold transition-all outline-none",
+                    isDark 
+                      ? "border-slate-800 hover:bg-slate-800/50 bg-slate-950/20 text-slate-300" 
+                      : "border-slate-200 hover:bg-slate-50 bg-slate-50/50 text-slate-800"
+                  )}>
                     <input
                       type="checkbox"
                       checked={formData.isAntUpdater}
                       onChange={(e) => setFormData({...formData, isAntUpdater: e.target.checked})}
                       className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                     />
-                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Es un Actualizador ANT (Trámites)</span>
+                    <span className={cn(
+                      "text-[11px] font-black uppercase tracking-wider",
+                      isDark ? "text-slate-300" : "text-slate-700"
+                    )}>Es un Actualizador ANT (Trámites)</span>
                   </label>
                   
                   {formData.isAntUpdater && (
-                    <div className="space-y-1.5 p-4 rounded-xl border bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-800/30">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 px-1">Costo por Actualización (USD) cobrado por este Proveedor</label>
+                    <div className={cn(
+                      "space-y-1.5 p-4 rounded-xl border",
+                      isDark 
+                        ? "bg-indigo-950/20 border-indigo-900/30" 
+                        : "bg-indigo-50/50 border-indigo-100"
+                    )}>
+                      <label className={cn(
+                        "text-[10px] font-black uppercase tracking-widest px-1",
+                        isDark ? "text-indigo-400" : "text-indigo-600"
+                      )}>Costo por Actualización (USD) cobrado por este Proveedor</label>
                       <input 
                         type="number"
                         step="0.01"
