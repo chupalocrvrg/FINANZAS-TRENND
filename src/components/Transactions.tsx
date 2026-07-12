@@ -27,6 +27,7 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 
 export function Transactions() {
   const { user, settings } = useAuth();
+  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
   const [selectedIntermediary, setSelectedIntermediary] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -262,7 +263,7 @@ export function Transactions() {
   };
 
   const processPayment = async () => {
-    if (!paymentTx || !targetWalletId) return;
+    if (!paymentTx || (!targetWalletId && !isWalletsDisabled)) return;
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) {
       alert("Por favor, ingresa un monto válido mayor a 0.");
@@ -293,7 +294,7 @@ export function Transactions() {
         type: 'income',
         category: 'Cobro de Actualización ANT',
         description: `${fullyPaid ? 'Cobro Total' : 'Cobro Parcial'} por actualización ANT de ${paymentTx.finalClientName} (${paymentTx.intermediaryName})`,
-        walletId: targetWalletId,
+        walletId: targetWalletId || '',
         date: new Date().toISOString().split('T')[0],
         isExpense: false,
         ownerId: user!.uid,
@@ -301,9 +302,11 @@ export function Transactions() {
       });
 
       // 3. Increment Wallet balance
-      await updateDoc(doc(db, 'wallets', targetWalletId), {
-        balance: increment(amount)
-      });
+      if (targetWalletId) {
+        await updateDoc(doc(db, 'wallets', targetWalletId), {
+          balance: increment(amount)
+        });
+      }
       
       // Local snapshot of updated transaction to trigger immediate voucher display
       const txSnapshot: Transaction = {
@@ -812,6 +815,7 @@ export function Transactions() {
                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">Valor a Cobrar</p>
                    <p className="text-2xl font-black font-mono text-indigo-700 dark:text-indigo-400">{formatCurrency(paymentTx.chargedRate)}</p>
                  </div>
+                 {!isWalletsDisabled && (
                  <div className="space-y-1.5">
                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Destino</label>
                    <select 
@@ -823,8 +827,9 @@ export function Transactions() {
                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                    </select>
                  </div>
+                 )}
                  <button 
-                   disabled={isProcessingPayment || !targetWalletId}
+                   disabled={isProcessingPayment || (!targetWalletId && !isWalletsDisabled)}
                    onClick={processPayment}
                    className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
                  >

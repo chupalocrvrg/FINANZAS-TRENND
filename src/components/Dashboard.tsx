@@ -100,6 +100,7 @@ function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default
 
 export function Dashboard() {
   const { user, settings } = useAuth();
+  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
   const { t } = useTranslation();
   const [wallets, setWallets] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
@@ -629,7 +630,7 @@ export function Dashboard() {
       alert("Por favor, ingresa un monto válido mayor a 0.");
       return;
     }
-    if (!selectedWalletId) {
+    if (!selectedWalletId && !isWalletsDisabled) {
       alert("Por favor, selecciona una billetera.");
       return;
     }
@@ -642,7 +643,6 @@ export function Dashboard() {
     }
 
     try {
-      const walletRef = doc(db, 'wallets', selectedWalletId);
       const isCollection = type === 'receivables';
 
       if (item.isMass) {
@@ -696,7 +696,7 @@ export function Dashboard() {
             if (amountToPay >= itemPending - 0.005) {
               await updateDoc(ledgerRef, {
                 isPending: false,
-                walletId: selectedWalletId,
+                walletId: selectedWalletId || '',
                 description: `${singleItem.description || ''} (Saldado)`,
                 updatedAt: new Date().toISOString()
               });
@@ -730,15 +730,17 @@ export function Dashboard() {
           category: categoryLabel,
           description: descriptionLabel,
           date: new Date().toISOString().split('T')[0],
-          walletId: selectedWalletId,
+          walletId: selectedWalletId || '',
           isExpense: !isCollection,
           ownerId: user.uid,
           createdAt: new Date().toISOString()
         });
 
-        await updateDoc(walletRef, {
-          balance: increment(ledgerAmount)
-        });
+        if (selectedWalletId) {
+          await updateDoc(doc(db, 'wallets', selectedWalletId), {
+            balance: increment(ledgerAmount)
+          });
+        }
 
       } else {
         if (item.isTx) {
@@ -775,7 +777,7 @@ export function Dashboard() {
           if (amount >= itemPending - 0.005) {
             await updateDoc(ledgerRef, {
               isPending: false,
-              walletId: selectedWalletId,
+              walletId: selectedWalletId || '',
               description: `${item.description || ''} (Saldado)`,
               updatedAt: new Date().toISOString()
             });
@@ -799,9 +801,11 @@ export function Dashboard() {
 
         if (item.isLedger) {
           const walletChange = isCollection ? amount : -amount;
-          await updateDoc(walletRef, {
-            balance: increment(walletChange) 
-          });
+          if (selectedWalletId) {
+            await updateDoc(doc(db, 'wallets', selectedWalletId), {
+              balance: increment(walletChange) 
+            });
+          }
         } else {
           const ledgerAmount = isCollection ? amount : -amount;
           const categoryLabel = isCollection 
@@ -817,15 +821,17 @@ export function Dashboard() {
             category: categoryLabel,
             description: descriptionLabel,
             date: new Date().toISOString().split('T')[0],
-            walletId: selectedWalletId,
+            walletId: selectedWalletId || '',
             isExpense: !isCollection,
             ownerId: user.uid,
             createdAt: new Date().toISOString()
           });
 
-          await updateDoc(walletRef, {
-            balance: increment(ledgerAmount)
-          });
+          if (selectedWalletId) {
+            await updateDoc(doc(db, 'wallets', selectedWalletId), {
+              balance: increment(ledgerAmount)
+            });
+          }
         }
       }
 
@@ -868,7 +874,7 @@ export function Dashboard() {
   };
 
   const handleInlineConfirmPayment = async () => {
-    if (!inlinePayTarget || !inlineWalletId) {
+    if (!inlinePayTarget || (!inlineWalletId && !isWalletsDisabled)) {
       alert("Por favor, selecciona una billetera / caja.");
       return;
     }
@@ -898,9 +904,11 @@ export function Dashboard() {
         await logServiceHistory(s.id, 'paid_from_calendar', { amount: amountToPay });
 
         // Update Wallet
-        await updateDoc(doc(db, 'wallets', inlineWalletId), {
-          balance: increment(amountToPay)
-        });
+        if (inlineWalletId) {
+          await updateDoc(doc(db, 'wallets', inlineWalletId), {
+            balance: increment(amountToPay)
+          });
+        }
 
         // Add Ledger
         await addDoc(collection(db, 'ledger'), {
@@ -909,7 +917,7 @@ export function Dashboard() {
           category: 'Recaudo de Servicio Digital',
           description: `Cobro adelantado vía Calendario: ${s.name} - ${s.clientName}`,
           date: new Date().toISOString().split('T')[0],
-          walletId: inlineWalletId,
+          walletId: inlineWalletId || '',
           isExpense: false,
           ownerId: user!.uid,
           createdAt: new Date().toISOString()
@@ -922,16 +930,18 @@ export function Dashboard() {
         // Update pending ledger entry
         await updateDoc(doc(db, 'ledger', entry.id), {
           isPending: false,
-          walletId: inlineWalletId,
+          walletId: inlineWalletId || '',
           description: `${entry.description || ''} (Saldado vía Calendario)`,
           updatedAt: new Date().toISOString()
         });
 
         // Update Wallet balance
         // Since entry.amount is negative (e.g. basic services is expense), adding compiles correctly
-        await updateDoc(doc(db, 'wallets', inlineWalletId), {
-          balance: increment(entry.amount)
-        });
+        if (inlineWalletId) {
+          await updateDoc(doc(db, 'wallets', inlineWalletId), {
+            balance: increment(entry.amount)
+          });
+        }
 
         await sendLocalPushNotification('Pago Exitoso ✅', `Se saldó la cuenta de ${entry.category} por ${formatCurrency(Math.abs(entry.amount))}`);
       }
@@ -1320,7 +1330,7 @@ export function Dashboard() {
                             className="w-full text-xs font-bold p-2.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                           />
                         </div>
-                        <div className="sm:col-span-2">
+                        {!isWalletsDisabled && ( <div className="sm:col-span-2">
                           <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Destinar a Caja/Billetera</label>
                           <select 
                             value={inlineWalletId}
@@ -1335,6 +1345,7 @@ export function Dashboard() {
                             ))}
                           </select>
                         </div>
+                        )}
                       </div>
                       <button 
                         onClick={handleInlineConfirmPayment}

@@ -9,6 +9,22 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_7_1_iframe_security_patch",
+    version: "V7.7.1",
+    title: "V7.7.1 • Parche de Compatibilidad de Entorno (Iframe)",
+    date: "11-Julio-2026, 18:45:00",
+    description: "Se eliminó una restricción estricta de seguridad (X-Frame-Options: SAMEORIGIN) a nivel del servidor Express que estaba bloqueando la renderización de la interfaz dentro del iframe del entorno de desarrollo de AI Studio, lo que ocasionaba una pantalla en blanco.",
+    type: "feature"
+  },
+  {
+    id: "v_7_7_0_treasury_wallets_toggle_and_general_ledger",
+    version: "V7.7.0",
+    title: "V7.7.0 • Tesorería Flexible: Desactivación de Billeteras y Registro General",
+    date: "11-Julio-2026, 17:00:00",
+    description: "Se implementó un nuevo control en la Configuración para ocultar y desactivar la selección obligatoria de 'Cuentas Bancarias y Billeteras'. Al desactivarse, todos los módulos (Tesorería, Servicios Digitales, Trámites ANT, Alertas y Dashboard) ocultan el selector de billeteras, convirtiendo el sistema en un Registro General de flujos y transacciones sin necesidad de especificar cuentas de origen o destino.",
+    type: "feature"
+  },
+  {
     id: "v_7_6_0_portal_layout_reorder_and_active_expiration_filter",
     version: "V7.6.0",
     title: "V7.6.0 • Reorganización de Portal de Clientes y Filtro Activo por Expiración",

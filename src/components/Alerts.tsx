@@ -34,6 +34,7 @@ interface RealAlertItem {
 
 export function Alerts() {
   const { user, settings } = useAuth();
+  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
   const [activeFilter, setActiveFilter] = useState<'all' | 'expiration' | 'receivable' | 'scheduled_payment'>('all');
   const [alerts, setAlerts] = useState<RealAlertItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,7 +237,7 @@ export function Alerts() {
   // Acción: Amortizar/Saldar un pago programado/gasto fijo pendiente
   const handleSettlePayment = async () => {
     if (!settleLedgerItem) return;
-    if (!settleSourceWalletId) {
+    if (!settleSourceWalletId && !isWalletsDisabled) {
       alert("Por favor seleccione una billetera de origen para realizar el pago.");
       return;
     }
@@ -250,15 +251,17 @@ export function Alerts() {
       const ledgerDocRef = doc(db, 'ledger', leg.id);
       await updateDoc(ledgerDocRef, {
         isPending: false,
-        walletId: settleSourceWalletId,
+        walletId: settleSourceWalletId || '',
         updatedAt: new Date().toISOString()
       });
 
       // 2. Descontar el dinero de la billetera de origen seleccionada
-      const sourceWalletRef = doc(db, 'wallets', settleSourceWalletId);
-      await updateDoc(sourceWalletRef, {
-        balance: increment(-amount)
-      });
+      if (settleSourceWalletId) {
+        const sourceWalletRef = doc(db, 'wallets', settleSourceWalletId);
+        await updateDoc(sourceWalletRef, {
+          balance: increment(-amount)
+        });
+      }
 
       // 3. Si era pago de tarjeta de crédito, aumentar el cupo disponible de la tarjeta
       if (leg.isCreditCardPayment && leg.targetWalletId) {
@@ -521,6 +524,7 @@ export function Alerts() {
               </div>
             </div>
 
+            {!isWalletsDisabled && (
             <div className="space-y-1.5 text-left">
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 pl-1">
                 🏦 Seleccionar Billetera de Origen (Débito)
@@ -543,6 +547,7 @@ export function Alerts() {
                 ))}
               </select>
             </div>
+            )}
 
             <div className="flex gap-2 pt-2">
               <button

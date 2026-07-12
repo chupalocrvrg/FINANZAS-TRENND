@@ -584,6 +584,8 @@ export function Settings() {
     }
   };
 
+  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
+
   return (
     <div className={cn("p-8 max-w-4xl mx-auto pb-24 text-left", isDark ? "text-slate-100" : "text-slate-900")}>
       <div className="mb-12">
@@ -596,11 +598,12 @@ export function Settings() {
 
       <div className="space-y-12">
         {/* WALLETS SECTION */}
-        <motion.section 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
+        {!isWalletsDisabled && (
+          <motion.section 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
           <div className="flex items-center justify-between border-b border-indigo-100/20 pb-2">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-slate-400" />
@@ -666,10 +669,11 @@ export function Settings() {
             )}
           </AnimatePresence>
 
-
         </motion.section>
+        )}
 
         {/* CREDIT CARDS SECTION */}
+        {!isWalletsDisabled && (
         <motion.section 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -742,6 +746,7 @@ export function Settings() {
             )}
           </AnimatePresence>
         </motion.section>
+        )}
 
         {/* SECCIÓN UNIFICADA: PRIVACIDAD Y SEGURIDAD */}
         <motion.section
@@ -2354,6 +2359,11 @@ export function Settings() {
                           id: 'treasury', 
                           label: 'Tesorería y Caja', 
                           desc: 'Libro diario, flujos de efectivo ingresados y saldos bancarios o billeteras.' 
+                        },
+                        { 
+                          id: 'treasury_wallets', 
+                          label: 'Cuentas Bancarias y Cajas', 
+                          desc: 'Gestión y selección obligatoria de cuentas origen/destino en transacciones.' 
                         },
                         { 
                           id: 'alerts', 

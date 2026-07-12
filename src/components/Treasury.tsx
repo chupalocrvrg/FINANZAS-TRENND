@@ -26,6 +26,7 @@ import { ConfirmModal } from './ConfirmModal';
 
 export function Treasury() {
   const { user, settings } = useAuth();
+  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
   const [activeType, setActiveType] = useState<LedgerType>('business');
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
@@ -128,11 +129,11 @@ export function Treasury() {
     const categoryLower = cat.toLowerCase();
     const isLoanFlag = categoryLower.includes('préstamo') || categoryLower.includes('prestamo');
 
-    if (!isPend && !formData.walletId) {
+    if (!isPend && !isWalletsDisabled && !formData.walletId) {
       alert("Seleccione una billetera si no es un pago pendiente.");
       return;
     }
-    if (isLoanFlag && !formData.walletId) {
+    if (isLoanFlag && !isWalletsDisabled && !formData.walletId) {
       alert("Para registrar un préstamo, por favor seleccione la billetera u origen de fondos de donde se debitará de forma inmediata.");
       return;
     }
@@ -392,6 +393,7 @@ export function Treasury() {
         </div>
       </div>
 
+      {!isWalletsDisabled && (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 animate-fade-in">
         {wallets.length > 0 ? wallets.map(wallet => (
           <motion.div 
@@ -421,11 +423,13 @@ export function Treasury() {
           </div>
         )}
       </div>
+      )}
 
       <div className={cn("rounded-3xl border shadow-sm overflow-hidden", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
         <div className={cn("p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-50 bg-slate-50/50")}>
           <h3 className={cn("font-extrabold uppercase tracking-widest text-[10px]", isDark ? "text-slate-500" : "text-slate-800")}>Libro de Auditoría de Registros</h3>
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            {!isWalletsDisabled && (
             <button 
               onClick={() => setIsTransferModalOpen(true)}
               className="flex-1 sm:flex-none text-emerald-600 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center justify-center gap-1.5 active:scale-95 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-100/30 cursor-pointer"
@@ -433,6 +437,7 @@ export function Treasury() {
               <ArrowLeftRight className="w-3.5 h-3.5" />
               Transferir Fondos
             </button>
+            )}
             <button 
               onClick={() => setIsModalOpen(true)}
               className="flex-1 sm:flex-none text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center justify-center gap-1 active:scale-95 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg border border-indigo-100/30 cursor-pointer"
@@ -696,6 +701,7 @@ export function Treasury() {
                       className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
                     />
                   </div>
+                  {!isWalletsDisabled && (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera {formData.isPending && '(Para pago futuro)'}</label>
                     <select 
@@ -712,6 +718,7 @@ export function Treasury() {
                       ))}
                     </select>
                   </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Descripción</label>

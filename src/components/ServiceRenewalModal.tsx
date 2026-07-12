@@ -5,6 +5,8 @@ import { cn, formatCurrency, getGMT5DateString } from '../lib/utils';
 import { db } from '../lib/firebase';
 import { collection, doc, updateDoc, addDoc, increment } from 'firebase/firestore';
 
+import { useAuth } from '../lib/AuthContext';
+
 interface ServiceRenewalModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -24,6 +26,9 @@ export function ServiceRenewalModal({
   onSuccess,
   isDark = false
 }: ServiceRenewalModalProps) {
+  const { settings } = useAuth();
+  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
+  
   // Duration values: 30 days (1 month), 90 days (3 months), 180 days (6 months), 365 days (12 months)
   const [selectedMonths, setSelectedMonths] = useState<30 | 90 | 180 | 365>(30);
   const [clientPrice, setClientPrice] = useState<string>('');
@@ -152,41 +157,45 @@ export function ServiceRenewalModal({
       });
 
       // Handle client cash movement (Ledger & Wallet)
-      if (clientPaymentType === 'paid' && clientWalletId) {
+      if (clientPaymentType === 'paid' && (clientWalletId || isWalletsDisabled)) {
         await addDoc(collection(db, 'ledger'), {
           amount: parsedPrice,
           type: 'income',
           category: 'Venta de Servicio Digital',
           description: `Cobro Renovación ${selectedMonths / 30} mes(es): ${service.name} de ${service.clientName || 'Cliente'}`,
           date: getGMT5DateString(),
-          walletId: clientWalletId,
+          walletId: clientWalletId || '',
           isExpense: false,
           ownerId: user.uid,
           createdAt: new Date().toISOString()
         });
 
-        await updateDoc(doc(db, 'wallets', clientWalletId), {
-          balance: increment(parsedPrice)
-        });
+        if (clientWalletId) {
+          await updateDoc(doc(db, 'wallets', clientWalletId), {
+            balance: increment(parsedPrice)
+          });
+        }
       }
 
       // Handle supplier cash movement (Ledger & Wallet)
-      if (supplierPaymentType === 'paid' && supplierWalletId) {
+      if (supplierPaymentType === 'paid' && (supplierWalletId || isWalletsDisabled)) {
         await addDoc(collection(db, 'ledger'), {
           amount: -parsedCost,
           type: 'expense',
           category: 'Costo de Servicio Digital',
           description: `Pago Costo Renovación ${selectedMonths / 30} mes(es) a proveedor: ${service.name} de ${service.clientName || 'Cliente'}`,
           date: getGMT5DateString(),
-          walletId: supplierWalletId,
+          walletId: supplierWalletId || '',
           isExpense: true,
           ownerId: user.uid,
           createdAt: new Date().toISOString()
         });
 
-        await updateDoc(doc(db, 'wallets', supplierWalletId), {
-          balance: increment(-parsedCost)
-        });
+        if (supplierWalletId) {
+          await updateDoc(doc(db, 'wallets', supplierWalletId), {
+            balance: increment(-parsedCost)
+          });
+        }
       }
 
       // Trigger local push notification
@@ -347,6 +356,7 @@ export function ServiceRenewalModal({
                     />
                   </div>
 
+                  {!isWalletsDisabled && (
                   <div>
                     <label className="block text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
                       Destino de Cobro
@@ -370,6 +380,7 @@ export function ServiceRenewalModal({
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
 
@@ -423,6 +434,7 @@ export function ServiceRenewalModal({
                     />
                   </div>
 
+                  {!isWalletsDisabled && (
                   <div>
                     <label className="block text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
                       Origen de Pago
@@ -446,6 +458,7 @@ export function ServiceRenewalModal({
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
 

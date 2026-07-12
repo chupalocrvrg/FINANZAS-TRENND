@@ -87,6 +87,7 @@ export interface DigitalServiceItem {
 
 export function DigitalServices() {
   const { user, settings } = useAuth();
+  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
   const [services, setServices] = useState<DigitalServiceItem[]>([]);
   const [searchTerm, setSearchTerm] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -478,8 +479,8 @@ export function DigitalServices() {
         });
         await logServiceHistory(docRef.id, 'created', serviceData);
 
-        // Revenue ledger & wallet balance increment if isPaid & revenueWalletId selected
-        if (formData.isPaid && formData.revenueWalletId) {
+        // Revenue ledger & wallet balance increment if isPaid
+        if (formData.isPaid && (formData.revenueWalletId || isWalletsDisabled)) {
           try {
             await addDoc(collection(db, 'ledger'), {
               amount: parseFloat(formData.revenue) || 0,
@@ -487,21 +488,23 @@ export function DigitalServices() {
               category: 'Venta de Servicio Digital',
               description: `Cobro de ${formData.name} a ${formData.clientName || 'Cliente'}`,
               date: new Date().toISOString().split('T')[0],
-              walletId: formData.revenueWalletId,
+              walletId: formData.revenueWalletId || '',
               isExpense: false,
               ownerId: user.uid,
               createdAt: new Date().toISOString()
             });
-            await updateDoc(doc(db, 'wallets', formData.revenueWalletId), {
-              balance: increment(parseFloat(formData.revenue) || 0)
-            });
+            if (formData.revenueWalletId) {
+              await updateDoc(doc(db, 'wallets', formData.revenueWalletId), {
+                balance: increment(parseFloat(formData.revenue) || 0)
+              });
+            }
           } catch (revenueLedgErr) {
             console.error("Error creating manual revenue ledger entry:", revenueLedgErr);
           }
         }
 
-        // Cost ledger & wallet balance decrement if isCostPaid & costWalletId selected
-        if (formData.isCostPaid && formData.costWalletId) {
+        // Cost ledger & wallet balance decrement if isCostPaid
+        if (formData.isCostPaid && (formData.costWalletId || isWalletsDisabled)) {
           try {
             await addDoc(collection(db, 'ledger'), {
               amount: -(parseFloat(formData.cost) || 0),
@@ -509,14 +512,16 @@ export function DigitalServices() {
               category: 'Costo de Servicio Digital',
               description: `Pago de costo por ${formData.name} a proveedor`,
               date: new Date().toISOString().split('T')[0],
-              walletId: formData.costWalletId,
+              walletId: formData.costWalletId || '',
               isExpense: true,
               ownerId: user.uid,
               createdAt: new Date().toISOString()
             });
-            await updateDoc(doc(db, 'wallets', formData.costWalletId), {
-              balance: increment(-(parseFloat(formData.cost) || 0))
-            });
+            if (formData.costWalletId) {
+              await updateDoc(doc(db, 'wallets', formData.costWalletId), {
+                balance: increment(-(parseFloat(formData.cost) || 0))
+              });
+            }
           } catch (costLedgErr) {
             console.error("Error creating manual cost ledger entry:", costLedgErr);
           }
@@ -2310,11 +2315,11 @@ export function DigitalServices() {
                       </button>
                     </div>
 
-                    {formData.isPaid && (
+                    {formData.isPaid && !isWalletsDisabled && (
                       <div className="space-y-1.5">
                         <label className="text-[9px] font-bold uppercase text-slate-400">Billetera de Destino (Ingreso)</label>
                         <select 
-                          required={formData.isPaid}
+                          required={formData.isPaid && !isWalletsDisabled}
                           value={formData.revenueWalletId}
                           onChange={(e) => setFormData(prev => ({ ...prev, revenueWalletId: e.target.value }))}
                           className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200")}
@@ -2353,11 +2358,11 @@ export function DigitalServices() {
                       </button>
                     </div>
 
-                    {formData.isCostPaid && (
+                    {formData.isCostPaid && !isWalletsDisabled && (
                       <div className="space-y-1.5">
                         <label className="text-[9px] font-bold uppercase text-slate-400">Billetera de Origen (Egreso)</label>
                         <select 
-                          required={formData.isCostPaid}
+                          required={formData.isCostPaid && !isWalletsDisabled}
                           value={formData.costWalletId}
                           onChange={(e) => setFormData(prev => ({ ...prev, costWalletId: e.target.value }))}
                           className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200")}
