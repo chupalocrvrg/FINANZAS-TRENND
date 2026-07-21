@@ -10,6 +10,8 @@ interface UserSettings {
   companyName: string;
   language: 'es' | 'en';
   theme: 'light' | 'dark' | 'system';
+  uiStyle?: 'plastic' | 'liquid_glass';
+  liquidGlassColor?: 'default' | 'teal' | 'purple' | 'orange';
   securityPin: string;
   disabledFeatures?: string[];
   customProfilePic?: string;

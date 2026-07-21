@@ -178,7 +178,7 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       className={cn(
-        "absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border shadow-xl z-50 overflow-hidden",
+        "w-80 sm:w-96 rounded-2xl border shadow-2xl z-50 overflow-hidden",
         isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
       )}
     >

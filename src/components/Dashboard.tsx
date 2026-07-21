@@ -79,7 +79,7 @@ function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default
     >
       <div className={cn(
         "text-[10px] font-black uppercase tracking-widest mb-1 flex items-center justify-between",
-        variant === 'indigo' ? "text-indigo-200" : (isDark ? "text-slate-500" : "text-slate-400")
+        variant === 'indigo' ? "text-indigo-200" : (isDark ? "text-slate-500" : "text-slate-500")
       )}>
         {label}
         <Icon className="w-4 h-4 opacity-50" />
@@ -89,7 +89,7 @@ function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default
         <div className={cn(
           "text-[10px] font-bold mt-1",
           trendUp ? "text-emerald-500" : 
-          variant === 'dark' ? "text-orange-400" : "text-indigo-400"
+          variant === 'dark' ? "text-orange-400" : "text-indigo-500"
         )}>
           {trend}
         </div>
@@ -1063,6 +1063,13 @@ export function Dashboard() {
     const pendingLedger = ledgerEntries.filter(e => e.isPending && e.dueDate === dateStr);
     // Digital services expiring/cutting on this day
     const expiringServices = digitalServices.filter(s => s.expirationDate === dateStr && !s.deletedFromModule);
+    const dayReceivables = receivables.filter(rx => {
+      if (rx.isTx) return rx.createdAt && rx.createdAt.startsWith(dateStr);
+      if (rx.isTx === false) return rx.expirationDate === dateStr;
+      if (rx.isLedger) return rx.dueDate === dateStr || rx.date === dateStr;
+      return false;
+    });
+
 
     let realIncome = 0;
     let realExpense = 0;
@@ -1091,11 +1098,28 @@ export function Dashboard() {
       pendingPaymentsTotal,
       movements,
       pendingLedger,
-      expiringServices
+      expiringServices,
+      dayReceivables
     };
   };
 
   const selectedDayData = selectedDay ? getDayFinancials(selectedDay) : null;
+
+  const currentMonthPrefix = new Date().toISOString().substring(0, 7);
+  const approxProfitThisMonth = digitalServices
+    .filter(s => s.expirationDate && s.expirationDate.startsWith(currentMonthPrefix))
+    .reduce((acc, s) => {
+      const revenue = s.retailPrice || s.revenue || 0;
+      const cost = s.cost || 0;
+      return acc + (revenue - cost);
+    }, 0) + totalReceivables;
+
+  const totalActiveClients = new Set(
+    digitalServices
+      .filter(s => s.status === 'active' || (s.expirationDate && new Date(s.expirationDate) >= new Date()))
+      .map(s => (s.clientName || '').trim().toLowerCase())
+      .filter(name => name.length > 0)
+  ).size;
 
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
@@ -1106,22 +1130,20 @@ export function Dashboard() {
         <p className="text-slate-500 text-sm lg:text-base font-medium">{t('dash.subtitle', 'Métricas de rendimiento en tiempo real.')}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
         <StatCard 
-          label={t('dash.cash_balance', 'Caja General')} 
-          value={formatCurrency(totalWallets)} 
+          label="Ganancias Aprox. Este Mes" 
+          value={formatCurrency(approxProfitThisMonth)} 
           icon={Wallet} 
-          trend={t('dash.available_liquid', 'Disponible (Líquido)')} 
+          trend="Servicios con renovación" 
           trendUp={true} 
-          onClick={() => setActiveModal('wallets')}
         />
         <StatCard 
-          label={t('dash.available_cc', 'Cupo Disponible TC')} 
-          value={formatCurrency(totalCreditAvailable)} 
-          icon={CreditCard} 
-          trend={t('dash.cc_details', 'Cupo Tarjetas Crédito')} 
+          label="Total Clientes Activos" 
+          value={totalActiveClients.toString()} 
+          icon={Users} 
+          trend="Con suscripciones" 
           trendUp={true} 
-          onClick={() => setActiveModal('credit_cards')}
         />
         <StatCard 
           label={t('dash.receivables', 'Cuentas por Cobrar (AR)')} 
@@ -1135,17 +1157,8 @@ export function Dashboard() {
           label={t('dash.payables', 'Cuentas por Pagar (AP)')} 
           value={formatCurrency(totalPayables)} 
           icon={Clock} 
-          variant="dark" 
           trend={`${payables.length} ${t('dash.obligations', 'Obligaciones')}`} 
           onClick={() => setActiveModal('payables')}
-        />
-        <StatCard 
-          label={t('dash.registered_wallets', 'Cuentas Registradas')} 
-          value={wallets.length} 
-          icon={DollarSign} 
-          variant="indigo" 
-          trend={t('dash.syncing', 'En sincronización')} 
-          onClick={() => setActiveModal('wallets')}
         />
       </div>
 
@@ -1236,10 +1249,22 @@ export function Dashboard() {
                     {dayNum}
                   </span>
                   {dayFin.pendingPaymentsCount > 0 && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" title={`${dayFin.pendingPaymentsCount} programados`} />
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title={`${dayFin.pendingPaymentsCount} programados`} />
                   )}
                 </div>
-
+                
+                <div className="flex flex-col gap-0.5 mt-1">
+                  {dayFin.expiringServices.length > 0 && (
+                    <div className="text-[8px] font-bold text-rose-500 bg-rose-500/10 px-1 py-0.5 rounded truncate">
+                       {dayFin.expiringServices.length} {dayFin.expiringServices.length === 1 ? 'Corte' : 'Cortes'}
+                    </div>
+                  )}
+                  {dayFin.dayReceivables.length > 0 && (
+                    <div className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded truncate" title="Total Cuentas por Cobrar">
+                       AR: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(dayFin.dayReceivables.reduce((s, rx) => s + (rx.pendingAmount || 0), 0))}
+                    </div>
+                  )}
+                </div>
                 {/* Values stack */}
                 <div className="space-y-0.5 mt-2 text-[8.5px] font-bold font-mono tracking-tighter">
                   {dayFin.realIncome > 0 && (
@@ -1513,7 +1538,7 @@ export function Dashboard() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className={cn(
-                "relative w-full max-w-2xl p-6 lg:p-8 rounded-3xl border shadow-2xl flex flex-col max-h-[85vh]", 
+                "relative w-full max-w-2xl p-6 lg:p-8 rounded-3xl border shadow-2xl flex flex-col max-h-[85vh] overflow-hidden", 
                 isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"
               )}
             >
@@ -1524,7 +1549,7 @@ export function Dashboard() {
                     {activeModal === 'receivables' && "Cuentas por Cobrar (AR)"}
                     {activeModal === 'payables' && "Cuentas por Pagar (AP)"}
                   </h3>
-                  <p className="text-slate-500 font-mono font-bold mt-1">
+                  <p className={cn("font-mono font-bold mt-1", isDark ? "text-slate-500" : "text-slate-700")}>
                     Total: {
                       activeModal === 'wallets' ? formatCurrency(totalWallets) :
                       activeModal === 'receivables' ? formatCurrency(totalReceivables) :
@@ -1532,7 +1557,7 @@ export function Dashboard() {
                     }
                   </p>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 transition-colors self-start p-1 cursor-pointer">
+                <button onClick={() => setActiveModal(null)} className={cn("transition-colors self-start p-1 cursor-pointer", isDark ? "text-slate-400 hover:text-slate-200" : "text-slate-600 hover:text-slate-900")}>
                   <X />
                 </button>
               </div>
@@ -1542,7 +1567,7 @@ export function Dashboard() {
                 <div className="space-y-4 mb-6 shrink-0">
                   {/* Selector de Filtro de Relación */}
                   <div className="flex flex-col gap-1.5 text-left">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">Filtrar por Ecosistema CRM</span>
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest px-1", isDark ? "text-slate-400" : "text-slate-600")}>Filtrar por Ecosistema CRM</span>
                     <div className={cn(
                       "flex flex-wrap gap-1.5 p-1 rounded-xl w-full border",
                       isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200/50"
@@ -1552,7 +1577,7 @@ export function Dashboard() {
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                           filterType === 'all'
                             ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-950"
                         )}
                       >
                         Todos
@@ -1562,7 +1587,7 @@ export function Dashboard() {
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                           filterType === 'client'
                             ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                            : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-950"
                         )}
                       >
                         Clientes Finales
@@ -1572,7 +1597,7 @@ export function Dashboard() {
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                           filterType === 'reseller'
                             ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                            : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-950"
                         )}
                       >
                         Revendedores
@@ -1582,7 +1607,7 @@ export function Dashboard() {
                         className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                           filterType === 'intermediary'
                             ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                            : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-950"
                         )}
                       >
                         Intermediarios
@@ -1593,7 +1618,7 @@ export function Dashboard() {
                           className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer",
                             filterType === 'supplier'
                               ? "bg-indigo-600 text-white shadow-sm"
-                              : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+                              : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-950"
                           )}
                         >
                           Proveedores
@@ -1646,7 +1671,7 @@ export function Dashboard() {
                     "p-3.5 rounded-xl border border-dashed flex justify-between items-center text-xs font-bold leading-none",
                     isDark ? "bg-slate-950/45 border-slate-800" : "bg-slate-50 border-slate-200"
                   )}>
-                    <span className="text-slate-400 uppercase tracking-widest text-[9px] font-black">Total en Selección Activa:</span>
+                    <span className={cn("uppercase tracking-widest text-[9px] font-black", isDark ? "text-slate-400" : "text-slate-600")}>Total en Selección Activa:</span>
                     <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
                       {activeModal === 'receivables' ? formatCurrency(filteredReceivablesTotal) : formatCurrency(filteredPayablesTotal)}
                     </span>
@@ -1725,7 +1750,7 @@ export function Dashboard() {
                 </div>
               )}
 
-              <div className="overflow-y-auto flex-1 pr-2 min-h-[300px]">
+              <div className="overflow-y-auto flex-1 pr-2 min-h-0">
                 <div className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
                   {activeModal === 'wallets' && (
                     <div className="space-y-6 pt-2">
@@ -1784,7 +1809,7 @@ export function Dashboard() {
 
                   {activeModal === 'receivables' && viewMode === 'list' && (
                     filteredReceivables.length === 0 ? (
-                      <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay cuentas por cobrar en esta selección.</div>
+                      <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay registros en esta selección.</div>
                     ) : filteredReceivables.map(rx => {
                       const calculatedCat = resolveItemCategory(rx);
                       const relativeLabel = calculatedCat === 'client' ? 'Cliente Final' : calculatedCat === 'reseller' ? 'Revendedor' : calculatedCat === 'intermediary' ? 'Intermediario' : 'Proveedor';
@@ -1794,7 +1819,7 @@ export function Dashboard() {
                             <p className={cn("text-sm truncate", isDark ? "text-slate-200" : "text-slate-800")}>
                               {rx.intermediaryName || rx.clientName || rx.finalClientName || 'S/N'}
                             </p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate mt-0.5">
+                            <p className={cn("text-[10px] font-black uppercase tracking-widest truncate mt-0.5", isDark ? "text-slate-500" : "text-slate-600")}>
                               {relativeLabel} • {rx.finalClientName ? `Cliente: ${rx.finalClientName}` : 'S/N'} ({rx.warehouse || rx.name || 'Suscripción'})
                             </p>
                             {rx.amountPaid > 0 && (
@@ -1897,7 +1922,7 @@ export function Dashboard() {
                                       <p className={cn(isDark ? "text-slate-300" : "text-slate-700")}>
                                         {item.name || item.warehouse || 'Suscripción / Renovación'}
                                       </p>
-                                      <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">
+                                      <p className={cn("text-[10px] uppercase tracking-widest mt-0.5 font-bold", isDark ? "text-slate-400" : "text-slate-600")}>
                                         Relación: {relativeLabel} {item.finalClientName ? `| Cliente final: ${item.finalClientName}` : ''}
                                       </p>
                                       {item.amountPaid > 0 && (
@@ -1947,7 +1972,7 @@ export function Dashboard() {
                         <div key={px.id} className="py-4 flex justify-between items-center group text-left">
                           <div className="min-w-0 pr-4 font-bold">
                             <p className={cn("text-sm truncate", isDark ? "text-slate-200" : "text-slate-800")}>{px.category}</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate mt-0.5">{relativeLabel} • {px.description || 'Sin detalles'}</p>
+                            <p className={cn("text-[10px] font-black uppercase tracking-widest truncate mt-0.5", isDark ? "text-slate-400" : "text-slate-600")}>{relativeLabel} • {px.description || 'Sin detalles'}</p>
                             {px.costPaid > 0 && (
                               <p className="text-[10px] text-rose-500 font-mono font-bold mt-1">Saldado parcial de costos: {formatCurrency(px.costPaid)}</p>
                             )}
@@ -2028,7 +2053,7 @@ export function Dashboard() {
                                       <p className={cn(isDark ? "text-slate-300" : "text-slate-700")}>
                                         {item.description || 'Gasto General'}
                                       </p>
-                                      <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">
+                                      <p className={cn("text-[10px] uppercase tracking-widest mt-0.5 font-bold", isDark ? "text-slate-400" : "text-slate-600")}>
                                         Relación: {relativeLabel} {item.createdAt ? `| Reg: ${new Date(item.createdAt).toLocaleDateString()}` : ''}
                                       </p>
                                       {item.costPaid > 0 && (

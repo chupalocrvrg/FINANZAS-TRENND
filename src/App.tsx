@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
+import { MacDock } from './components/MacDock';
 import { Dashboard } from './components/Dashboard';
 import { CRM } from './components/CRM';
 import { Transactions } from './components/Transactions';
@@ -36,7 +36,7 @@ import {
   ShoppingBag, 
   Coins, 
   Users, 
-  Settings as SettingsIcon, 
+  Settings as SettingsIcon, Gamepad2, 
   Activity, 
   Wallet, 
   AlertCircle, 
@@ -60,7 +60,6 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<'comercio' | 'finanzas' | null>(null);
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const handleGenerateReport = async (type: 'general' | 'custom', startDate?: string, endDate?: string) => {
@@ -106,6 +105,8 @@ export default function App() {
     if (disabledFeatures.includes(activeTab)) {
       setActiveTab('dashboard');
     }
+    // Close notifications when navigating via dock/tabs
+    setIsNotificationsOpen(false);
   }, [settings?.disabledFeatures, activeTab]);  useEffect(() => {
     if (user) {
       requestNotificationPermission();
@@ -431,23 +432,37 @@ export default function App() {
     `;
   }
 
+  const uiStyle = settings?.uiStyle || 'plastic';
+  const liquidGlassColor = settings?.liquidGlassColor || 'default';
+  const isDarkMode = settings?.theme === 'dark' || (settings?.theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  
+  let bgClass = '';
+  if (uiStyle === 'liquid_glass') {
+    const colorSuffix = liquidGlassColor === 'default' ? '' : `-${liquidGlassColor}`;
+    bgClass = isDarkMode ? `bg-gradient-flow-dark${colorSuffix} text-slate-100` : `bg-gradient-flow-light${colorSuffix} text-slate-900`;
+  } else {
+    bgClass = isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900';
+  }
+
+  // Inject dark class if in dark mode
+  if (isDarkMode) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+
+  if (uiStyle) {
+    document.body.setAttribute('data-ui-style', uiStyle);
+  }
+
   return (
-    <div className={`flex min-h-screen ${settings?.theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} ${fontClass} overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-900`}>
+    <div className={`flex min-h-screen ${bgClass} ${fontClass} overflow-x-hidden selection:bg-indigo-100 selection:text-indigo-900`}>
       {accentStyles && <style dangerouslySetInnerHTML={{ __html: accentStyles }} />}
       
-      {/* Desktop Sidebar, hidden on mobile */}
-      <div 
-        onMouseEnter={() => setIsSidebarHovered(true)}
-        onMouseLeave={() => setIsSidebarHovered(false)}
-        className={cn(
-          "hidden lg:block lg:relative shrink-0 border-r border-slate-800/20 dark:border-slate-800/80 transition-all duration-300 ease-in-out z-30",
-          isSidebarHovered ? "w-60" : "w-16"
-        )}
-      >
-        <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); }} isHovered={isSidebarHovered} />
-      </div>
+      {/* Mac-style Desktop Dock, hidden on mobile */}
+      <MacDock activeTab={activeTab} setActiveTab={setActiveTab} onOpenReports={() => setIsReportModalOpen(true)} onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)} notifCount={notifCount} />
       
-      <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen">
+      <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen pb-24 lg:pb-32">
         {impersonatedUser && (
           <div className="bg-amber-500 text-slate-950 font-bold px-4 py-2 text-xs flex items-center justify-between shadow-md shrink-0 animate-fade-in">
             <div className="flex items-center gap-2">
@@ -465,81 +480,19 @@ export default function App() {
           </div>
         )}
         
-        {/* Top Navigation Bar */}
-        <header className={cn(
-          "h-16 border-b px-4 lg:px-8 flex items-center justify-between sticky top-0 z-20 shrink-0",
-          settings?.theme === 'dark' ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200"
-        )}>
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg lg:text-xl font-bold tracking-tight truncate max-w-[150px] lg:max-w-none">
-              {settings?.companyName || 'Control Financiero'}
-            </h1>
-            {isOnline ? (
-              <span className="hidden sm:inline-flex items-center gap-1 bg-emerald-100/80 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                Sincronizado
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                Modo Offline Activo
-              </span>
-            )}
+        <AnimatePresence>
+        {isNotificationsOpen && (
+          <>
+          <div className="fixed inset-0 z-40 cursor-default" onClick={() => setIsNotificationsOpen(false)} />
+          <div className="fixed bottom-20 lg:bottom-32 right-4 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto z-50 pointer-events-auto">
+            <NotificationsPopover 
+              onClose={() => setIsNotificationsOpen(false)} 
+              onNavigate={(tab) => setActiveTab(tab)}
+            />
           </div>
-
-          <div className="flex items-center gap-3 lg:gap-6">
-            <button 
-              onClick={() => setIsReportModalOpen(true)}
-              className="bg-indigo-600 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded text-[10px] lg:text-sm font-bold uppercase tracking-wider shadow-sm hover:bg-indigo-700 transition-colors cursor-pointer"
-            >
-              <span className="hidden sm:inline">Generar Estado de Cuenta</span>
-              <span className="sm:hidden">Reporte</span>
-            </button>
-            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <button 
-                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                  className={cn(
-                    "relative p-2 rounded-lg transition-colors",
-                    isNotificationsOpen ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:text-indigo-600"
-                  )}
-                >
-                  <Bell className="w-5 h-5" />
-                  {notifCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-mono text-[9px] font-black rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center border-2 border-white shrink-0 animate-bounce">
-                      {notifCount}
-                    </span>
-                  )}
-                </button>
-                
-                <AnimatePresence>
-                  {isNotificationsOpen && (
-                    <NotificationsPopover 
-                      onClose={() => setIsNotificationsOpen(false)} 
-                      onNavigate={(tab) => setActiveTab(tab)}
-                    />
-                  )}
-                </AnimatePresence>
-              </div>
-              <div 
-                onClick={() => setActiveTab('settings')}
-                className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer border border-slate-200 dark:border-slate-800 hover:opacity-80 transition-opacity"
-                title="Settings"
-              >
-                {settings?.useGoogleAvatar && user?.photoURL ? (
-                  <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : settings?.customProfilePic ? (
-                  <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-700 font-bold border border-indigo-100 uppercase text-xs">
-                    {settings?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
+          </>
+        )}
+      </AnimatePresence>
 
         {/* Content Area */}
         <div className="flex-1 pb-24 lg:pb-12">
@@ -639,7 +592,7 @@ export default function App() {
                           : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
                       )}
                     >
-                      <SettingsIcon className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <Gamepad2 className="w-4 h-4 text-indigo-400 shrink-0" />
                       <div className="flex flex-col min-w-0">
                         <span className="text-sm">Servicios Digitales</span>
                         <span className="text-[10px] text-slate-400 truncate">Suscripciones, fechas y cortes</span>
@@ -775,6 +728,23 @@ export default function App() {
           )}
         </button>
 
+        {/* Notificaciones Tab */}
+        <button
+          onClick={() => { setIsNotificationsOpen(!isNotificationsOpen); setMobileMenuOpen(null); }}
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-none relative",
+            isNotificationsOpen ? "text-indigo-500 font-bold" : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <Bell className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="text-[9px] font-bold tracking-tight">Avisos</span>
+          {notifCount > 0 && (
+            <span className="absolute top-1 right-2 w-3 h-3 bg-rose-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold">
+              {notifCount}
+            </span>
+          )}
+        </button>
+
         {/* Perfil Tab */}
         <button
           onClick={() => { setActiveTab('settings'); setMobileMenuOpen(null); }}
@@ -783,21 +753,11 @@ export default function App() {
             activeTab === 'settings' ? "text-indigo-500 font-bold" : "text-slate-400 hover:text-slate-200"
           )}
         >
-          <div className={cn(
-            "w-6 h-6 rounded-full overflow-hidden flex items-center justify-center border mb-0.5 shrink-0 transition-colors",
-            activeTab === 'settings' ? "border-indigo-500" : "border-slate-700/60"
-          )}>
-            {settings?.useGoogleAvatar && user?.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : settings?.customProfilePic ? (
-              <img src={settings.customProfilePic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-full h-full bg-indigo-100 flex items-center justify-center text-[10px] font-black text-indigo-700 shrink-0 capitalize">
-                {settings?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
-              </div>
-            )}
-          </div>
-          <span className="text-[9px] font-bold tracking-tight">Perfil</span>
+          <SettingsIcon className="w-5 h-5 mb-0.5 shrink-0" />
+          <span className="text-[9px] font-bold tracking-tight">Ajustes</span>
+          {activeTab === 'settings' && (
+            <span className="absolute bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+          )}
         </button>
       </div>
     </div>

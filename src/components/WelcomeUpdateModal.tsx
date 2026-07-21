@@ -77,7 +77,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
                 onClick={handleClose}
                 className={cn(
                   "p-2 rounded-full transition-all border shrink-0 cursor-pointer",
-                  isDark ? "text-slate-400 border-slate-800 hover:bg-slate-800" : "text-slate-500 border-slate-100 hover:bg-slate-50"
+                  isDark ? "text-slate-400 border-slate-800 hover:bg-slate-800" : "text-slate-700 border-slate-300 hover:bg-slate-200/50"
                 )}
               >
                 <X className="w-4 h-4" />
@@ -92,7 +92,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
               <h2 className={cn("text-xl font-black tracking-tight mt-1", isDark ? "text-white" : "text-slate-950")}>
                 {SYSTEM_UPDATES[0]?.version || "Versión Reciente"} Aplicada 🎉
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+              <p className={cn("text-xs font-bold mt-0.5", isDark ? "text-slate-400" : "text-slate-700")}>
                 Compilación Segura del {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
@@ -111,10 +111,10 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
                       ✓
                     </div>
                     <div>
-                      <h4 className={cn("text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200")}>
+                      <h4 className={cn("text-xs font-black uppercase tracking-wider", isDark ? "text-slate-200" : "text-slate-800")}>
                         {item.title}
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed font-semibold">
+                      <p className={cn("text-xs mt-0.5 leading-relaxed font-semibold", isDark ? "text-slate-400" : "text-slate-600")}>
                         {item.description}
                       </p>
                     </div>

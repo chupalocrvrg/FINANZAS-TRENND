@@ -9,6 +9,50 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_9_3_calendar_and_contrast",
+    version: "V7.9.3",
+    title: "V7.9.3 • Calendario Interactivo, Escala Visual y Contraste",
+    date: "20-Julio-2026, 19:35:00",
+    description: "Se agregaron indicadores directos de Cuentas por Cobrar y Cortes de servicio dentro de las casillas del calendario. Se incrementó la escala visual del texto universalmente. Se corrigió el contraste de texto en los modales de Cuentas por Pagar/Cobrar y de Novedades en modo claro. Además, el panel de notificaciones ahora se cierra automáticamente al navegar a otra sección.",
+    type: "feature"
+  },
+
+  {
+    id: "v_7_9_2_liquid_glass_variants",
+    version: "V7.9.2",
+    title: "V7.9.2 • Variantes Cromáticas y Correcciones de Dashboard",
+    date: "20-Julio-2026, 17:35:00",
+    description: "Se han integrado 4 nuevas variaciones cromáticas (Pastel, Teal, Amatista y Ámbar) para el motor Liquid Glass en Ajustes. Además, se ajustó la fórmula de 'Ganancias Aproximadas' para que incluya las Cuentas por Cobrar. También se corrigió el contraste de texto en las tarjetas del dashboard durante el uso del Modo Claro y se estandarizó el color de fondo para la tarjeta de Cuentas por Pagar.",
+    type: "feature"
+  },
+
+  {
+    id: "v_7_9_1_liquid_glass_breathing",
+    version: "V7.9.1",
+    title: "V7.9.1 • Gradientes Dinámicos y Opacidad en Liquid Glass",
+    date: "20-Julio-2026, 16:15:00",
+    description: "Refinamiento visual del motor Liquid Glass. Se ha incorporado una animación orgánica ('breathing gradient') que atenúa y expande suavemente los fondos coloridos para simular fluidez, similar a una malla Aurora. Asimismo, se redujo drásticamente la opacidad de los bordes blancos en las tarjetas para lograr un efecto de cristal esmerilado más inmersivo y sutil.",
+    type: "interface"
+  },
+
+  {
+    id: "v_7_9_0_dashboard_and_ui_styles",
+    version: "V7.9.0",
+    title: "V7.9.0 • Métricas de Tablero, Estilos de Interfaz Liquid Glass y Gradientes",
+    date: "20-Julio-2026, 15:30:00",
+    description: "Actualización de las métricas del tablero principal para mostrar 'Ganancias Aproximadas de este Mes' mediante el cálculo en tiempo real de beneficios y 'Total de Clientes Activos', depurando métricas redundantes. Además, se integró en la sección de Ajustes el Motor de Estilos visuales con opciones 'Plástico (Sólido)' y 'Liquid Glass (Transparente)', soportados por fondos animados con gradientes de color que se adaptan a las modalidades Claro y Oscuro para una experiencia inmersiva y elegante.",
+    type: "feature"
+  },
+
+  {
+    id: "v_7_8_0_macos_animated_dock",
+    version: "V7.8.0",
+    title: "V7.8.0 • Nueva Navegación: Mac-style Dock Animado",
+    date: "20-Julio-2026, 12:00:00",
+    description: "Se ha reemplazado la clásica barra lateral de navegación (Sidebar) por un nuevo Dock flotante animado al estilo macOS para dispositivos de escritorio. Este Dock interactivo amplía los íconos dinámicamente al pasar el mouse e integra todos los módulos y submódulos (Inicio, Comercio, Finanzas y Ajustes) en un solo panel elegante y moderno.",
+    type: "interface"
+  },
+  {
     id: "v_7_7_1_iframe_security_patch",
     version: "V7.7.1",
     title: "V7.7.1 • Parche de Compatibilidad de Entorno (Iframe)",
