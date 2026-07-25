@@ -9,6 +9,30 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_10_2_wa_modal_fix",
+    version: "V7.10.2",
+    title: "V7.10.2 • Corrección Modal de WhatsApp",
+    date: "25-Julio-2026, 11:55:00",
+    description: "Corrección técnica: se habilitó correctamente el renderizado de la ventana emergente de opciones de WhatsApp (Envío de Datos vs Notificación de Corte), que no se mostraba al hacer clic.",
+    type: "interface"
+  },
+  {
+    id: "v_7_10_1_ui_refinements_and_fixes",
+    version: "V7.10.1",
+    title: "V7.10.1 • Correcciones Visuales y Mejoras UX",
+    date: "25-Julio-2026, 10:15:00",
+    description: "Se eliminó el buscador duplicado en el modal de catálogo. Se integró entrada predictiva (datalist) en la selección de servicios del formulario de venta, reemplazando la lista desplegable clásica. Ampliada la compatibilidad de 'Pantallas Máximas' a servicios que contengan la palabra 'completa'. El menú de WhatsApp ahora se despliega obligatoriamente mostrando siempre las opciones de mensaje disponibles.",
+    type: "interface"
+  },
+  {
+    id: "v_7_10_0_predictive_profiles_wa",
+    version: "V7.10.0",
+    title: "V7.10.0 • Entradas Predictivas, Venta de Perfiles y WhatsApp Reminders",
+    date: "25-Julio-2026, 09:55:00",
+    description: "Implementación de entradas predictivas para Clientes y Servicios en Ventas, con autoguardado en CRM. Inclusión de barra de búsqueda y campos de 'Pantallas Máximas' en el catálogo global. Adición del nuevo módulo 'Gestión de Perfiles' para vender sub-cuentas desde matrices completas. Nuevo menú para enviar notificaciones de corte por WhatsApp. Además, se habilitó la visibilidad de enlaces públicos de recibos sin requerir sesión iniciada.",
+    type: "feature"
+  },
+  {
     id: "v_7_9_3_calendar_and_contrast",
     version: "V7.9.3",
     title: "V7.9.3 • Calendario Interactivo, Escala Visual y Contraste",

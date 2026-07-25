@@ -174,8 +174,9 @@ service cloud.firestore {
     }
     
     match /entities/{entityId} {
-      allow get, delete: if isValidId(entityId) && isOwnerOrAdmin(resource.data.ownerId);
-      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow get: if true;
+      allow list: if true;
+      allow delete: if isValidId(entityId) && isOwnerOrAdmin(resource.data.ownerId);
       allow create: if isValidId(entityId) && isOwnerOrAdmin(incoming().ownerId) && (isValidEntity(incoming()) || isAdmin());
       allow update: if isValidId(entityId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidEntity(incoming()) || isAdmin());
     }

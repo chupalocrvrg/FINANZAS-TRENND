@@ -57,6 +57,7 @@ export interface CatalogItem {
   }[];
   createdAt: string;
   ownerId: string;
+  maxScreens?: number;
 }
 
 export interface DigitalServiceItem {
@@ -83,6 +84,7 @@ export interface DigitalServiceItem {
   amountPaid?: number;
   costPaid?: number;
   deletedFromModule?: boolean;
+  parentServiceId?: string;
 }
 
 export function DigitalServices() {
@@ -116,7 +118,10 @@ export function DigitalServices() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedWaService, setSelectedWaService] = useState<DigitalServiceItem | null>(null);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [showProfilesManager, setShowProfilesManager] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
   const [showNewCatalogForm, setShowNewCatalogForm] = useState(false);
   const [newCatalogName, setNewCatalogName] = useState('');
   const [activeSupplierCatalogId, setActiveSupplierCatalogId] = useState<string | null>(null);
@@ -228,13 +233,14 @@ export function DigitalServices() {
     email: '',
     password: '',
     pin: '',
-    serviceType: 'completa' as 'completa' | 'pantalla',
+    serviceType: 'completa' as 'completa' | 'pantalla' | 'profile',
     profileName: '',
     status: 'active' as 'active' | 'expired' | 'pending',
     isPaid: true,
     isCostPaid: true,
     revenueWalletId: '',
-    costWalletId: ''
+    costWalletId: '',
+    parentServiceId: ''
   });
 
   const isDark = settings?.theme === 'dark';
@@ -350,6 +356,26 @@ export function DigitalServices() {
     if (!user) return;
     setIsSubmitting(true);
     
+    // Create entity if not found
+    if (formData.clientName.trim() !== '') {
+      const existingEntity = allEntities.find(ent => ent.name.toLowerCase() === formData.clientName.trim().toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType));
+      if (!existingEntity) {
+        try {
+          await addDoc(collection(db, 'entities'), {
+            name: formData.clientName.trim(),
+            contact: formData.clientContact.trim(),
+            type: formData.clientType,
+            types: [formData.clientType],
+            ownerId: user.uid,
+            createdAt: new Date().toISOString()
+          });
+          console.log("Auto-created new CRM entity for", formData.clientName);
+        } catch (err) {
+          console.error("Error auto-creating entity", err);
+        }
+      }
+    }
+
     // Check duplicates if not editing
     if (!formData.id) {
       const isDuplicate = services.some(s => 
@@ -392,6 +418,7 @@ export function DigitalServices() {
       isPaid: formData.isPaid,
       isCostPaid: formData.isCostPaid,
       revenueWalletId: formData.revenueWalletId || '',
+      parentServiceId: formData.parentServiceId || '',
       costWalletId: formData.costWalletId || '',
       ownerId: user.uid,
       updatedAt: new Date().toISOString()
@@ -579,7 +606,8 @@ export function DigitalServices() {
       isPaid: true,
       isCostPaid: true,
       revenueWalletId: '',
-      costWalletId: ''
+      costWalletId: '',
+      parentServiceId: ''
     });
   };
 
@@ -606,7 +634,8 @@ export function DigitalServices() {
       isPaid: service.isPaid !== false, // default true if not false
       isCostPaid: service.isCostPaid !== false,
       revenueWalletId: service.revenueWalletId || '',
-      costWalletId: service.costWalletId || ''
+      costWalletId: service.costWalletId || '',
+      parentServiceId: (service as any).parentServiceId || ''
     });
     setIsModalOpen(true);
   };
@@ -816,29 +845,41 @@ export function DigitalServices() {
     return diffDays >= 0 && diffDays <= 2;
   };
 
-  // Enviar mensaje de recordatorio de cobro/corte por WhatsApp
-  const handleWhatsAppAlert = (service: DigitalServiceItem, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleWhatsAppAction = (service: DigitalServiceItem, type: 'info' | 'cutoff') => {
     const phone = service.clientContact || '';
     if (!phone) {
       alert(`No se encontró número registrado para "${service.clientName || 'el cliente'}". Por favor edite el servicio y guarde su número.`);
       return;
     }
     
-    // Generate secure public links for individual account / voucher & general statement
-    const origin = window.location.origin;
-    const voucherUrl = `${origin}/?view=voucher&id=${service.id}`;
-    const portalUrl = getClientPortalUrl(user?.uid || '', service.clientName || '', allEntities);
+    let msg = '';
+    
+    if (type === 'info') {
+      const origin = window.location.origin;
+      const voucherUrl = `${origin}/?view=voucher&id=${service.id}`;
+      const portalUrl = getClientPortalUrl(user?.uid || '', service.clientName || '', allEntities);
 
-    let valorLine = '';
-    if (!service.isPaid) {
-      const pendingVal = service.revenue - (service.amountPaid || 0);
-      valorLine = `💵 *VALOR PENDIENTE:* ${formatCurrency(pendingVal)}\n`;
+      let valorLine = '';
+      if (!service.isPaid) {
+        const pendingVal = service.revenue - (service.amountPaid || 0);
+        valorLine = `💵 *VALOR PENDIENTE:* ${formatCurrency(pendingVal)}\n`;
+      }
+
+      msg = `📌 *SUSCRIPCIÓN:* ${service.name}\n📨 *CORREO/USUARIO:* ${service.email || 'N/A'}\n🤫 *Contraseña:* ${service.password || 'N/A'}\n♻️ *Fecha de renovación:* ${service.expirationDate}\n${valorLine}\n*IMPORTANTE* 🧏👀\n\n🙅 No cambiar datos de acceso tales como correo o contraseña, caso contrario perderá garantía y no se ofrece reembolso ni devoluciones.\n\n📸 En caso de tener algún inconveniente con la cuenta, notificarlo con imagen para darle solución lo más pronto posible.\n\n🔗 *Recibo Online:* ${voucherUrl}\n💼 *Mi Portal:* ${portalUrl}`;
+    } else {
+      const nameParts = (service.clientName || '').split(' ');
+      const shortName = nameParts[0] || 'Cliente';
+      msg = `Hola ${shortName}, tu cuenta ${service.name} con correo/usuario ${service.email || 'N/A'} vence ${service.expirationDate}, nos confirmas si deseas continuar con el servicio.`;
     }
-
-    const msg = `📌 *SUSCRIPCIÓN:* ${service.name}\n📨 *CORREO/USUARIO:* ${service.email || 'N/A'}\n🤫 *Contraseña:* ${service.password || 'N/A'}\n♻️ *Fecha de renovación:* ${service.expirationDate}\n${valorLine}\n*IMPORTANTE* 🧏👀\n\n🙅 No cambiar datos de acceso tales como correo o contraseña, caso contrario perderá garantía y no se ofrece reembolso ni devoluciones.\n\n📸 En caso de tener algún inconveniente con la cuenta, notificarlo con imagen para darle solución lo más pronto posible.\n\n🔗 *Recibo Online:* ${voucherUrl}\n💼 *Mi Portal:* ${portalUrl}`;
+    
     const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
+    setSelectedWaService(null);
+  };
+  
+  const handleWhatsAppAlert = (service: DigitalServiceItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedWaService(service);
   };
 
   // ACCIONES MASIVAS (MEJORA 3)
@@ -1118,10 +1159,16 @@ export function DigitalServices() {
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button 
+            onClick={() => setShowProfilesManager(true)}
+            className={cn("flex-1 sm:flex-none border px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-indigo-50/50 transition-colors cursor-pointer", isDark ? "border-indigo-900/50 text-indigo-400 hover:bg-indigo-900/30" : "border-indigo-100 text-indigo-600 bg-white shadow-sm")}
+          >
+            Vender Perfil
+          </button>
+          <button 
             onClick={() => setShowCatalog(true)}
             className={cn("flex-1 sm:flex-none border px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-colors cursor-pointer", isDark ? "border-slate-800 text-slate-300 hover:bg-slate-800/30" : "border-slate-200 text-slate-700 bg-white shadow-sm")}
           >
-            Ver Catálogo
+            Catálogo
           </button>
           <button 
             onClick={() => { resetForm(); setIsModalOpen(true); }}
@@ -1897,8 +1944,9 @@ export function DigitalServices() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Servicio / Producto</label>
-                    <select 
+                    <input 
                       required
+                      list="catalog-items-datalist"
                       value={formData.name}
                       onChange={(e) => {
                          const pickedName = e.target.value;
@@ -1920,11 +1968,14 @@ export function DigitalServices() {
                          }
                          setFormData(prev => ({...prev, ...updateData}));
                       }}
+                      placeholder="Escriba o seleccione un servicio"
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
-                    >
-                      <option value="">Seleccionar del Catálogo...</option>
-                      {catalogItems.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
+                    />
+                    <datalist id="catalog-items-datalist">
+                      {catalogItems.sort((a,b)=>a.name.localeCompare(b.name)).map(c => (
+                        <option key={c.id} value={c.name} />
+                      ))}
+                    </datalist>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Categoría</label>
@@ -1996,57 +2047,51 @@ export function DigitalServices() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1 block">Vincular con CRM</label>
-                    <select
-                      onChange={(e) => {
-                        const entityId = e.target.value;
-                        if (!entityId) return;
-                        const selected = allEntities.find(ent => ent.id === entityId);
-                        if (selected) {
-                          setFormData(prev => ({
-                            ...prev,
-                            clientName: selected.name,
-                            clientContact: selected.contact || ''
-                          }));
-                        }
-                      }}
-                      className={cn("w-full p-3 rounded-xl border text-[11px] font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
-                    >
-                      <option value="">-- Seleccionar registrado --</option>
-                      {allEntities
-                        .filter(e => e.types ? e.types.includes(formData.clientType) : e.type === formData.clientType)
-                        .map(ent => (
-                          <option key={ent.id} value={ent.id}>{ent.name} {ent.contact ? `(${ent.contact})` : ''}</option>
-                        ))
-                      }
-                    </select>
-                  </div>
+                  
                 </div>
 
-                {/* 2. Cliente y Numero de WhatsApp */}
+                {/* 2. Cliente Predictivo */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Nombre de Cliente</label>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1">Nombre de Cliente (Predictivo)</label>
                     <input 
                       required
                       type="text"
+                      list="clients-list"
                       value={formData.clientName}
-                      onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                      onChange={(e) => {
+                        const newName = e.target.value;
+                        const matchingEntity = allEntities.find(ent => ent.name.toLowerCase() === newName.toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType));
+                        setFormData({
+                          ...formData, 
+                          clientName: newName,
+                          clientContact: matchingEntity ? (matchingEntity.contact || '') : formData.clientContact
+                        });
+                      }}
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
-                      placeholder="Ej. Galo Peralta"
+                      placeholder="Busca o ingresa un nuevo cliente..."
                     />
+                    <datalist id="clients-list">
+                      {allEntities
+                        .filter(e => e.types ? e.types.includes(formData.clientType) : e.type === formData.clientType)
+                        .map(ent => (
+                          <option key={ent.id} value={ent.name}>{ent.contact ? `(${ent.contact})` : ''}</option>
+                        ))
+                      }
+                    </datalist>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">WhatsApp de Cliente</label>
-                    <input 
-                      type="text"
-                      value={formData.clientContact}
-                      onChange={(e) => setFormData({...formData, clientContact: e.target.value})}
-                      className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
-                      placeholder="Ej. +593987654321"
-                    />
-                  </div>
+                  {(!allEntities.find(ent => ent.name.toLowerCase() === formData.clientName.toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType))) && formData.clientName.trim() !== '' && (
+                    <div className="space-y-1.5 sm:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-amber-500 px-1">Nuevo Cliente: Ingresa WhatsApp</label>
+                      <input 
+                        type="text"
+                        value={formData.clientContact}
+                        onChange={(e) => setFormData({...formData, clientContact: e.target.value})}
+                        className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none border-amber-500/50 focus:border-amber-500", isDark ? "bg-slate-800 text-white" : "bg-amber-50/30")}
+                        placeholder="Ej. +593987654321 (Se guardará automáticamente)"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {formData.clientType === 'reseller' && (
@@ -2389,6 +2434,100 @@ export function DigitalServices() {
         )}
       </AnimatePresence>
 
+      {/* Modal Vender Perfil */}
+      <AnimatePresence>
+        {showProfilesManager && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfilesManager(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-3xl p-8 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h3 className={cn("text-2xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Venta de Perfiles</h3>
+                  <p className="text-slate-500 text-sm">Selecciona una cuenta matriz para crear perfiles. Las fechas de corte se calculan 1 mes a partir de hoy.</p>
+                </div>
+                <button onClick={() => setShowProfilesManager(false)} className="p-2 bg-slate-100/10 rounded-full text-slate-500 cursor-pointer hover:bg-slate-200/20 transition-colors">
+                  <X />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+                {(() => {
+                  const completeAccounts = services.filter(s => {
+                    const catItem = catalogItems.find(c => c.name.toLowerCase() === s.name.toLowerCase());
+                    return s.status === 'active' && catItem && (catItem.name.toLowerCase().includes('completo') || catItem.name.toLowerCase().includes('completa') || (catItem.maxScreens && catItem.maxScreens > 0));
+                  });
+                  if (completeAccounts.length === 0) return <div className="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">No hay cuentas matrices activas disponibles.</div>;
+                  
+                  return completeAccounts.map(account => {
+                    const maxScreens = catalogItems.find(c => c.name.toLowerCase() === account.name.toLowerCase())?.maxScreens || 1;
+                    const soldProfiles = services.filter(p => p.parentServiceId === account.id);
+                    const available = maxScreens - soldProfiles.length;
+                    
+                    return (
+                      <div key={account.id} className={cn("p-4 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4", isDark ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200")}>
+                        <div>
+                          <h4 className={cn("font-bold text-sm", isDark ? "text-slate-200" : "text-slate-800")}>{account.name}</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">{account.email}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                              Disponibles: {available} / {maxScreens}
+                            </span>
+                            {soldProfiles.length > 0 && (
+                              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                Ocupadas: {soldProfiles.length}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {available > 0 ? (
+                          <button
+                            onClick={() => {
+                              const d = new Date();
+                              d.setMonth(d.getMonth() + 1);
+                              setFormData({
+                                id: '',
+                                name: account.name,
+                                category: account.category,
+                                revenue: '',
+                                cost: '0', // Cost is assumed covered by parent account
+                                supplierId: account.supplierId || '',
+                                clientName: '',
+                                clientContact: '',
+                                clientType: 'client',
+                                expirationDate: d.toISOString().split('T')[0],
+                                email: account.email || '',
+                                password: account.password || '',
+                                pin: '',
+                                serviceType: 'profile',
+                                profileName: '',
+                                status: 'active',
+                                isPaid: false,
+                                isCostPaid: true, // Auto true for profile
+                                parentServiceId: account.id,
+                                finalClientName: '',
+                                finalClientContact: '',
+                                revenueWalletId: '',
+                                costWalletId: ''
+                              });
+                              setShowProfilesManager(false);
+                              setIsModalOpen(true);
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap shadow-sm transition-all"
+                          >
+                            Vender Perfil
+                          </button>
+                        ) : (
+                          <span className="text-xs font-bold uppercase tracking-widest text-rose-500">Sin Cupos</span>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      
       {/* Modal Catálogo */}
       <AnimatePresence>
         {showCatalog && (
@@ -2449,8 +2588,17 @@ export function DigitalServices() {
                 </div>
               )}
 
+              <div className="mb-4 relative">
+                <input
+                  type="text"
+                  placeholder="Buscar en catálogo..."
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  className={cn("w-full p-3 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 focus:bg-white")}
+                />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 max-h-[60vh] overflow-y-auto">
-                {catalogItems.length > 0 ? catalogItems.map(item => (
+                {catalogItems.filter(c => c.name.toLowerCase().includes(catalogSearch.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)).length > 0 ? catalogItems.filter(c => c.name.toLowerCase().includes(catalogSearch.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)).map(item => (
                   <div key={item.id} className={cn("p-4 rounded-2xl border transition-all relative flex flex-col group", isDark ? "border-slate-800 bg-slate-800/10" : "border-slate-200 bg-slate-50")}>
                     <div className="flex justify-between items-center mb-2">
                        {editingCatalogId !== item.id ? (
@@ -2710,6 +2858,22 @@ export function DigitalServices() {
                           </div>
                         </div>
                       )}
+                      {(item.name.toLowerCase().includes('completa') || item.name.toLowerCase().includes('completo')) && (
+                        <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1 mb-1 block">Pantallas Máximas (Perfiles)</label>
+                          <input 
+                            type="number"
+                            min="1"
+                            value={item.maxScreens || ''}
+                            onChange={(e) => {
+                               const val = parseInt(e.target.value);
+                               updateDoc(doc(db, 'digital_catalog', item.id), { maxScreens: isNaN(val) ? 0 : val });
+                            }}
+                            className={cn("w-full p-2 rounded-lg border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200")}
+                            placeholder="Ej. 4"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )) : (
@@ -2717,13 +2881,30 @@ export function DigitalServices() {
                 )}
               </div>
 
-              <div className={cn("p-4 rounded-2xl flex items-center gap-3", isDark ? "bg-slate-800/50" : "bg-slate-50")}>
-                <Search className="w-5 h-5 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Buscar en el ecosistema global..." 
-                  className="bg-transparent border-none outline-none text-sm font-bold w-full"
-                />
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedWaService && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setSelectedWaService(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                   Opciones de WhatsApp
+                 </h3>
+                 <button onClick={() => setSelectedWaService(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
+              </div>
+              <div className="space-y-3">
+                 <button onClick={() => handleWhatsAppAction(selectedWaService, 'info')} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all">
+                   <MessageCircle className="w-4 h-4"/> Enviar Datos de Cuenta
+                 </button>
+                 <button onClick={() => handleWhatsAppAction(selectedWaService, 'cutoff')} className="w-full bg-amber-500 hover:bg-amber-600 text-white px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all">
+                   <MessageCircle className="w-4 h-4"/> Enviar Notificación de Corte
+                 </button>
               </div>
             </motion.div>
           </div>
