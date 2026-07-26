@@ -75,6 +75,11 @@ export interface DigitalServiceItem {
   email?: string;
   password?: string;
   pin?: string;
+  serviceType?: 'completa' | 'pantalla' | 'profile' | 'matriz';
+  profileName?: string;
+  clientType?: 'client' | 'reseller';
+  finalClientName?: string;
+  finalClientContact?: string;
   status?: 'active' | 'expired' | 'pending';
   isPaid?: boolean;
   isCostPaid?: boolean;
@@ -233,7 +238,7 @@ export function DigitalServices() {
     email: '',
     password: '',
     pin: '',
-    serviceType: 'completa' as 'completa' | 'pantalla' | 'profile',
+    serviceType: 'completa' as 'completa' | 'pantalla' | 'profile' | 'matriz',
     profileName: '',
     status: 'active' as 'active' | 'expired' | 'pending',
     isPaid: true,
@@ -1705,9 +1710,12 @@ export function DigitalServices() {
                           <span className="text-slate-400 font-semibold uppercase tracking-wider text-[8px]">Acceso:</span>
                           <span className={cn(
                             "font-black uppercase tracking-widest text-[8px] px-1.5 py-0.5 rounded",
-                            (service as any).serviceType === 'pantalla' ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            (service as any).serviceType === 'matriz' ? "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20" :
+                            (service as any).serviceType === 'profile' ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                            (service as any).serviceType === 'pantalla' ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : 
+                            "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                           )}>
-                            {(service as any).serviceType === 'pantalla' ? '📺 Pantalla' : '👤 Completa'}
+                            {(service as any).serviceType === 'matriz' ? '🏢 Matriz' : (service as any).serviceType === 'profile' ? '👤 Perfil' : (service as any).serviceType === 'pantalla' ? '📺 Pantalla' : '👤 Completa'}
                           </span>
                         </div>
                         {service.email && (
@@ -2165,7 +2173,18 @@ export function DigitalServices() {
                   {/* Tipo de Acceso a la Cuenta */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 block">Tipo de Acceso de Venta</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, serviceType: 'matriz' }))}
+                        className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                          formData.serviceType === 'matriz'
+                            ? "bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm"
+                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                        )}
+                      >
+                        🏢 Matriz
+                      </button>
                       <button
                         type="button"
                         onClick={() => setFormData(prev => ({ ...prev, serviceType: 'completa' }))}
@@ -2175,7 +2194,7 @@ export function DigitalServices() {
                             : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
                         )}
                       >
-                        👤 Cuenta Completa
+                        👤 Cliente
                       </button>
                       <button
                         type="button"
@@ -2186,14 +2205,11 @@ export function DigitalServices() {
                             : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
                         )}
                       >
-                        📺 Pantalla / Dispositivo
+                        📺 Pantalla
                       </button>
                     </div>
-                    <p className="text-[9.5px] text-slate-500 italic font-medium">
-                      {formData.serviceType === 'completa' 
-                        ? '• El cliente compra la cuenta completa (los accesos son personales y únicos).' 
-                        : '• El cliente compra un perfil individual. Se requiere especificar Perfil y PIN de Acceso.'
-                      }
+                    <p className="text-[9px] text-slate-500 italic font-medium leading-tight">
+                      {formData.serviceType === 'matriz' ? '• Inventario: Cuenta para revender perfiles (No va a clientes).' : formData.serviceType === 'completa' ? '• Cuenta Completa: Se vende toda la cuenta a un cliente.' : '• Pantalla: Se vende un perfil individual.'}
                     </p>
                   </div>
 
@@ -2453,7 +2469,8 @@ export function DigitalServices() {
                 {(() => {
                   const completeAccounts = services.filter(s => {
                     const catItem = catalogItems.find(c => c.name.toLowerCase() === s.name.toLowerCase());
-                    return s.status === 'active' && catItem && (catItem.name.toLowerCase().includes('completo') || catItem.name.toLowerCase().includes('completa') || (catItem.maxScreens && catItem.maxScreens > 0));
+                    const isLegacyMatriz = (s as any).serviceType !== 'pantalla' && (s as any).serviceType !== 'profile' && (s as any).serviceType !== 'matriz' && catItem && (catItem.name.toLowerCase().includes('complet') || (catItem.maxScreens && catItem.maxScreens > 0));
+                    return s.status === 'active' && ((s as any).serviceType === 'matriz' || isLegacyMatriz) && catItem && (catItem.maxScreens && catItem.maxScreens > 0);
                   });
                   if (completeAccounts.length === 0) return <div className="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">No hay cuentas matrices activas disponibles.</div>;
                   
@@ -2485,7 +2502,7 @@ export function DigitalServices() {
                               d.setMonth(d.getMonth() + 1);
                               setFormData({
                                 id: '',
-                                name: account.name,
+                                name: account.name.replace(/complet[ao]/i, 'Perfil').trim(),
                                 category: account.category,
                                 revenue: '',
                                 cost: '0', // Cost is assumed covered by parent account

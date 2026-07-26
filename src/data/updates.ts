@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_11_0_parent_account_isolation",
+    version: "V7.11.0",
+    title: "V7.11.0 • Separación Lógica de Cuentas Matrices",
+    date: "25-Julio-2026, 12:00:00",
+    description: "Se agregó el tipo de acceso 'Matriz (Inventario)' para diferenciar las cuentas utilizadas como proveedoras de perfiles de aquellas cuentas completas vendidas directamente al cliente final, eliminando la duplicación en la ventana de venta de perfiles.",
+    type: "feature"
+  },
+  {
     id: "v_7_10_2_wa_modal_fix",
     version: "V7.10.2",
     title: "V7.10.2 • Corrección Modal de WhatsApp",
