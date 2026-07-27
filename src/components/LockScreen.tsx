@@ -184,7 +184,7 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
     return () => window.removeEventListener('keydown', handleTempKeyPress);
   }, [tempPin, newPinStep]);
 
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   if (newPinStep) {
     return (

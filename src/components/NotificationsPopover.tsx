@@ -28,7 +28,7 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
   const { user, settings } = useAuth();
   const [alerts, setAlerts] = useState<RealNotifItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   useEffect(() => {
     if (!user) return;
@@ -96,9 +96,9 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
             return {
               id: ser.id,
               type: 'expiration' as const,
-              customer: ser.clientName || 'Cliente Digital',
+              customer: ser.serviceType === 'matriz' ? '🏢 Cuenta Madre' : (ser.clientName || 'Cliente Digital'),
               item: itemLabel,
-              amount: ser.revenue || 0,
+              amount: ser.serviceType === 'matriz' ? (ser.cost || 0) : (ser.revenue || 0),
               date: ser.expirationDate,
               status: isOverdu ? ('expired' as const) : ('expiring-soon' as const),
               contact: ser.clientContact || '',
@@ -188,16 +188,16 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
       )}>
         <div className="flex items-center gap-2">
           <Bell className="w-4 h-4 text-indigo-500 animate-swing" />
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Notificaciones en tiempo real</h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Notificaciones en tiempo real</h3>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
-          <X className="w-4 h-4 text-slate-400" />
+          <X className="w-4 h-4 text-slate-600 dark:text-slate-300" />
         </button>
       </div>
 
       <div className="max-h-96 overflow-y-auto divide-y divide-slate-100/10">
         {loading ? (
-          <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
+          <div className="p-12 text-center text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Buscando alertas de cobros...</span>
           </div>
@@ -232,7 +232,7 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
                       {alert.status === 'expired' ? 'Expiró' : alert.status === 'past-due' ? 'Vencido' : 'Próximo'}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed break-words">
+                  <p className="text-[10px] text-slate-700 dark:text-slate-300 mt-0.5 leading-relaxed break-words">
                     {alert.item} {alert.amount ? ` - ${formatCurrency(alert.amount)}` : ''}
                   </p>
                   
@@ -265,7 +265,7 @@ export function NotificationsPopover({ onClose, onNavigate }: NotificationsPopov
             </div>
           ))
         ) : (
-          <div className="p-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-widest bg-slate-50/10">
+          <div className="p-8 text-center text-slate-700 dark:text-slate-300 text-[10px] font-bold uppercase tracking-widest bg-slate-50/10">
             ✨ ¡Felicidades! Todo está cobrado y al día.
           </div>
         )}

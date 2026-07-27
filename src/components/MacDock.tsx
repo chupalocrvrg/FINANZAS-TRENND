@@ -45,8 +45,7 @@ export function MacDock({ activeTab, setActiveTab, onOpenReports, onToggleNotifi
   const items = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio', category: 'main' },
     ...(!disabledFeatures.includes('crm') ? [{ id: 'crm', icon: Users, label: 'Cartera de Clientes', category: 'comercio' }] : []),
-    ...(!disabledFeatures.includes('services') ? [{ id: 'services', icon: Gamepad2, label: 'Servicios Digitales', category: 'comercio' }] : []),
-    ...(!disabledFeatures.includes('updates') ? [{ id: 'updates', icon: Activity, label: 'Actualizaciones ANT', category: 'comercio' }] : []),
+    ...(!disabledFeatures.includes('ecommerce') ? [{ id: 'ecommerce', icon: ShoppingBag, label: 'E-commerce', category: 'comercio' }] : []),
     ...(!disabledFeatures.includes('treasury') ? [{ id: 'treasury', icon: Wallet, label: 'Tesorería', category: 'finanzas' }] : []),
     ...(!disabledFeatures.includes('reports') ? [{ id: 'reports', icon: BarChart3, label: 'Reportes y Balances', category: 'finanzas' }] : []),
     ...(!disabledFeatures.includes('alerts') ? [{ id: 'alerts', icon: AlertCircle, label: 'Alertas y Cobro', category: 'finanzas' }] : []),
@@ -56,10 +55,10 @@ export function MacDock({ activeTab, setActiveTab, onOpenReports, onToggleNotifi
   ];
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden lg:flex items-end h-24">
+    <div className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-end h-[140px] max-w-[100vw] overflow-x-auto px-4 pb-2 scrollbar-hide pointer-events-none">
       <div 
         className={cn(
-          "flex items-center gap-2 px-3 h-16 rounded-2xl shadow-2xl border backdrop-blur-xl transition-all",
+          "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 h-16 sm:h-20 rounded-3xl shadow-2xl border backdrop-blur-xl transition-all pointer-events-auto",
           isDark 
             ? "bg-slate-900/80 border-slate-700/50 shadow-black/50" 
             : "bg-white/80 border-slate-200/60 shadow-slate-300/50"
@@ -80,14 +79,14 @@ export function MacDock({ activeTab, setActiveTab, onOpenReports, onToggleNotifi
                   whileTap={{ scale: 0.95 }}
                   onClick={() => item.isAction ? item.action() : setActiveTab(item.id)}
                   className={cn(
-                    "relative flex items-center justify-center w-12 h-12 rounded-xl transition-colors cursor-pointer outline-none",
+                    "relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl transition-colors cursor-pointer outline-none",
                     isActive 
                       ? isDark ? "bg-indigo-500/20 text-indigo-400" : "bg-indigo-100 text-indigo-600"
-                      : isDark ? "text-slate-400 hover:bg-slate-800/80 hover:text-slate-200" : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+                      : isDark ? "text-slate-600 dark:text-slate-300 hover:bg-slate-800/80 hover:text-slate-200" : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
                   )}
                   style={{ transformOrigin: 'bottom' }}
                 >
-                  <item.icon className="w-6 h-6" />
+                  <item.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   {(item as any).count > 0 && (
                     <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-mono text-[9px] font-black rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center border-2 border-white shrink-0 animate-bounce">
                       {(item as any).count}

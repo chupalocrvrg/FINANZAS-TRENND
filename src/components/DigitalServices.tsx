@@ -94,7 +94,7 @@ export interface DigitalServiceItem {
 
 export function DigitalServices() {
   const { user, settings } = useAuth();
-  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
+  const isWalletsDisabled = true;
   const [services, setServices] = useState<DigitalServiceItem[]>([]);
   const [searchTerm, setSearchTerm] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -248,7 +248,7 @@ export function DigitalServices() {
     parentServiceId: ''
   });
 
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [gridCols, setGridCols] = useState<1 | 2 | 3 | 4>(() => {
     const saved = localStorage.getItem('digital_services_grid_cols');
@@ -588,7 +588,7 @@ export function DigitalServices() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (isMatriz = false) => {
     setFormData({
       id: '',
       name: '',
@@ -605,7 +605,7 @@ export function DigitalServices() {
       email: '',
       password: '',
       pin: '',
-      serviceType: 'completa',
+      serviceType: isMatriz ? 'matriz' : 'completa',
       profileName: '',
       status: 'active',
       isPaid: true,
@@ -1160,7 +1160,7 @@ export function DigitalServices() {
           <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
             Suscripciones y Servicios
           </h2>
-          <p className="text-slate-500 font-medium">Control de clientes, vencimientos y credenciales de cuentas digitales.</p>
+          <p className="text-slate-700 dark:text-slate-300 font-medium">Control de clientes, vencimientos y credenciales de cuentas digitales.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button 
@@ -1176,11 +1176,18 @@ export function DigitalServices() {
             Catálogo
           </button>
           <button 
-            onClick={() => { resetForm(); setIsModalOpen(true); }}
-            className="flex-1 sm:flex-none bg-indigo-600 text-white px-6 py-2.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95 cursor-pointer"
+            onClick={() => { resetForm(true); setIsModalOpen(true); }}
+            className="flex-1 sm:flex-none bg-fuchsia-600 text-white px-4 py-2.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-fuchsia-700 transition-all font-bold shadow-lg shadow-fuchsia-500/10 active:scale-95 cursor-pointer"
           >
-            <Plus className="w-5 h-5" />
-            Vender Cuenta
+            <Plus className="w-4 h-4" />
+            <span className="text-[10px] sm:text-xs">Registrar Cuenta Madre</span>
+          </button>
+          <button 
+            onClick={() => { resetForm(); setIsModalOpen(true); }}
+            className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 sm:px-6 py-2.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-[10px] sm:text-xs">Vender Cuenta</span>
           </button>
         </div>
       </div>
@@ -1190,7 +1197,7 @@ export function DigitalServices() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
           <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-850" : "bg-white border-slate-200")}>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Facturación Activa (MRR)</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Facturación Activa (MRR)</span>
               <div className="w-7 h-7 bg-indigo-500/10 text-indigo-500 flex items-center justify-center rounded-xl">
                 <Wallet className="w-4 h-4" />
               </div>
@@ -1199,13 +1206,13 @@ export function DigitalServices() {
               <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight", isDark ? "text-white" : "text-slate-900")}>
                 {formatCurrency(activeRevenueMonth)}
               </p>
-              <p className="text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Ingreso total estimado por cuentas activas</p>
+              <p className="text-[9px] text-slate-600 dark:text-slate-300 mt-0.5 font-bold uppercase tracking-wider">Ingreso total estimado por cuentas activas</p>
             </div>
           </div>
 
           <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-850" : "bg-white border-slate-200")}>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Coste de Proveedores</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Coste de Proveedores</span>
               <div className="w-7 h-7 bg-rose-500/10 text-rose-500 flex items-center justify-center rounded-xl">
                 <Receipt className="w-4 h-4" />
               </div>
@@ -1214,7 +1221,7 @@ export function DigitalServices() {
               <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight", isDark ? "text-rose-400" : "text-rose-600")}>
                 {formatCurrency(activeCostMonth)}
               </p>
-              <p className="text-[9px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Costo invertido en las suscripciones activas</p>
+              <p className="text-[9px] text-slate-600 dark:text-slate-300 mt-0.5 font-bold uppercase tracking-wider">Costo invertido en las suscripciones activas</p>
             </div>
           </div>
 
@@ -1246,7 +1253,7 @@ export function DigitalServices() {
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center w-full">
         <div className="flex gap-2 w-full md:max-w-md">
           <div className="relative flex-1">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-600 dark:text-slate-300">
               <Search className="w-5 h-5 text-indigo-500" />
             </span>
             <input
@@ -1293,11 +1300,11 @@ export function DigitalServices() {
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'all'
                   ? (isDark ? "bg-slate-800 text-white shadow-md font-extrabold" : "bg-white text-slate-900 shadow-sm border border-black/5")
-                  : "text-slate-500 hover:text-slate-705"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
               )}
             >
               Todos
-              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'all' ? "bg-indigo-500 text-white" : "bg-slate-200/50 text-slate-500 dark:bg-slate-800")}>
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'all' ? "bg-indigo-500 text-white" : "bg-slate-200/50 text-slate-700 dark:text-slate-300 dark:bg-slate-800")}>
                 {totalCounts}
               </span>
             </button>
@@ -1308,7 +1315,7 @@ export function DigitalServices() {
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'active'
                   ? (isDark ? "bg-slate-800 text-emerald-400 shadow-md font-extrabold" : "bg-white text-emerald-600 shadow-sm border border-emerald-500/10")
-                  : "text-slate-500 hover:text-slate-705"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
               )}
             >
               Activos
@@ -1323,7 +1330,7 @@ export function DigitalServices() {
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'expiring'
                   ? (isDark ? "bg-slate-800 text-amber-400 shadow-md font-extrabold" : "bg-white text-amber-600 shadow-sm border border-amber-500/10")
-                  : "text-slate-500 hover:text-slate-705"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
               )}
             >
               <Calendar className="w-3.5 h-3.5 text-amber-500" />
@@ -1339,7 +1346,7 @@ export function DigitalServices() {
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'expired'
                   ? (isDark ? "bg-slate-800 text-rose-400 shadow-md font-extrabold" : "bg-white text-rose-600 shadow-sm border border-rose-500/10")
-                  : "text-slate-500 hover:text-slate-705"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
               )}
             >
               <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
@@ -1384,7 +1391,7 @@ export function DigitalServices() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Proveedor */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Proveedor</label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Proveedor</label>
                 <select
                   value={filterSupplierId}
                   onChange={(e) => setFilterSupplierId(e.target.value)}
@@ -1402,7 +1409,7 @@ export function DigitalServices() {
 
               {/* Servicio */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Servicio / Producto</label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Servicio / Producto</label>
                 <select
                   value={filterServiceName}
                   onChange={(e) => setFilterServiceName(e.target.value)}
@@ -1420,7 +1427,7 @@ export function DigitalServices() {
 
               {/* Fecha de Corte */}
               <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rango de Vencimiento (Corte)</label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Rango de Vencimiento (Corte)</label>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
@@ -1431,7 +1438,7 @@ export function DigitalServices() {
                       isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
                     )}
                   />
-                  <span className="text-slate-400 text-xs">al</span>
+                  <span className="text-slate-600 dark:text-slate-300 text-xs">al</span>
                   <input
                     type="date"
                     value={filterCutoffEnd}
@@ -1446,7 +1453,7 @@ export function DigitalServices() {
 
               {/* Fecha de Venta */}
               <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rango de Venta / Registro</label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Rango de Venta / Registro</label>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
@@ -1457,7 +1464,7 @@ export function DigitalServices() {
                       isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
                     )}
                   />
-                  <span className="text-slate-400 text-xs">al</span>
+                  <span className="text-slate-600 dark:text-slate-300 text-xs">al</span>
                   <input
                     type="date"
                     value={filterSaleEnd}
@@ -1487,7 +1494,7 @@ export function DigitalServices() {
                 }
               }}
               className={cn("px-3 py-1.5 rounded-xl border font-bold uppercase tracking-wider transition-all cursor-pointer text-[9px] select-none", 
-                isDark ? "border-slate-800 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50")}
+                isDark ? "border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50")}
             >
               {selectedItemIds.length === filteredServices.length ? 'Desmarcar Todos' : 'Seleccionar Todos'}
             </button>
@@ -1500,7 +1507,7 @@ export function DigitalServices() {
 
           {/* Grid columns selector for accessibility / visually impaired users */}
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className={cn("text-[9px] font-black uppercase tracking-widest hidden sm:inline-block", isDark ? "text-slate-400" : "text-slate-500")}>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest hidden sm:inline-block", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-700 dark:text-slate-300")}>
               👁️ Ver por Fila:
             </span>
             <div className={cn("flex items-center gap-1 p-1 rounded-xl border w-full md:w-auto overflow-x-auto", isDark ? "bg-slate-900/80 border-slate-850" : "bg-slate-50 border-slate-200")}>
@@ -1513,7 +1520,7 @@ export function DigitalServices() {
                     "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-none",
                     gridCols === cols
                       ? (isDark ? "bg-indigo-650 text-white shadow font-black" : "bg-white text-indigo-600 shadow-sm border border-black/5 font-black")
-                      : (isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900")
+                      : (isDark ? "text-slate-600 dark:text-slate-300 hover:text-white" : "text-slate-700 dark:text-slate-300 hover:text-slate-900")
                   )}
                   title={cols === 1 ? "1 Tarjeta Grande (ideal para problemas de vista)" : `${cols} Tarjetas`}
                 >
@@ -1526,7 +1533,7 @@ export function DigitalServices() {
       )}
 
       {loading ? (
-        <div className="py-32 flex flex-col items-center justify-center gap-4 text-slate-500">
+        <div className="py-32 flex flex-col items-center justify-center gap-4 text-slate-700 dark:text-slate-300">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
           <p className="font-bold uppercase tracking-widest text-[10px]">Sincronizando Servicios...</p>
         </div>
@@ -1605,7 +1612,7 @@ export function DigitalServices() {
                           {['Software', 'Otros'].includes(service.category) && <ShoppingBag className={cn(gridCols === 1 ? "w-7 h-7" : gridCols === 2 ? "w-6 h-6" : "w-5 h-5")} />}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <span className={cn("font-black uppercase tracking-widest text-slate-500 block",
+                          <span className={cn("font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 block",
                             gridCols === 1 ? "text-xs mb-0.5" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                           )}>{service.category}</span>
                           <h4 className={cn("font-bold tracking-tight truncate", 
@@ -1636,7 +1643,7 @@ export function DigitalServices() {
                               )}
                             </p>
                             {(service as any).finalClientName && (
-                              <p className="text-[10px] font-bold text-slate-450 dark:text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                              <p className="text-[10px] font-bold text-slate-450 dark:text-slate-600 dark:text-slate-300 flex items-center gap-1 mt-0.5 truncate">
                                 <span className="text-indigo-500 dark:text-indigo-400">└ 👤 Final:</span> <span>{(service as any).finalClientName}</span>
                               </p>
                             )}
@@ -1683,7 +1690,7 @@ export function DigitalServices() {
                           </div>
                         </div>
                         {service.clientContact && (
-                          <p className={cn("font-mono text-slate-500 flex items-center gap-1.5", 
+                          <p className={cn("font-mono text-slate-700 dark:text-slate-300 flex items-center gap-1.5", 
                             gridCols === 1 ? "text-sm mt-1" : gridCols === 2 ? "text-xs" : "text-[10px]"
                           )}>
                             <span>📞</span> <span>{service.clientContact}</span>
@@ -1692,7 +1699,7 @@ export function DigitalServices() {
                         {service.expirationDate && (
                           <p className={cn("font-bold flex items-center gap-1.5", 
                             gridCols === 1 ? "text-sm mt-2" : gridCols === 2 ? "text-xs mt-1" : "text-[10px]",
-                            expired ? "text-rose-500" : expiring ? "text-amber-500" : "text-slate-500"
+                            expired ? "text-rose-500" : expiring ? "text-amber-500" : "text-slate-700 dark:text-slate-300"
                           )}>
                             <span>📅 Expira:</span> <span>{service.expirationDate}</span>
                           </p>
@@ -1707,7 +1714,7 @@ export function DigitalServices() {
                         gridCols === 1 ? "p-5 rounded-2xl text-base mb-6 space-y-2.5" : gridCols === 2 ? "p-3.5 rounded-xl text-sm mb-4 space-y-2" : "p-2.5 rounded-xl text-[10px] mb-4 space-y-1"
                       )}>
                         <div className="flex justify-between items-center gap-4 border-b border-dashed border-slate-500/10 pb-1.5 mb-1.5">
-                          <span className="text-slate-400 font-semibold uppercase tracking-wider text-[8px]">Acceso:</span>
+                          <span className="text-slate-600 dark:text-slate-300 font-semibold uppercase tracking-wider text-[8px]">Acceso:</span>
                           <span className={cn(
                             "font-black uppercase tracking-widest text-[8px] px-1.5 py-0.5 rounded",
                             (service as any).serviceType === 'matriz' ? "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20" :
@@ -1720,13 +1727,13 @@ export function DigitalServices() {
                         </div>
                         {service.email && (
                           <div className="flex justify-between items-center gap-4 truncate">
-                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">User:</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">User:</span>
                             <span className={cn("font-bold select-all truncate", isDark ? "text-indigo-200" : "text-slate-700")}>{service.email}</span>
                           </div>
                         )}
                         {service.password && (
                           <div className="flex justify-between items-center gap-2 truncate">
-                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">Clave:</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">Clave:</span>
                             <div className="flex items-center gap-1.5 shrink-0 max-w-full">
                               <span className={cn("font-black font-mono tracking-wider select-all", isDark ? "text-indigo-300" : "text-slate-800")}>
                                 {revealedPasswords[service.id] ? service.password : "••••••••"}
@@ -1742,7 +1749,7 @@ export function DigitalServices() {
                                     [service.id]: !wasRevealed
                                   });
                                 }}
-                                className="p-1 rounded hover:bg-slate-500/10 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
+                                className="p-1 rounded hover:bg-slate-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
                                 title={revealedPasswords[service.id] ? "Ocultar Clave" : "Revelar de forma segura"}
                               >
                                 {revealedPasswords[service.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -1752,13 +1759,13 @@ export function DigitalServices() {
                         )}
                         {(service as any).profileName && (
                           <div className="flex justify-between items-center gap-4 truncate">
-                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">Perfil:</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">Perfil:</span>
                             <span className="font-bold text-indigo-400">{(service as any).profileName}</span>
                           </div>
                         )}
                         {service.pin && (
                           <div className="flex justify-between items-center gap-2">
-                            <span className="text-slate-400 font-semibold font-mono uppercase text-[9px]">PIN / Acceso:</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">PIN / Acceso:</span>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span className={cn("font-bold bg-indigo-500/10 text-indigo-500 rounded font-mono select-all",
                                 gridCols === 1 ? "px-2.5 py-0.5 text-base" : gridCols === 2 ? "px-1.5 py-0.3 text-sm" : "px-1 py-0.2"
@@ -1776,7 +1783,7 @@ export function DigitalServices() {
                                     [service.id]: !wasRevealed
                                   });
                                 }}
-                                className="p-1 rounded hover:bg-slate-500/10 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
+                                className="p-1 rounded hover:bg-slate-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
                                 title={revealedPins[service.id] ? "Ocultar PIN" : "Revelar PIN de acceso"}
                               >
                                 {revealedPins[service.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -1795,7 +1802,7 @@ export function DigitalServices() {
                       gridCols === 1 ? "py-4 mb-5" : gridCols === 2 ? "py-3 mb-4" : "py-2 mb-4"
                     )}>
                       <div>
-                        <p className={cn("font-bold text-slate-500 uppercase tracking-widest",
+                        <p className={cn("font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest",
                           gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                         )}>Costo</p>
                         <p className={cn("font-black font-mono text-rose-500",
@@ -1803,7 +1810,7 @@ export function DigitalServices() {
                         )}>{formatCurrency(service.cost || 0)}</p>
                       </div>
                       <div className="text-center">
-                        <p className={cn("font-bold text-slate-500 uppercase tracking-widest",
+                        <p className={cn("font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest",
                           gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                         )}>PVP</p>
                         <p className={cn("font-black font-mono text-emerald-500",
@@ -1811,7 +1818,7 @@ export function DigitalServices() {
                         )}>{formatCurrency(service.revenue)}</p>
                       </div>
                       <div className="text-right">
-                        <p className={cn("font-bold text-slate-500 uppercase tracking-widest",
+                        <p className={cn("font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest",
                           gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                         )}>Rentabilidad</p>
                         <p className={cn("font-black font-mono text-indigo-500",
@@ -1827,7 +1834,7 @@ export function DigitalServices() {
                           onClick={() => handleEdit(service)}
                           title="Editar suscripción"
                           className={cn(
-                            "flex-1 border hover:bg-slate-50 transition-colors flex justify-center text-slate-500 hover:text-indigo-600 cursor-pointer items-center", 
+                            "flex-1 border hover:bg-slate-50 transition-colors flex justify-center text-slate-700 dark:text-slate-300 hover:text-indigo-600 cursor-pointer items-center", 
                             gridCols === 1 ? "p-3.5 rounded-2xl text-xs md:text-sm h-12" : gridCols === 2 ? "p-2.5 rounded-xl text-xs h-10" : "p-2 rounded-xl text-[10px] h-9",
                             isDark ? "border-slate-800 hover:bg-slate-800/40" : "border-slate-200 bg-white shadow-xs"
                           )}
@@ -1877,7 +1884,7 @@ export function DigitalServices() {
                           }}
                           title="Copiar Enlace Portal de Cliente"
                           className={cn(
-                            "border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0",
+                            "border border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0",
                             gridCols === 1 ? "w-12 h-12 rounded-2xl" : gridCols === 2 ? "w-10 h-10 rounded-xl" : "w-9 h-9 rounded-xl"
                           )}
                         >
@@ -1909,8 +1916,8 @@ export function DigitalServices() {
             <ShoppingBag className="w-8 h-8 text-slate-300" />
           </div>
           <div className="space-y-1">
-            <h3 className={cn("text-lg font-bold", isDark ? "text-slate-400" : "text-slate-700")}>Venda su primer servicio</h3>
-            <p className="text-slate-500 text-sm max-w-xs">Introduzca ventas de streaming para Galo Peralta, Disney Plus que vencen, etc.</p>
+            <h3 className={cn("text-lg font-bold", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-700")}>Venda su primer servicio</h3>
+            <p className="text-slate-700 dark:text-slate-300 text-sm max-w-xs">Introduzca ventas de streaming para Galo Peralta, Disney Plus que vencen, etc.</p>
           </div>
           <button 
             onClick={() => setShowCatalog(true)}
@@ -1930,7 +1937,7 @@ export function DigitalServices() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/60" : "bg-slate-900/20", "backdrop-blur-sm")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1940,9 +1947,9 @@ export function DigitalServices() {
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
-                  {formData.id ? 'Modificar Suscripción' : 'Registrar Venta / Cuenta'}
+                  {formData.id ? 'Modificar Suscripción' : formData.serviceType === 'matriz' ? 'Registrar Cuenta Madre' : 'Registrar Venta / Cuenta'}
                 </h3>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1 bg-slate-100 rounded-full">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-600 dark:text-slate-300 hover:text-slate-600 transition-colors p-1 bg-slate-100 rounded-full">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1951,7 +1958,7 @@ export function DigitalServices() {
                 {/* 1. Datos Cuenta/Catalogo */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Servicio / Producto</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Servicio / Producto</label>
                     <input 
                       required
                       list="catalog-items-datalist"
@@ -1980,13 +1987,20 @@ export function DigitalServices() {
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
                     />
                     <datalist id="catalog-items-datalist">
-                      {catalogItems.sort((a,b)=>a.name.localeCompare(b.name)).map(c => (
+                      {catalogItems
+                        .filter(c => {
+                          if (formData.serviceType !== 'matriz') return true;
+                          const n = c.name.toLowerCase();
+                          return n.includes('completo') || n.includes('completa') || n.includes('full');
+                        })
+                        .sort((a,b)=>a.name.localeCompare(b.name))
+                        .map(c => (
                         <option key={c.id} value={c.name} />
                       ))}
                     </datalist>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Categoría</label>
+                  <div className="space-y-1.5" style={{ display: formData.serviceType === "matriz" ? "none" : "block" }}>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Categoría</label>
                     <select 
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value})}
@@ -1996,9 +2010,8 @@ export function DigitalServices() {
                     </select>
                   </div>
                 </div>
-
                 {/* Tipo de Cliente y Selección desde CRM */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-indigo-50/5 p-4 rounded-2xl border border-indigo-500/10 text-left">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-indigo-50/5 p-4 rounded-2xl border border-indigo-500/10 text-left" style={{ display: formData.serviceType === "matriz" ? "none" : undefined }}>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1 block">Tipo de Cliente</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -2022,7 +2035,7 @@ export function DigitalServices() {
                         className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer",
                           formData.clientType === 'client'
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-250 text-slate-500")
+                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-600 dark:text-slate-300" : "bg-white border-slate-250 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Cliente Final
@@ -2047,7 +2060,7 @@ export function DigitalServices() {
                         className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer",
                           formData.clientType === 'reseller'
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-250 text-slate-500")
+                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-600 dark:text-slate-300" : "bg-white border-slate-250 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Revendedor
@@ -2140,7 +2153,7 @@ export function DigitalServices() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold uppercase text-slate-400">Nombre de Cliente Final</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-300">Nombre de Cliente Final</label>
                         <input 
                           type="text"
                           value={formData.finalClientName || ''}
@@ -2150,7 +2163,7 @@ export function DigitalServices() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold uppercase text-slate-400">WhatsApp de Cliente Final</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-300">WhatsApp de Cliente Final</label>
                         <input 
                           type="text"
                           value={formData.finalClientContact || ''}
@@ -2160,7 +2173,7 @@ export function DigitalServices() {
                         />
                       </div>
                     </div>
-                    <p className="text-[9.5px] text-slate-500 italic font-medium">
+                    <p className="text-[9.5px] text-slate-700 dark:text-slate-300 italic font-medium">
                       ✨ Si escribes un cliente final que no existe en el CRM, el sistema lo registrará automáticamente al guardar la venta.
                     </p>
                   </div>
@@ -2171,7 +2184,7 @@ export function DigitalServices() {
                   <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 block">Credenciales y Acceso (Opcional)</span>
                   
                   {/* Tipo de Acceso a la Cuenta */}
-                  <div className="space-y-2">
+                  <div className="space-y-2" style={{ display: formData.serviceType === "matriz" ? "none" : "block" }}>
                     <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 block">Tipo de Acceso de Venta</label>
                     <div className="grid grid-cols-3 gap-2">
                       <button
@@ -2180,7 +2193,7 @@ export function DigitalServices() {
                         className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5",
                           formData.serviceType === 'matriz'
                             ? "bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm"
-                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-600 dark:text-slate-300 hover:text-white" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300 hover:text-slate-900")
                         )}
                       >
                         🏢 Matriz
@@ -2191,7 +2204,7 @@ export function DigitalServices() {
                         className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5",
                           formData.serviceType === 'completa'
                             ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-600 dark:text-slate-300 hover:text-white" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300 hover:text-slate-900")
                         )}
                       >
                         👤 Cliente
@@ -2202,20 +2215,19 @@ export function DigitalServices() {
                         className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5",
                           formData.serviceType === 'pantalla'
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white" : "bg-white border-slate-200 text-slate-500 hover:text-slate-900")
+                            : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-600 dark:text-slate-300 hover:text-white" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300 hover:text-slate-900")
                         )}
                       >
                         📺 Pantalla
                       </button>
                     </div>
-                    <p className="text-[9px] text-slate-500 italic font-medium leading-tight">
+                    <p className="text-[9px] text-slate-700 dark:text-slate-300 italic font-medium leading-tight">
                       {formData.serviceType === 'matriz' ? '• Inventario: Cuenta para revender perfiles (No va a clientes).' : formData.serviceType === 'completa' ? '• Cuenta Completa: Se vende toda la cuenta a un cliente.' : '• Pantalla: Se vende un perfil individual.'}
                     </p>
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase text-slate-400">Usuario / Correo</label>
+                      <label className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-300">Usuario / Correo</label>
                       <input 
                         type="text"
                         value={formData.email}
@@ -2225,7 +2237,7 @@ export function DigitalServices() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase text-slate-400">Contraseña de acceso</label>
+                      <label className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-300">Contraseña de acceso</label>
                       <input 
                         type="text"
                         value={formData.password}
@@ -2263,7 +2275,7 @@ export function DigitalServices() {
                     </div>
                   ) : (
                     <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
-                      <label className="text-[9px] font-bold uppercase text-slate-400">PIN de Acceso / Identificador (Opcional)</label>
+                      <label className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-300">PIN de Acceso / Identificador (Opcional)</label>
                       <input 
                         type="text"
                         value={formData.pin}
@@ -2278,7 +2290,7 @@ export function DigitalServices() {
                 {/* 4. Fechas y Estado */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Fecha de Expiración</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Fecha de Expiración</label>
                     <input 
                       required
                       type="date"
@@ -2287,8 +2299,8 @@ export function DigitalServices() {
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Estado Inicial</label>
+                  <div className="space-y-1.5" style={{ display: formData.serviceType === "matriz" ? "none" : "block" }}>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Estado Inicial</label>
                     <select 
                       value={formData.status}
                       onChange={(e) => setFormData({...formData, status: e.target.value as any})}
@@ -2303,7 +2315,7 @@ export function DigitalServices() {
 
                 {/* 5. Proveedor, costos, PVP */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Proveedor (Opcional)</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Proveedor (Opcional)</label>
                   <select 
                     value={formData.supplierId}
                     onChange={(e) => handleSupplierChange(e.target.value)}
@@ -2325,7 +2337,7 @@ export function DigitalServices() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Costo de Inversión ($)</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Costo de Inversión ($)</label>
                     <input 
                       required
                       type="number"
@@ -2335,8 +2347,8 @@ export function DigitalServices() {
                       className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Precio Venta (PVP) ($)</label>
+                  <div className="space-y-1.5" style={{ display: formData.serviceType === "matriz" ? "none" : "block" }}>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Precio Venta (PVP) ($)</label>
                     <input 
                       required
                       type="number"
@@ -2349,7 +2361,7 @@ export function DigitalServices() {
                 </div>
 
                 <div className={cn("p-4 border border-dashed rounded-2xl space-y-4", isDark ? "border-slate-800 bg-slate-950/20" : "border-slate-200 bg-slate-50/50")}>
-                  <div className="space-y-2">
+                  <div className="space-y-2" style={{ display: formData.serviceType === "matriz" ? "none" : "block" }}>
                     <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 block">Flujo de Cobro (Cobranza Cliente)</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -2358,7 +2370,7 @@ export function DigitalServices() {
                         className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
                           formData.isPaid
                             ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
-                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-600 dark:text-slate-300" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Cobrado
@@ -2369,7 +2381,7 @@ export function DigitalServices() {
                         className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
                           !formData.isPaid
                             ? "bg-amber-500 text-white border-amber-500 shadow-sm"
-                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-600 dark:text-slate-300" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Pendiente (CxC)
@@ -2378,7 +2390,7 @@ export function DigitalServices() {
 
                     {formData.isPaid && !isWalletsDisabled && (
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold uppercase text-slate-400">Billetera de Destino (Ingreso)</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-300">Billetera de Destino (Ingreso)</label>
                         <select 
                           required={formData.isPaid && !isWalletsDisabled}
                           value={formData.revenueWalletId}
@@ -2401,7 +2413,7 @@ export function DigitalServices() {
                         className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
                           formData.isCostPaid
                             ? "bg-indigo-600 text-white border-indigo-650 shadow-sm"
-                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-600 dark:text-slate-300" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Pagado
@@ -2412,7 +2424,7 @@ export function DigitalServices() {
                         className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
                           !formData.isCostPaid
                             ? "bg-amber-500 text-white border-amber-500 shadow-sm"
-                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-400" : "bg-white border-slate-200 text-slate-500")
+                            : (isDark ? "bg-slate-900 border-slate-800 text-slate-600 dark:text-slate-300" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Pendiente (CxP)
@@ -2421,7 +2433,7 @@ export function DigitalServices() {
 
                     {formData.isCostPaid && !isWalletsDisabled && (
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold uppercase text-slate-400">Billetera de Origen (Egreso)</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-600 dark:text-slate-300">Billetera de Origen (Egreso)</label>
                         <select 
                           required={formData.isCostPaid && !isWalletsDisabled}
                           value={formData.costWalletId}
@@ -2454,14 +2466,14 @@ export function DigitalServices() {
       <AnimatePresence>
         {showProfilesManager && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfilesManager(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfilesManager(false)} className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md")} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-3xl p-8 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="flex justify-between items-center mb-8">
                 <div>
                   <h3 className={cn("text-2xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Venta de Perfiles</h3>
-                  <p className="text-slate-500 text-sm">Selecciona una cuenta matriz para crear perfiles. Las fechas de corte se calculan 1 mes a partir de hoy.</p>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm">Selecciona una cuenta matriz para crear perfiles. Las fechas de corte se calculan 1 mes a partir de hoy.</p>
                 </div>
-                <button onClick={() => setShowProfilesManager(false)} className="p-2 bg-slate-100/10 rounded-full text-slate-500 cursor-pointer hover:bg-slate-200/20 transition-colors">
+                <button onClick={() => setShowProfilesManager(false)} className="p-2 bg-slate-100/10 rounded-full text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-200/20 transition-colors">
                   <X />
                 </button>
               </div>
@@ -2469,10 +2481,9 @@ export function DigitalServices() {
                 {(() => {
                   const completeAccounts = services.filter(s => {
                     const catItem = catalogItems.find(c => c.name.toLowerCase() === s.name.toLowerCase());
-                    const isLegacyMatriz = (s as any).serviceType !== 'pantalla' && (s as any).serviceType !== 'profile' && (s as any).serviceType !== 'matriz' && catItem && (catItem.name.toLowerCase().includes('complet') || (catItem.maxScreens && catItem.maxScreens > 0));
-                    return s.status === 'active' && ((s as any).serviceType === 'matriz' || isLegacyMatriz) && catItem && (catItem.maxScreens && catItem.maxScreens > 0);
+                    return s.status === 'active' && (s as any).serviceType === 'matriz' && catItem && (catItem.maxScreens && catItem.maxScreens > 0);
                   });
-                  if (completeAccounts.length === 0) return <div className="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">No hay cuentas matrices activas disponibles.</div>;
+                  if (completeAccounts.length === 0) return <div className="p-8 text-center text-slate-700 dark:text-slate-300 font-bold uppercase tracking-widest text-xs">No hay cuentas matrices activas disponibles.</div>;
                   
                   return completeAccounts.map(account => {
                     const maxScreens = catalogItems.find(c => c.name.toLowerCase() === account.name.toLowerCase())?.maxScreens || 1;
@@ -2483,7 +2494,7 @@ export function DigitalServices() {
                       <div key={account.id} className={cn("p-4 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4", isDark ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200")}>
                         <div>
                           <h4 className={cn("font-bold text-sm", isDark ? "text-slate-200" : "text-slate-800")}>{account.name}</h4>
-                          <p className="text-xs text-slate-500 mt-0.5">{account.email}</p>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5">{account.email}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                               Disponibles: {available} / {maxScreens}
@@ -2554,7 +2565,7 @@ export function DigitalServices() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCatalog(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
@@ -2565,13 +2576,13 @@ export function DigitalServices() {
               <div className="flex justify-between items-center mb-8">
                 <div>
                   <h3 className={cn("text-2xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Catálogo Global</h3>
-                  <p className="text-slate-500 text-sm">Seleccione servicios predefinidos para su inventario.</p>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm">Seleccione servicios predefinidos para su inventario.</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setShowNewCatalogForm(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold uppercase">
                     + Nuevo
                   </button>
-                  <button onClick={() => setShowCatalog(false)} className="p-2 bg-slate-100/10 rounded-full text-slate-500 cursor-pointer hover:bg-slate-200/20 transition-colors">
+                  <button onClick={() => setShowCatalog(false)} className="p-2 bg-slate-100/10 rounded-full text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-200/20 transition-colors">
                     <X />
                   </button>
                 </div>
@@ -2601,7 +2612,7 @@ export function DigitalServices() {
                   >
                     Guardar
                   </button>
-                  <button onClick={() => setShowNewCatalogForm(false)} className="p-2 text-slate-400 hover:text-slate-600"><X className="w-4 h-4"/></button>
+                  <button onClick={() => setShowNewCatalogForm(false)} className="p-2 text-slate-600 dark:text-slate-300 hover:text-slate-600"><X className="w-4 h-4"/></button>
                 </div>
               )}
 
@@ -2636,7 +2647,7 @@ export function DigitalServices() {
                                setEditingCatalogId(item.id);
                                setEditingCatalogName(item.name);
                              }}
-                             className="text-slate-400 hover:text-indigo-600 p-1 text-xs"
+                             className="text-slate-600 dark:text-slate-300 hover:text-indigo-600 p-1 text-xs"
                              title="Editar Nombre"
                            >
                              ✏️
@@ -2683,11 +2694,11 @@ export function DigitalServices() {
                        </button>
                     </div>
                     <div className="space-y-2 mt-2">
-                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center justify-between">
+                      <p className="text-[10px] uppercase font-black text-slate-600 dark:text-slate-300 tracking-widest flex items-center justify-between">
                         Proveedores y Costos
                       </p>
                       {item.providers.length === 0 ? (
-                        <p className="text-[10px] text-slate-500">Sin proveedores</p>
+                        <p className="text-[10px] text-slate-700 dark:text-slate-300">Sin proveedores</p>
                       ) : (
                          item.providers.map((p, idx) => {
                            const supplierInfo = suppliers.find(s => s.id === p.supplierId);
@@ -2739,10 +2750,10 @@ export function DigitalServices() {
                                  </div>
                                ) : (
                                  <div className="space-y-1.5 w-full">
-                                   <span className="text-[10px] font-bold text-slate-400">{supplierInfo?.name || 'Desconocido'}</span>
+                                   <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{supplierInfo?.name || 'Desconocido'}</span>
                                    <div className="grid grid-cols-3 gap-1">
                                      <div>
-                                       <span className="text-[8px] font-bold block uppercase text-slate-400">Costo</span>
+                                       <span className="text-[8px] font-bold block uppercase text-slate-600 dark:text-slate-300">Costo</span>
                                        <input
                                          type="number"
                                          value={editingProviderForm.cost}
@@ -2751,7 +2762,7 @@ export function DigitalServices() {
                                        />
                                      </div>
                                      <div>
-                                       <span className="text-[8px] font-bold block uppercase text-slate-400">PVP</span>
+                                       <span className="text-[8px] font-bold block uppercase text-slate-600 dark:text-slate-300">PVP</span>
                                        <input
                                          type="number"
                                          value={editingProviderForm.pvp}
@@ -2760,7 +2771,7 @@ export function DigitalServices() {
                                        />
                                      </div>
                                      <div>
-                                       <span className="text-[8px] font-bold block uppercase text-slate-400">Rev.</span>
+                                       <span className="text-[8px] font-bold block uppercase text-slate-600 dark:text-slate-300">Rev.</span>
                                        <input
                                          type="number"
                                          value={editingProviderForm.pvpReseller}
@@ -2877,7 +2888,7 @@ export function DigitalServices() {
                       )}
                       {(item.name.toLowerCase().includes('completa') || item.name.toLowerCase().includes('completo')) && (
                         <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1 mb-1 block">Pantallas Máximas (Perfiles)</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1 mb-1 block">Pantallas Máximas (Perfiles)</label>
                           <input 
                             type="number"
                             min="1"
@@ -2894,7 +2905,7 @@ export function DigitalServices() {
                     </div>
                   </div>
                 )) : (
-                  <p className="text-slate-500 text-sm py-4 col-span-2 text-center">No hay productos en el catálogo.</p>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm py-4 col-span-2 text-center">No hay productos en el catálogo.</p>
                 )}
               </div>
 
@@ -2907,13 +2918,13 @@ export function DigitalServices() {
       <AnimatePresence>
         {selectedWaService && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setSelectedWaService(null)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md")} onClick={() => setSelectedWaService(null)} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="flex justify-between items-center mb-6">
                  <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
                    Opciones de WhatsApp
                  </h3>
-                 <button onClick={() => setSelectedWaService(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
+                 <button onClick={() => setSelectedWaService(null)} className="p-1 text-slate-600 dark:text-slate-300 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
               </div>
               <div className="space-y-3">
                  <button onClick={() => handleWhatsAppAction(selectedWaService, 'info')} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all">
@@ -2931,13 +2942,13 @@ export function DigitalServices() {
       <AnimatePresence>
         {paymentService && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPaymentService(null)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md")} onClick={() => setPaymentService(null)} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="flex justify-between items-center mb-6">
                  <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
                    {paymentType === 'revenue' ? 'Registrar Cobro de Venta' : 'Registrar Pago de Costo'}
                  </h3>
-                 <button onClick={() => setPaymentService(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
+                 <button onClick={() => setPaymentService(null)} className="p-1 text-slate-600 dark:text-slate-300 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
               </div>
               <div className="space-y-4">
                  <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl">
@@ -2948,7 +2959,7 @@ export function DigitalServices() {
                      {formatCurrency(paymentType === 'revenue' ? paymentService.revenue : (paymentService.cost || 0))}
                    </p>
                    {((paymentType === 'revenue' && (paymentService.amountPaid || 0) > 0) || (paymentType === 'cost' && (paymentService.costPaid || 0) > 0)) && (
-                     <p className="text-[10px] font-bold text-slate-400 mt-1">
+                     <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 mt-1">
                        Total Abonado/Saldado: {formatCurrency(paymentType === 'revenue' ? (paymentService.amountPaid || 0) : (paymentService.costPaid || 0))}
                      </p>
                    )}
@@ -2956,7 +2967,7 @@ export function DigitalServices() {
 
                  {/* Input de Monto Parcial / Abono */}
                  <div className="space-y-1.5">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 flex justify-between">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 px-1 flex justify-between">
                      <span>Monto a Registrar ({paymentType === 'revenue' ? 'Saldo pendiente' : 'Costo pendiente'})</span>
                      <span className="font-mono font-bold text-indigo-550 dark:text-indigo-400">
                        {formatCurrency(paymentType === 'revenue' ? (paymentService.revenue - (paymentService.amountPaid || 0)) : ((paymentService.cost || 0) - (paymentService.costPaid || 0)))}
@@ -2973,7 +2984,7 @@ export function DigitalServices() {
                  </div>
 
                  <div className="space-y-1.5">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">
                      {paymentType === 'revenue' ? 'Billetera de Destino (Ingreso)' : 'Billetera de Origen (Egreso)'}
                    </label>
                    <select 
@@ -3002,13 +3013,13 @@ export function DigitalServices() {
       <AnimatePresence>
         {successMsg.show && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-emerald-950/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={cn("absolute inset-0 backdrop-blur-sm", isDark ? "bg-emerald-950/40" : "bg-emerald-900/20")} />
             <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }} className={cn("relative w-full max-w-sm p-6 sm:p-8 rounded-3xl border shadow-2xl z-10 flex flex-col items-center text-center", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="w-16 h-16 bg-emerald-105 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-slate-900")}>Servicio Creado</h3>
-              <p className="text-slate-500 text-sm mb-6">La venta digital se registró de manera exitosa. ¿Cómo deseas proceder sustentando el comprobante?</p>
+              <p className="text-slate-700 dark:text-slate-300 text-sm mb-6">La venta digital se registró de manera exitosa. ¿Cómo deseas proceder sustentando el comprobante?</p>
               
               <div className="flex flex-col w-full gap-2.5">
                 <button 
@@ -3064,7 +3075,7 @@ export function DigitalServices() {
               </div>
               <div className="text-left">
                 <p className="text-xs font-black uppercase tracking-wider text-white">Acciones en Lote</p>
-                <p className="text-[10px] text-slate-400 font-semibold">Aplique cambios masivos a las suscripciones seleccionadas.</p>
+                <p className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold">Aplique cambios masivos a las suscripciones seleccionadas.</p>
               </div>
             </div>
 
@@ -3095,7 +3106,7 @@ export function DigitalServices() {
               </button>
               <button
                 onClick={() => setSelectedItemIds([])}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border border-slate-700 outline-none"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border border-slate-700 outline-none"
               >
                 Cerrar
               </button>

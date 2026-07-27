@@ -29,6 +29,10 @@ interface UserSettings {
   paymentAccount?: string;
   paymentInstructions?: string;
   salesMessageTemplate?: string;
+  commerceLateFeePercentage?: number;
+  commerceMarginPVP?: number;
+  commerceMargin3M?: number;
+  commerceMargin6M?: number;
   updatedAt: string;
 }
 
@@ -182,8 +186,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const targetUid = impersonatedUser ? impersonatedUser.uid : user.uid;
     const settingsRef = doc(db, 'users', targetUid);
+    
+    // Remove undefined values
+    const cleanSettings: any = { ...newSettings };
+    Object.keys(cleanSettings).forEach(key => {
+      if (cleanSettings[key] === undefined) {
+        delete cleanSettings[key];
+      }
+    });
+
     await updateDoc(settingsRef, {
-      ...newSettings,
+      ...cleanSettings,
       updatedAt: new Date().toISOString(),
     });
   };

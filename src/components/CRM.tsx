@@ -73,7 +73,7 @@ export function CRM() {
   const [syncCount, setSyncCount] = useState<number | null>(null);
   const [autoSynced, setAutoSynced] = useState(false);
 
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   useEffect(() => {
     if (!user) return;
@@ -570,7 +570,7 @@ export function CRM() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/60" : "bg-slate-900/20", "backdrop-blur-sm")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}

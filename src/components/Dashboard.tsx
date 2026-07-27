@@ -57,7 +57,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default', onClick }: StatCardProps) {
   const { settings } = useAuth();
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const themes = {
     default: isDark ? "bg-slate-900 border-slate-800 text-white hover:border-slate-700" : "bg-white border-slate-200 text-slate-900 shadow-sm hover:border-slate-300",
@@ -100,7 +100,7 @@ function StatCard({ label, value, icon: Icon, trend, trendUp, variant = 'default
 
 export function Dashboard() {
   const { user, settings } = useAuth();
-  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
+  const isWalletsDisabled = true;
   const { t } = useTranslation();
   const [wallets, setWallets] = useState<any[]>([]);
   const [entities, setEntities] = useState<any[]>([]);
@@ -346,7 +346,7 @@ export function Dashboard() {
     }
   };
 
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   useEffect(() => {
     setFilterType('all');
@@ -1388,8 +1388,9 @@ export function Dashboard() {
                         📡 Cuentas a Cortar / Suscripciones Digitales ({selectedDayData.expiringServices.length})
                       </div>
                       {selectedDayData.expiringServices.map((service) => {
-                        const isSvcPaid = service.isPaid;
-                        const outstanding = service.revenue - (service.amountPaid || 0);
+                        const isMatriz = service.serviceType === 'matriz';
+                        const outstanding = isMatriz ? ((service.cost || 0) - (service.costPaid || 0)) : ((service.revenue || 0) - (service.amountPaid || 0));
+                        const isSvcPaid = isMatriz ? service.isCostPaid : service.isPaid;
                         return (
                           <div 
                             key={service.id}
@@ -1402,18 +1403,18 @@ export function Dashboard() {
                           >
                             <div className="min-w-0 flex-1">
                               <span className="text-xs font-black uppercase tracking-wider block">
-                                {service.name} • {service.clientName}
+                                {service.name} {isMatriz ? '🏢 (Cuenta Madre)' : `• ${service.clientName}`}
                               </span>
                               <span className="text-[9px] uppercase font-black text-slate-450 block mt-0.5">
                                 Ref/User: {service.email || 'S/N'} • PIN: {service.pin || 'S/N'}  • Proveedor: {service.supplierName || service.supplier || 'N/A'}
                               </span>
                               {!isSvcPaid && outstanding > 0 ? (
                                 <span className="text-[9px] font-black text-amber-500 uppercase tracking-wider block mt-0.5">
-                                  ⚠️ Saldo Pendiente de Cobro: {formatCurrency(outstanding)}
+                                  ⚠️ Saldo Pendiente de {isMatriz ? 'Pago al Proveedor' : 'Cobro'}: {formatCurrency(outstanding)}
                                 </span>
                               ) : (
                                 <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mt-0.5">
-                                  ✅ Cobro Completado
+                                  ✅ {isMatriz ? 'Pago a Proveedor Completado' : 'Cobro Completado'}
                                 </span>
                               )}
                             </div>
@@ -1421,12 +1422,12 @@ export function Dashboard() {
                               {!isSvcPaid && outstanding > 0 && (
                                 <button 
                                   onClick={() => {
-                                    setInlinePayTarget({ id: service.id, type: 'service', amount: outstanding, name: `${service.name} (${service.clientName})`, item: service });
+                                    setInlinePayTarget({ id: service.id, type: 'service', amount: outstanding, name: isMatriz ? `${service.name} (Cuenta Madre)` : `${service.name} (${service.clientName})`, item: { ...service, isDsCost: isMatriz } });
                                     setInlineAmount(outstanding.toString());
                                   }}
                                   className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer"
                                 >
-                                  Cobrar
+                                  {isMatriz ? 'Pagar' : 'Cobrar'}
                                 </button>
                               )}
                               <button 
@@ -1531,7 +1532,7 @@ export function Dashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setActiveModal(null)}
-              className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/65" : "bg-slate-900/20", "backdrop-blur-sm")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}

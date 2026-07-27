@@ -12,6 +12,7 @@ import { Treasury } from './components/Treasury';
 import { Alerts } from './components/Alerts';
 import { Settings } from './components/Settings';
 import { DigitalServices } from './components/DigitalServices';
+import { Ecommerce } from './components/Ecommerce';
 import { Reports } from './components/Reports';
 import { Login } from './components/Login';
 import { Onboarding } from './components/Onboarding';
@@ -369,9 +370,14 @@ export default function App() {
       :root {
         --color-indigo-50: #ecfdf5 !important;
         --color-indigo-100: #d1fae5 !important;
+        --color-indigo-200: #a7f3d0 !important;
+        --color-indigo-300: #6ee7b7 !important;
+        --color-indigo-400: #34d399 !important;
         --color-indigo-500: #10b981 !important;
         --color-indigo-600: #059669 !important;
         --color-indigo-700: #047857 !important;
+        --color-indigo-800: #065f46 !important;
+        --color-indigo-900: #064e3b !important;
         --color-indigo-950: #022c22 !important;
       }
     `;
@@ -380,9 +386,14 @@ export default function App() {
       :root {
         --color-indigo-50: #fff1f2 !important;
         --color-indigo-100: #ffe4e6 !important;
+        --color-indigo-200: #fecdd3 !important;
+        --color-indigo-300: #fda4af !important;
+        --color-indigo-400: #fb7185 !important;
         --color-indigo-500: #f43f5e !important;
         --color-indigo-600: #e11d48 !important;
         --color-indigo-700: #be123c !important;
+        --color-indigo-800: #9f1239 !important;
+        --color-indigo-900: #881337 !important;
         --color-indigo-950: #4c0519 !important;
       }
     `;
@@ -391,9 +402,14 @@ export default function App() {
       :root {
         --color-indigo-50: #fdfbeb !important;
         --color-indigo-100: #fef3c7 !important;
+        --color-indigo-200: #fde68a !important;
+        --color-indigo-300: #fcd34d !important;
+        --color-indigo-400: #fbbf24 !important;
         --color-indigo-500: #f59e0b !important;
         --color-indigo-600: #d97706 !important;
         --color-indigo-700: #b45309 !important;
+        --color-indigo-800: #92400e !important;
+        --color-indigo-900: #78350f !important;
         --color-indigo-950: #451a03 !important;
       }
     `;
@@ -402,9 +418,14 @@ export default function App() {
       :root {
         --color-indigo-50: #f5f3ff !important;
         --color-indigo-100: #ede9fe !important;
+        --color-indigo-200: #ddd6fe !important;
+        --color-indigo-300: #c4b5fd !important;
+        --color-indigo-400: #a78bfa !important;
         --color-indigo-500: #8b5cf6 !important;
         --color-indigo-600: #7c3aed !important;
         --color-indigo-700: #6d28d9 !important;
+        --color-indigo-800: #5b21b6 !important;
+        --color-indigo-900: #4c1d95 !important;
         --color-indigo-950: #2e1065 !important;
       }
     `;
@@ -413,9 +434,14 @@ export default function App() {
       :root {
         --color-indigo-50: #f0f9ff !important;
         --color-indigo-100: #e0f2fe !important;
+        --color-indigo-200: #bae6fd !important;
+        --color-indigo-300: #7dd3fc !important;
+        --color-indigo-400: #38bdf8 !important;
         --color-indigo-500: #0ea5e9 !important;
         --color-indigo-600: #0284c7 !important;
         --color-indigo-700: #0369a1 !important;
+        --color-indigo-800: #075985 !important;
+        --color-indigo-900: #0c4a6e !important;
         --color-indigo-950: #0c4a6e !important;
       }
     `;
@@ -424,9 +450,14 @@ export default function App() {
       :root {
         --color-indigo-50: #f8fafc !important;
         --color-indigo-100: #f1f5f9 !important;
+        --color-indigo-200: #e2e8f0 !important;
+        --color-indigo-300: #cbd5e1 !important;
+        --color-indigo-400: #94a3b8 !important;
         --color-indigo-500: #64748b !important;
         --color-indigo-600: #475569 !important;
         --color-indigo-700: #334155 !important;
+        --color-indigo-800: #1e293b !important;
+        --color-indigo-900: #0f172a !important;
         --color-indigo-950: #0f172a !important;
       }
     `;
@@ -462,7 +493,7 @@ export default function App() {
       {/* Mac-style Desktop Dock, hidden on mobile */}
       <MacDock activeTab={activeTab} setActiveTab={setActiveTab} onOpenReports={() => setIsReportModalOpen(true)} onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)} notifCount={notifCount} />
       
-      <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen pb-24 lg:pb-32">
+      <main className="flex-1 flex flex-col relative overflow-y-auto max-h-screen pb-32">
         {impersonatedUser && (
           <div className="bg-amber-500 text-slate-950 font-bold px-4 py-2 text-xs flex items-center justify-between shadow-md shrink-0 animate-fade-in">
             <div className="flex items-center gap-2">
@@ -508,8 +539,8 @@ export default function App() {
               {activeTab === 'dashboard' && <Dashboard />}
               {activeTab === 'crm' && <CRM />}
               {activeTab === 'transactions' && <Transactions />} 
-              {activeTab === 'updates' && <Transactions />}
-              {activeTab === 'services' && <DigitalServices />}
+              
+              {activeTab === 'ecommerce' && <Ecommerce user={user} />}
               {activeTab === 'reports' && <Reports />}
               {activeTab === 'treasury' && <Treasury />}
               {activeTab === 'alerts' && <Alerts />}
@@ -526,240 +557,10 @@ export default function App() {
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
           onGenerate={handleGenerateReport}
-          isDark={settings?.theme === 'dark'}
+          isDark={settings?.theme === 'dark' || (settings?.theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)}
         />
       </main>
 
-      {/* Mobile Floating Submenus */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            {/* Click-outside backdrop */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileMenuOpen(null)}
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 lg:hidden"
-            />
-            
-            {/* Submenu Drawer content */}
-            <motion.div
-              initial={{ opacity: 0, y: 15, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 15, scale: 0.98 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "fixed bottom-18 left-4 right-4 rounded-2xl p-4 z-40 lg:hidden shadow-[0_-8px_32px_rgba(0,0,0,0.3)] border flex flex-col gap-1.5",
-                settings?.theme === 'dark' 
-                  ? "bg-slate-900 border-slate-800 text-slate-100" 
-                  : "bg-white border-slate-200 text-slate-900"
-              )}
-            >
-              <div className="flex items-center justify-between pb-2 mb-1 border-b border-slate-800/10 dark:border-slate-800/80">
-                <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                  {mobileMenuOpen === 'comercio' ? 'Módulo Comercio' : 'Módulo Finanzas'}
-                </h3>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Seleccionar</span>
-              </div>
-              
-              {mobileMenuOpen === 'comercio' ? (
-                <div className="grid grid-cols-1 gap-1">
-                  {!settings?.disabledFeatures?.includes('crm') && (
-                    <button
-                      onClick={() => { setActiveTab('crm'); setMobileMenuOpen(null); }}
-                      className={cn(
-                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
-                        activeTab === 'crm' 
-                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
-                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
-                      )}
-                    >
-                      <Users className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm">CRM Relaciones</span>
-                        <span className="text-[10px] text-slate-400 truncate">Contactos y clientes registrados</span>
-                      </div>
-                    </button>
-                  )}
-                  {!settings?.disabledFeatures?.includes('services') && (
-                    <button
-                      onClick={() => { setActiveTab('services'); setMobileMenuOpen(null); }}
-                      className={cn(
-                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
-                        activeTab === 'services' 
-                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
-                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
-                      )}
-                    >
-                      <Gamepad2 className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm">Servicios Digitales</span>
-                        <span className="text-[10px] text-slate-400 truncate">Suscripciones, fechas y cortes</span>
-                      </div>
-                    </button>
-                  )}
-                  {!settings?.disabledFeatures?.includes('updates') && (
-                    <button
-                      onClick={() => { setActiveTab('updates'); setMobileMenuOpen(null); }}
-                      className={cn(
-                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
-                        activeTab === 'updates' 
-                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
-                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
-                      )}
-                    >
-                      <Activity className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm">Actualizaciones ANT</span>
-                        <span className="text-[10px] text-slate-400 truncate">Movimientos de cuentas y cobros</span>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-1">
-                  {!settings?.disabledFeatures?.includes('treasury') && (
-                    <button
-                      onClick={() => { setActiveTab('treasury'); setMobileMenuOpen(null); }}
-                      className={cn(
-                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
-                        activeTab === 'treasury' 
-                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
-                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
-                      )}
-                    >
-                      <Wallet className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm">Tesorería</span>
-                        <span className="text-[10px] text-slate-400 truncate">Caja general y billeteras</span>
-                      </div>
-                    </button>
-                  )}
-                  {!settings?.disabledFeatures?.includes('reports') && (
-                    <button
-                      onClick={() => { setActiveTab('reports'); setMobileMenuOpen(null); }}
-                      className={cn(
-                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
-                        activeTab === 'reports' 
-                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
-                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
-                      )}
-                    >
-                      <BarChart3 className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm">Reportes y Balances</span>
-                        <span className="text-[10px] text-slate-400 truncate">Gráficos de pérdidas y balances</span>
-                      </div>
-                    </button>
-                  )}
-                  {!settings?.disabledFeatures?.includes('alerts') && (
-                    <button
-                      onClick={() => { setActiveTab('alerts'); setMobileMenuOpen(null); }}
-                      className={cn(
-                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors",
-                        activeTab === 'alerts' 
-                          ? "bg-indigo-600/10 text-indigo-400 font-semibold" 
-                          : "hover:bg-slate-800/10 dark:hover:bg-slate-800/40 text-slate-400 dark:text-slate-300"
-                      )}
-                    >
-                      <AlertCircle className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm">Alertas y Cobro</span>
-                        <span className="text-[10px] text-slate-400 truncate">Cuentas por cobrar y notificaciones</span>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Mobile Bottom Navigation Bar */}
-      <div className={cn(
-        "fixed bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around px-2 z-40 lg:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.15)] pb-safe",
-        settings?.theme === 'dark' ? "bg-slate-900/95 border-slate-800/80 text-slate-300" : "bg-white/95 border-slate-200 text-slate-600"
-      )}>
-        {/* Inicio Tab */}
-        <button
-          onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(null); }}
-          className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-none",
-            activeTab === 'dashboard' ? "text-indigo-500 font-bold" : "text-slate-400 hover:text-slate-200"
-          )}
-        >
-          <LayoutDashboard className="w-5 h-5 mb-0.5 shrink-0" />
-          <span className="text-[9px] font-bold tracking-tight">Inicio</span>
-        </button>
-
-        {/* Comercio Tab */}
-        <button
-          onClick={() => setMobileMenuOpen(mobileMenuOpen === 'comercio' ? null : 'comercio')}
-          className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors relative focus:outline-none",
-            ['crm', 'services', 'updates'].includes(activeTab) || mobileMenuOpen === 'comercio'
-              ? "text-indigo-500 font-semibold" 
-              : "text-slate-400 hover:text-slate-200"
-          )}
-        >
-          <ShoppingBag className="w-5 h-5 mb-0.5 shrink-0" />
-          <span className="text-[9px] font-bold tracking-tight">Comercio</span>
-          {['crm', 'services', 'updates'].includes(activeTab) && (
-            <span className="absolute bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-          )}
-        </button>
-
-        {/* Finanzas Tab */}
-        <button
-          onClick={() => setMobileMenuOpen(mobileMenuOpen === 'finanzas' ? null : 'finanzas')}
-          className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors relative focus:outline-none",
-            ['treasury', 'reports', 'alerts'].includes(activeTab) || mobileMenuOpen === 'finanzas'
-              ? "text-indigo-500 font-semibold" 
-              : "text-slate-400 hover:text-slate-200"
-          )}
-        >
-          <Coins className="w-5 h-5 mb-0.5 shrink-0" />
-          <span className="text-[9px] font-bold tracking-tight">Finanzas</span>
-          {['treasury', 'reports', 'alerts'].includes(activeTab) && (
-            <span className="absolute bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-          )}
-        </button>
-
-        {/* Notificaciones Tab */}
-        <button
-          onClick={() => { setIsNotificationsOpen(!isNotificationsOpen); setMobileMenuOpen(null); }}
-          className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-none relative",
-            isNotificationsOpen ? "text-indigo-500 font-bold" : "text-slate-400 hover:text-slate-200"
-          )}
-        >
-          <Bell className="w-5 h-5 mb-0.5 shrink-0" />
-          <span className="text-[9px] font-bold tracking-tight">Avisos</span>
-          {notifCount > 0 && (
-            <span className="absolute top-1 right-2 w-3 h-3 bg-rose-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold">
-              {notifCount}
-            </span>
-          )}
-        </button>
-
-        {/* Perfil Tab */}
-        <button
-          onClick={() => { setActiveTab('settings'); setMobileMenuOpen(null); }}
-          className={cn(
-            "flex flex-col items-center justify-center flex-1 h-full py-1 text-center transition-colors focus:outline-none",
-            activeTab === 'settings' ? "text-indigo-500 font-bold" : "text-slate-400 hover:text-slate-200"
-          )}
-        >
-          <SettingsIcon className="w-5 h-5 mb-0.5 shrink-0" />
-          <span className="text-[9px] font-bold tracking-tight">Ajustes</span>
-          {activeTab === 'settings' && (
-            <span className="absolute bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-          )}
-        </button>
-      </div>
-    </div>
+          </div>
   );
 }

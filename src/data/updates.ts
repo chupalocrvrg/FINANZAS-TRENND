@@ -9,6 +9,109 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_17_0_payment_receipt_modal",
+    version: "V7.17.0",
+    title: "V7.17.0 • Recibos de Cobro y Panel de Pagos",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se ha mejorado sustancialmente el flujo de cobros. Ahora, al presionar 'Cobrar' se despliega un panel interactivo que permite ingresar el valor exacto a descontar con opción a comentarios. Tras confirmar, el sistema genera automáticamente un Recibo de Cobro detallado que incluye la fecha, días de mora, el abono registrado y el saldo restante.",
+    type: "feature"
+  },
+  {
+    id: "v_7_16_3_sync_dev_server",
+    version: "V7.16.3",
+    title: "V7.16.3 • Corrección de Sincronización del Servidor",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se detectó y solucionó una caída en el servidor de desarrollo en tiempo real que impedía que su navegador descargara las nuevas funciones de Cobro. El servidor ha sido reiniciado forzosamente, por lo que el botón de 'Cobrar' ahora ejecutará la función correctamente sin arrojar errores de referencia. Refresque la página si el error persiste.",
+    type: "core"
+  },
+
+  {
+    id: "v_7_16_2_partial_payments_client_name",
+    version: "V7.16.2",
+    title: "V7.16.2 • Abonos Parciales y Visualización de Clientes en E-Commerce Físico",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se solucionó el error que impedía registrar cobros en las cuotas. Ahora al presionar 'Cobrar' se despliega una ventana que permite ingresar el monto exacto a abonar, habilitando Abonos Parciales. Además, se corrigió la visualización del nombre del Cliente en la cabecera de las tarjetas de venta que se mostraban como 'Cliente sin nombre'.",
+    type: "interface"
+  },
+
+  {
+    id: "v_7_16_1_fixes_contrast_payments",
+    version: "V7.16.1",
+    title: "V7.16.1 • Textos Legibles (Liquid Glass) y Abonos Parciales",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se corrigió el problema de legibilidad visual de los textos oscuros que se veían blancos o borrosos bajo el tema Liquid Glass (Light), eliminando el sombreado de texto global. Además, ahora en las Ventas del Comercio Físico (E-Commerce Local) los usuarios pueden marcar como COBRADAS las cuotas individuales (Abonos parciales) desde el panel de Calendario de Pagos de cada Venta.",
+    type: "interface"
+  },
+
+  {
+    id: "v_7_16_0_sales_predictive_crm",
+    version: "V7.16.0",
+    title: "V7.16.0 • Búsqueda Predictiva de Clientes y Corrección de Guardado de Ventas",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se implementó un sistema de búsqueda predictiva para Clientes en el módulo de Ventas. Ahora al escribir la Cédula o el Nombre, el sistema busca en tiempo real en el CRM y auto-completa el resto de datos (Celular, Ciudad, Barrio, Referencia). Se corrigió de forma definitiva el guardado de la venta (uso de addDoc) y se amplió el panel visual para mostrar el Calendario de Pagos Estimado de forma anticipada antes de guardar.",
+    type: "feature"
+  },
+
+  {
+    id: "v_7_15_1_sales_payments_schedule",
+    version: "V7.15.1",
+    title: "V7.15.1 • Corrección en Ventas y Calendario de Pagos",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se ha corregido el guardado de las ventas. Ahora al crear una venta se muestra un resumen con el Calendario de Pagos estimado en base al tipo de venta y frecuencia. Además, cada venta registrada muestra en su tarjeta de detalle todo su cronograma de cuotas (Fechas, montos y estado).",
+    type: "core"
+  },
+
+  {
+    id: "v_7_15_0_sales_client_crm",
+    version: "V7.15.0",
+    title: "V7.15.0 • Creador Dinámico de Clientes y CRM Integrado en Ventas",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se ha potenciado el módulo de Ventas Físicas. Ahora permite seleccionar clientes predictivos directamente desde el CRM, auto-completando sus datos. En caso de ser un cliente nuevo, se habilita la creación autónoma exigiendo Cédula (hasta 13 dígitos), Celular y Dirección desglosada (Ciudad, Barrio, Referencia). Adicionalmente, se incluyó el selector de Tipo/Tiempo de Venta (Contado, 3 y 6 meses) que recalcula dinámicamente los valores del inventario.",
+    type: "feature"
+  },
+
+  {
+    id: "v_7_14_0_commerce_margins",
+    version: "V7.14.0",
+    title: "V7.14.0 • Sistema Autónomo de Márgenes Comerciales",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se integró un motor global de configuración de márgenes de ganancia (PVP, 3 Meses y 6 Meses) en el panel de Ajustes (Comercio y Ganancias). El inventario ahora solo requiere ingresar el Costo base; el sistema calculará dinámicamente los precios de venta y financiamiento aplicando las reglas configuradas.",
+    type: "feature"
+  },
+
+  {
+    id: "v_7_13_1_dock_tooltips_fix",
+    version: "V7.13.1",
+    title: "V7.13.1 • Corrección de Tooltips en el Dock de Navegación",
+    date: "27-Jul-2026, 09:40:00",
+    description: "Se ha solucionado el problema visual donde los nombres de los módulos emergentes (tooltips) en el Dock inferior se mostraban entrecortados. Se incrementó la altura del contenedor de desbordamiento (overflow) y se aplicaron ajustes de eventos de puntero (pointer-events) para garantizar que los textos se dibujen de manera completa sin bloquear la interacción con el resto de la interfaz.",
+    type: "interface"
+  },
+  {
+    id: "v_7_13_0_mother_account_dock_unification",
+    version: "V7.13.0",
+    title: "V7.13.0 • Habilitación del Dock Universal y Control Estricto de Cuentas Madre",
+    date: "26-Julio-2026, 23:50:00",
+    description: "Se eliminó definitivamente la barra de navegación inferior en dispositivos móviles y tabletas, reemplazándola por el MacDock unificado para todas las resoluciones. Adicionalmente, se integró el botón 'Registrar Cuenta Madre' en Servicios Digitales, configurando el sistema para que al seleccionar 'Vender Perfil', el selector de cuentas origen únicamente despliegue las Cuentas Madre (Matriz) que se encuentren activas, evitando mezclar suscripciones completas.",
+    type: "feature"
+  },
+  {
+    id: "v_7_12_0_mother_account_button_and_universal_dock",
+    version: "V7.12.0",
+    title: "V7.12.0 • Botón Especializado de Cuenta Madre y Dock Universal",
+    date: "26-Julio-2026, 23:25:00",
+    description: "Se unificó la experiencia de usuario habilitando el MacDock interactivo para todas las resoluciones (Móvil y Escritorio) eliminando la barra inferior antigua. Adicionalmente, se incorporó un botón dedicado 'Registrar Cuenta Madre' que filtra inteligentemente el catálogo para aislar inventarios, reflejándose exclusivamente en la ventana de venta por perfiles y protegiendo el stock de las cuentas completas del cliente final.",
+    type: "feature"
+  },
+  {
+    id: "v_7_11_1_fix_mobile_menu_contrast",
+    version: "V7.11.1",
+    title: "V7.11.1 • Corrección de Contraste en Menú Móvil",
+    date: "26-Julio-2026, 23:05:00",
+    description: "Se corrigió el contraste de color del texto en el popover del menú inferior (Comercio / Finanzas) durante el uso del modo claro, mejorando la legibilidad de las opciones.",
+    type: "interface"
+  },
+  {
     id: "v_7_11_0_parent_account_isolation",
     version: "V7.11.0",
     title: "V7.11.0 • Separación Lógica de Cuentas Matrices",

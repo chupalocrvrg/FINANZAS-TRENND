@@ -11,7 +11,7 @@ export function TutorialModal() {
   const showTutorial = settings?.isOnboarded && !settings?.hasCompletedTutorial;
   
   const [currentStep, setCurrentStep] = useState(1);
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   if (!showTutorial) return null;
 
@@ -82,7 +82,7 @@ export function TutorialModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-slate-950/75 backdrop-blur-md"
+          className={cn("absolute inset-0", isDark ? "bg-slate-950/75" : "bg-slate-900/20", "backdrop-blur-md")}
         />
 
         {/* Tarjeta del Tutorial */}

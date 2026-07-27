@@ -1213,7 +1213,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setQrModalData(null)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md cursor-pointer"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md cursor-pointer")}
             />
 
             {/* Modal Box */}

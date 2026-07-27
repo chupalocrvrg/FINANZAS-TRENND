@@ -36,7 +36,7 @@ service cloud.firestore {
     
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email']) &&
-             data.keys().size() <= 24 &&
+             data.keys().size() <= 40 &&
              data.uid == request.auth.uid &&
              data.email is string && data.email.size() <= 150 &&
              (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 150)) &&
@@ -54,11 +54,16 @@ service cloud.firestore {
     
     function isValidEntity(data) {
       return data.keys().hasAll(['name', 'type', 'ownerId']) &&
-             data.keys().size() <= 8 &&
+             data.keys().size() <= 20 &&
              data.ownerId == request.auth.uid &&
              data.name is string && data.name.size() <= 100 &&
              data.type in ['client', 'reseller', 'intermediary', 'supplier'] &&
              (!('contact' in data) || (data.contact is string && data.contact.size() <= 150)) &&
+             (!('cedula' in data) || (data.cedula is string && data.cedula.size() <= 20)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
+             (!('city' in data) || (data.city is string && data.city.size() <= 100)) &&
+             (!('neighborhood' in data) || (data.neighborhood is string && data.neighborhood.size() <= 100)) &&
+             (!('reference' in data) || (data.reference is string && data.reference.size() <= 200)) &&
              (!('rate' in data) || data.rate is number);
     }
     
@@ -171,6 +176,13 @@ service cloud.firestore {
       allow create: if (isOwner(userId) && isValidUser(incoming())) || isAdmin();
       allow update: if (isOwner(userId) && isValidUser(incoming()) && incoming().uid == existing().uid) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
+
+      match /commerce_inventory/{itemId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /commerce_sales/{saleId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
     
     match /entities/{entityId} {
@@ -186,6 +198,7 @@ service cloud.firestore {
       allow list: if isOwnerOrAdmin(resource.data.ownerId) || true;
       allow create: if isValidId(txId) && isOwnerOrAdmin(incoming().ownerId) && (isValidTransaction(incoming()) || isAdmin());
       allow update: if isValidId(txId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidTransaction(incoming()) || isAdmin());
+      allow delete: if isValidId(txId) && isOwnerOrAdmin(resource.data.ownerId);
     }
     
     match /wallets/{walletId} {
@@ -200,6 +213,7 @@ service cloud.firestore {
       allow list: if isOwnerOrAdmin(resource.data.ownerId) || true;
       allow create: if isValidId(entryId) && isOwnerOrAdmin(incoming().ownerId) && (isValidLedger(incoming()) || isAdmin());
       allow update: if isValidId(entryId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidLedger(incoming()) || isAdmin());
+      allow delete: if isValidId(entryId) && isOwnerOrAdmin(resource.data.ownerId);
     }
 
     match /digital_services/{serviceId} {
@@ -207,6 +221,7 @@ service cloud.firestore {
       allow list: if isOwnerOrAdmin(resource.data.ownerId) || true;
       allow create: if isValidId(serviceId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalService(incoming()) || isAdmin());
       allow update: if isValidId(serviceId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalService(incoming()) || isAdmin());
+      allow delete: if isValidId(serviceId) && isOwnerOrAdmin(resource.data.ownerId);
 
       match /service_history/{historyId} {
         allow get, delete: if isValidId(historyId) && (isOwnerOrAdmin(get(/databases/$(database)/documents/digital_services/$(serviceId)).data.ownerId));

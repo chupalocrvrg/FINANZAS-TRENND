@@ -26,7 +26,7 @@ import { ConfirmModal } from './ConfirmModal';
 
 export function Treasury() {
   const { user, settings } = useAuth();
-  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
+  const isWalletsDisabled = true;
   const [activeType, setActiveType] = useState<LedgerType>('business');
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
@@ -84,7 +84,7 @@ export function Treasury() {
     comment: ''
   });
 
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   useEffect(() => {
     if (!user) return;
@@ -510,7 +510,7 @@ export function Treasury() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/60" : "bg-slate-900/20", "backdrop-blur-sm")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -754,7 +754,7 @@ export function Treasury() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedWalletForDetail(null)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/60" : "bg-slate-900/20", "backdrop-blur-sm")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -854,7 +854,7 @@ export function Treasury() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsTransferModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/60" : "bg-slate-900/20", "backdrop-blur-sm")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}

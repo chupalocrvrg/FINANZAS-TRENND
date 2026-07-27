@@ -27,7 +27,7 @@ export function ServiceRenewalModal({
   isDark = false
 }: ServiceRenewalModalProps) {
   const { settings } = useAuth();
-  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
+  const isWalletsDisabled = true;
   
   // Duration values: 30 days (1 month), 90 days (3 months), 180 days (6 months), 365 days (12 months)
   const [selectedMonths, setSelectedMonths] = useState<30 | 90 | 180 | 365>(30);
@@ -227,7 +227,7 @@ export function ServiceRenewalModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px]"
+            className={cn("absolute inset-0", isDark ? "bg-slate-950/70" : "bg-slate-900/20", "backdrop-blur-[2px]")}
           />
 
           {/* Modal Container */}

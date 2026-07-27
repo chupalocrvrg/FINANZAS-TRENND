@@ -28,7 +28,7 @@ type ReportModule = 'consolidated' | 'services' | 'updates' | 'ledger';
 
 export function Reports() {
   const { user, settings } = useAuth();
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filters state
@@ -420,7 +420,7 @@ export function Reports() {
               <BarChart3 className="w-6 h-6 text-indigo-500" />
               Módulo de Reportes & Estadísticas
             </h1>
-            <p className={cn("text-xs font-semibold select-none", isDark ? "text-slate-400" : "text-slate-500")}>
+            <p className={cn("text-xs font-semibold select-none", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-700 dark:text-slate-300")}>
               Conectado al motor Firestore de alta fidelidad. Genere, descargue o exporte balances en tiempo real.
             </p>
           </div>
@@ -515,7 +515,7 @@ export function Reports() {
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total Ingresos</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Total Ingresos</span>
             <div className="text-lg font-mono font-bold text-emerald-600">{formatCurrency(metrics.totalIncome)}</div>
           </div>
         </div>
@@ -525,7 +525,7 @@ export function Reports() {
             <TrendingDown className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total Gastos/Costo</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Total Gastos/Costo</span>
             <div className="text-lg font-mono font-bold text-rose-500">{formatCurrency(metrics.totalExpense)}</div>
           </div>
         </div>
@@ -535,7 +535,7 @@ export function Reports() {
             <DollarSign className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Utilidad Neta</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Utilidad Neta</span>
             <div className={cn("text-lg font-mono font-bold", metrics.netProfit >= 0 ? "text-indigo-500" : "text-rose-500")}>
               {formatCurrency(metrics.netProfit)}
             </div>
@@ -547,7 +547,7 @@ export function Reports() {
             <Clock className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Por Cobrar (Saldos)</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Por Cobrar (Saldos)</span>
             <div className="text-lg font-mono font-bold text-amber-500">{formatCurrency(metrics.pendingPayments)}</div>
           </div>
         </div>
@@ -559,13 +559,13 @@ export function Reports() {
           <h3 className={cn("text-base font-black uppercase tracking-wider flex items-center gap-2", isDark ? "text-white" : "text-slate-900")}>
             📊 Rendimiento de Categorías y Márgenes de Ganancia
           </h3>
-          <p className="text-slate-500 text-xs font-semibold mt-1">
+          <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold mt-1">
             Análisis detallado de rentabilidad por línea de negocio, calculando ingresos vs. costos reales.
           </p>
         </div>
 
         {categoryMargins.length === 0 ? (
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center py-4">No hay datos de operaciones en el rango especificado.</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-center py-4">No hay datos de operaciones en el rango especificado.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
@@ -585,8 +585,8 @@ export function Reports() {
                   return (
                     <div key={item.name} className="space-y-1">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-extrabold text-slate-500 uppercase tracking-wide">{item.name}</span>
-                        <div className="flex items-center gap-2 font-mono font-bold text-slate-400">
+                        <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{item.name}</span>
+                        <div className="flex items-center gap-2 font-mono font-bold text-slate-600 dark:text-slate-300">
                           <span>Ganancia:</span>
                           <span className={cn(item.profit >= 0 ? "text-emerald-500" : "text-rose-500")}>
                             {formatCurrency(item.profit)}
@@ -602,7 +602,7 @@ export function Reports() {
                           className={cn("h-full rounded-full transition-all duration-1000 bg-gradient-to-r", activeColor)} 
                         />
                       </div>
-                      <div className="flex justify-between text-[9px] font-bold text-slate-400 font-mono">
+                      <div className="flex justify-between text-[9px] font-bold text-slate-600 dark:text-slate-300 font-mono">
                         <span>Costo: {formatCurrency(item.cost)}</span>
                         <span>Ingreso Total: {formatCurrency(item.revenue)}</span>
                       </div>
@@ -618,21 +618,21 @@ export function Reports() {
                 <h4 className={cn("text-sm font-black uppercase tracking-tight", isDark ? "text-white" : "text-slate-800")}>
                   EFICIENCIA GLOBAL DE OPERACIONES
                 </h4>
-                <p className="text-slate-500 text-xs font-semibold leading-relaxed">
-                  El margen consolidado del negocio es de <strong className={cn("font-extrabold font-mono", metrics.totalIncome > 0 ? "text-emerald-500" : "text-slate-400")}>{metrics.totalIncome > 0 ? `${((metrics.netProfit / metrics.totalIncome) * 100).toFixed(1)}%` : '0%'}</strong>. 
+                <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-relaxed">
+                  El margen consolidado del negocio es de <strong className={cn("font-extrabold font-mono", metrics.totalIncome > 0 ? "text-emerald-500" : "text-slate-600 dark:text-slate-300")}>{metrics.totalIncome > 0 ? `${((metrics.netProfit / metrics.totalIncome) * 100).toFixed(1)}%` : '0%'}</strong>. 
                   Un margen superior al 30% en servicios digitales indica una excelente asignación de precios. Procure optimizar negociaciones con proveedores con baja utilidad neta.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 border-t border-dashed border-slate-500/10 pt-4">
                 <div className="space-y-1">
-                  <span className="text-[9px] font-black uppercase text-slate-400">Canal Estrella</span>
+                  <span className="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300">Canal Estrella</span>
                   <div className="text-xs font-black uppercase tracking-tight text-indigo-500 truncate">
                     {categoryMargins[0]?.name || 'Ninguno'}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[9px] font-black uppercase text-slate-400">Eficiencia Máxima</span>
+                  <span className="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300">Eficiencia Máxima</span>
                   <div className="text-xs font-bold font-mono text-emerald-500">
                     {categoryMargins[0] ? `${categoryMargins[0].margin.toFixed(1)}%` : '0.0%'}
                   </div>
@@ -648,7 +648,7 @@ export function Reports() {
         {/* Centered Search Bar */}
         <div className="flex justify-center w-full">
           <div className="relative w-full max-w-xl">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-600 dark:text-slate-300">
               <Search className="w-5 h-5 animate-pulse text-indigo-500" />
             </span>
             <input
@@ -676,7 +676,7 @@ export function Reports() {
         <div className="overflow-x-auto min-w-full">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-100/10 text-slate-400 font-bold uppercase tracking-wider">
+              <tr className="border-b border-slate-100/10 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider">
                 <th className="py-2.5 pb-3">Módulo / Origen</th>
                 <th className="py-2.5 pb-3">Concepto / Detalle</th>
                 <th className="py-2.5 pb-3">Cliente / Tercero</th>
@@ -687,17 +687,17 @@ export function Reports() {
             <tbody className="divide-y divide-slate-100/5 font-semibold">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">Sincronizando información de bases de datos...</td>
+                  <td colSpan={5} className="py-8 text-center text-slate-600 dark:text-slate-300">Sincronizando información de bases de datos...</td>
                 </tr>
               ) : (filteredServicesData.length + filteredUpdatesData.length + filteredLedgerData.length) === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">Ningún registro coincide con la búsqueda o el rango seleccionado.</td>
+                  <td colSpan={5} className="py-8 text-center text-slate-600 dark:text-slate-300">Ningún registro coincide con la búsqueda o el rango seleccionado.</td>
                 </tr>
               ) : (
                 <>
                   {(module === 'consolidated' || module === 'services') ? filteredServicesData.map(s => (
                     <tr key={s.id} className="hover:bg-slate-500/5 transition-colors">
-                      <td className="py-3 text-slate-400">Servicios Digitales</td>
+                      <td className="py-3 text-slate-600 dark:text-slate-300">Servicios Digitales</td>
                       <td className="py-3 font-bold">{s.name}</td>
                       <td className="py-3 text-slate-550 dark:text-slate-350">{s.clientName}</td>
                       <td className="py-3 text-right font-mono text-emerald-500 font-bold">{formatCurrency(s.revenue)}</td>
@@ -711,7 +711,7 @@ export function Reports() {
 
                   {(module === 'consolidated' || module === 'updates') ? filteredUpdatesData.map(u => (
                     <tr key={u.id} className="hover:bg-slate-500/5 transition-colors">
-                      <td className="py-3 text-slate-400">Actualización (ANT)</td>
+                      <td className="py-3 text-slate-600 dark:text-slate-300">Actualización (ANT)</td>
                       <td className="py-3 font-bold">{u.warehouse || 'Oficina / Almacén'}</td>
                       <td className="py-3 text-slate-550 dark:text-slate-350">{u.finalClientName}</td>
                       <td className="py-3 text-right font-mono text-emerald-500 font-bold">{formatCurrency(u.chargedRate)}</td>
@@ -725,7 +725,7 @@ export function Reports() {
 
                   {(module === 'consolidated' || module === 'ledger') ? filteredLedgerData.map(l => (
                     <tr key={l.id} className="hover:bg-slate-500/5 transition-colors">
-                      <td className="py-3 text-slate-400">Tesorería (Libro)</td>
+                      <td className="py-3 text-slate-600 dark:text-slate-300">Tesorería (Libro)</td>
                       <td className="py-3 font-bold">{l.category}</td>
                       <td className="py-3 text-slate-550 dark:text-slate-350">{l.description || '-'}</td>
                       <td className={cn("py-3 text-right font-mono font-bold", l.amount >= 0 ? "text-emerald-500" : "text-rose-500")}>

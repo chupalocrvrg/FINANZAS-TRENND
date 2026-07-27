@@ -42,7 +42,7 @@ export function NoticeShareModal({
   type = 'receivable'
 }: NoticeShareModalProps) {
   const { user, settings } = useAuth();
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [wallets, setWallets] = useState<Wallet[]>([]);
 
   useEffect(() => {
@@ -558,7 +558,7 @@ export function NoticeShareModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
+          className={cn("absolute inset-0", isDark ? "bg-slate-950/70" : "bg-slate-900/20", "backdrop-blur-md")}
         />
 
         {/* Modal body */}

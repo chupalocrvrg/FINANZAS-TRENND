@@ -72,7 +72,7 @@ export function ReportSelectorModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
+            className={cn("absolute inset-0", isDark ? "bg-slate-950/60" : "bg-slate-900/20", "backdrop-blur-[2px]")}
           />
 
           {/* Modal Container */}

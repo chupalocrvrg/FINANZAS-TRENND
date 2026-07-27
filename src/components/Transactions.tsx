@@ -27,7 +27,7 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 
 export function Transactions() {
   const { user, settings } = useAuth();
-  const isWalletsDisabled = settings?.disabledFeatures?.includes('treasury_wallets');
+  const isWalletsDisabled = true;
   const [selectedIntermediary, setSelectedIntermediary] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -87,7 +87,7 @@ export function Transactions() {
     isPaid: false
   });
 
-  const isDark = settings?.theme === 'dark';
+  const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // Selection and Multi-Format Notification states
   const [selectedTxIds, setSelectedTxIds] = useState<string[]>([]);
@@ -438,7 +438,7 @@ export function Transactions() {
           <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
             Modulo de Actualizaciones ANT
           </h2>
-          <p className="text-slate-500 font-medium">Registro de datos transaccionales y liquidación de intermediarios.</p>
+          <p className="text-slate-700 dark:text-slate-300 font-medium">Registro de datos transaccionales y liquidación de intermediarios.</p>
         </div>
         <button 
           onClick={() => {
@@ -455,7 +455,7 @@ export function Transactions() {
       {/* Centered Search Bar */}
       <div className="flex justify-center w-full">
         <div className="relative w-full max-w-xl">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-600 dark:text-slate-300">
             <Search className="w-5 h-5 animate-pulse text-indigo-500" />
           </span>
           <input
@@ -476,11 +476,11 @@ export function Transactions() {
       <div className={cn("rounded-3xl border shadow-sm overflow-hidden", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
         <div className={cn("p-5 border-b flex flex-col sm:flex-row justify-between items-center gap-4", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-50 bg-slate-50/50")}>
           <div className="flex items-center gap-4 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-slate-400" />
+            <Filter className="w-4 h-4 text-slate-600 dark:text-slate-300" />
             <select 
               value={selectedIntermediary}
               onChange={(e) => setSelectedIntermediary(e.target.value)}
-              className={cn("bg-transparent font-black outline-none uppercase text-[10px] tracking-[0.2em] cursor-pointer flex-1 sm:flex-none", isDark ? "text-slate-300" : "text-slate-500")}
+              className={cn("bg-transparent font-black outline-none uppercase text-[10px] tracking-[0.2em] cursor-pointer flex-1 sm:flex-none", isDark ? "text-slate-300" : "text-slate-700 dark:text-slate-300")}
             >
               <option value="all">Visión Global</option>
               {intermediaries.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -505,7 +505,7 @@ export function Transactions() {
               <span className={cn("text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full", isDark ? "bg-slate-800 text-slate-300" : "bg-indigo-100 text-indigo-700")}>
                 {selectedTxIds.length} Seleccionados
               </span>
-              <p className="text-xs text-slate-400 dark:text-slate-350 font-bold">Trámites ANT para operaciones en lote</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300 dark:text-slate-350 font-bold">Trámites ANT para operaciones en lote</p>
             </div>
             
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -527,7 +527,7 @@ export function Transactions() {
 
               <button 
                 onClick={() => setSelectedTxIds([])}
-                className="p-2 text-slate-400 hover:text-rose-500 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer transition-colors"
+                className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer transition-colors"
                 title="Limpiar Selección"
               >
                 <X className="w-4 h-4" />
@@ -539,7 +539,7 @@ export function Transactions() {
         <div className="overflow-x-auto overflow-y-hidden">
           <table className="w-full text-left min-w-[700px]">
             <thead>
-              <tr className={cn("text-[10px] font-black uppercase tracking-widest border-b text-left", isDark ? "bg-slate-800/50 text-slate-500 border-slate-800" : "bg-slate-100 text-slate-400 border-slate-100")}>
+              <tr className={cn("text-[10px] font-black uppercase tracking-widest border-b text-left", isDark ? "bg-slate-800/50 text-slate-700 dark:text-slate-300 border-slate-800" : "bg-slate-100 text-slate-600 dark:text-slate-300 border-slate-100")}>
                 <th className="px-4 py-4 text-center w-12">
                   <input 
                     type="checkbox"
@@ -560,14 +560,14 @@ export function Transactions() {
             <tbody className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">Cargando transacciones...</td>
+                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Cargando transacciones...</td>
                 </tr>
               ) : visibleTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">No hay registros para este filtro</td>
+                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">No hay registros para este filtro</td>
                 </tr>
               ) : visibleTransactions.map((tx) => (
-                <tr key={tx.id} className={cn("hover:bg-slate-50/30 transition-colors group", isDark ? "hover:bg-slate-800/20 text-slate-400" : "text-slate-700", selectedTxIds.includes(tx.id) && (isDark ? "bg-slate-850" : "bg-indigo-50/30"))}>
+                <tr key={tx.id} className={cn("hover:bg-slate-50/30 transition-colors group", isDark ? "hover:bg-slate-800/20 text-slate-600 dark:text-slate-300" : "text-slate-700", selectedTxIds.includes(tx.id) && (isDark ? "bg-slate-850" : "bg-indigo-50/30"))}>
                   <td className="px-4 py-4 text-center w-12">
                     <input 
                       type="checkbox"
@@ -579,12 +579,12 @@ export function Transactions() {
                   <td className="px-6 lg:px-8 py-4">
                     <div className="flex flex-col">
                       <span className={cn("font-bold tracking-tight", isDark ? "text-slate-200" : "text-slate-800")}>{tx.finalClientName}</span>
-                      <span className="text-slate-500 text-[10px] uppercase font-black tracking-widest">{tx.warehouse}</span>
+                      <span className="text-slate-700 dark:text-slate-300 text-[10px] uppercase font-black tracking-widest">{tx.warehouse}</span>
                     </div>
                   </td>
                   <td className="px-6 lg:px-8 py-4">
                     <div className="flex flex-col gap-1.5 items-start">
-                      <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", isDark ? "bg-slate-800 text-slate-400 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200")}>
+                      <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", isDark ? "bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200")}>
                         Vend: {tx.intermediaryName}
                       </span>
                       {tx.updaterName && (
@@ -594,7 +594,7 @@ export function Transactions() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 lg:px-8 py-4 font-mono text-xs font-bold tracking-tighter text-slate-500">{tx.billingDate}</td>
+                  <td className="px-6 lg:px-8 py-4 font-mono text-xs font-bold tracking-tighter text-slate-700 dark:text-slate-300">{tx.billingDate}</td>
                   <td className={cn("px-6 lg:px-8 py-4 text-right font-mono font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
                     {formatCurrency(tx.chargedRate)}
                   </td>
@@ -665,7 +665,7 @@ export function Transactions() {
                           });
                           setIsModalOpen(true);
                         }}
-                        className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                        className="p-2 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors"
                         title="Modificar"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -679,7 +679,7 @@ export function Transactions() {
                       </button>
                       <button 
                         onClick={() => handleDelete(tx.id)}
-                        className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                        className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 transition-colors"
                         title="Eliminar"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -691,7 +691,7 @@ export function Transactions() {
             </tbody>
           </table>
           {!loading && transactions.length === 0 && (
-            <div className="py-24 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay transacciones registradas.</div>
+            <div className="py-24 text-center text-slate-700 dark:text-slate-300 font-bold uppercase tracking-widest text-[10px]">No hay transacciones registradas.</div>
           )}
         </div>
       </div>
@@ -705,7 +705,7 @@ export function Transactions() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              className={cn("absolute inset-0", isDark ? "bg-slate-950/60" : "bg-slate-900/20", "backdrop-blur-sm")}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -720,7 +720,7 @@ export function Transactions() {
                 <button onClick={() => {
                   setIsModalOpen(false);
                   setFormData({ id: '', intermediaryId: '', updaterId: '', finalClientName: '', warehouse: '', isPaid: false });
-                }} className="text-slate-400 hover:text-slate-600 transition-colors">
+                }} className="text-slate-600 dark:text-slate-300 hover:text-slate-600 transition-colors">
                   <X />
                 </button>
               </div>
@@ -728,7 +728,7 @@ export function Transactions() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="flex-1 space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Intermediario (Distribuidor)</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Intermediario (Distribuidor)</label>
                     <select 
                       required
                       value={formData.intermediaryId}
@@ -752,7 +752,7 @@ export function Transactions() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Nombre del Cliente Final</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Nombre del Cliente Final</label>
                   <input 
                     required
                     type="text"
@@ -763,7 +763,7 @@ export function Transactions() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Almacén / Origen</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Almacén / Origen</label>
                   <input 
                     required
                     type="text"
@@ -804,11 +804,11 @@ export function Transactions() {
       <AnimatePresence>
         {paymentTx && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setPaymentTx(null)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md")} onClick={() => setPaymentTx(null)} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="flex justify-between items-center mb-6">
                  <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Registrar Cobro</h3>
-                 <button onClick={() => setPaymentTx(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
+                 <button onClick={() => setPaymentTx(null)} className="p-1 text-slate-600 dark:text-slate-300 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
               </div>
               <div className="space-y-4">
                  <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl">
@@ -817,7 +817,7 @@ export function Transactions() {
                  </div>
                  {!isWalletsDisabled && (
                  <div className="space-y-1.5">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Destino</label>
+                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Billetera de Destino</label>
                    <select 
                      value={targetWalletId}
                      onChange={e => setTargetWalletId(e.target.value)}
@@ -846,13 +846,13 @@ export function Transactions() {
       <AnimatePresence>
         {successMsg.show && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-emerald-950/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={cn("absolute inset-0 backdrop-blur-sm", isDark ? "bg-emerald-950/40" : "bg-emerald-900/20")} />
             <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }} className={cn("relative w-full max-w-sm p-6 sm:p-8 rounded-3xl border shadow-2xl z-10 flex flex-col items-center text-center", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-slate-900")}>Actualización Creada</h3>
-              <p className="text-slate-500 text-sm mb-6">El registro se guardó existosamente. ¿Desea notificar al intermediario vía WhatsApp?</p>
+              <p className="text-slate-700 dark:text-slate-300 text-sm mb-6">El registro se guardó existosamente. ¿Desea notificar al intermediario vía WhatsApp?</p>
               
               <div className="flex w-full gap-3">
                 <button 

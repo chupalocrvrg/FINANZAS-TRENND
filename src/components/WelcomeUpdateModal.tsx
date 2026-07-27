@@ -50,7 +50,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
+            className={cn("absolute inset-0", isDark ? "bg-slate-950/70" : "bg-slate-900/20", "backdrop-blur-md")}
           />
 
           {/* Modal Card */}
@@ -77,7 +77,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
                 onClick={handleClose}
                 className={cn(
                   "p-2 rounded-full transition-all border shrink-0 cursor-pointer",
-                  isDark ? "text-slate-400 border-slate-800 hover:bg-slate-800" : "text-slate-700 border-slate-300 hover:bg-slate-200/50"
+                  isDark ? "text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-800" : "text-slate-700 border-slate-300 hover:bg-slate-200/50"
                 )}
               >
                 <X className="w-4 h-4" />
@@ -92,7 +92,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
               <h2 className={cn("text-xl font-black tracking-tight mt-1", isDark ? "text-white" : "text-slate-950")}>
                 {SYSTEM_UPDATES[0]?.version || "Versión Reciente"} Aplicada 🎉
               </h2>
-              <p className={cn("text-xs font-bold mt-0.5", isDark ? "text-slate-400" : "text-slate-700")}>
+              <p className={cn("text-xs font-bold mt-0.5", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-700")}>
                 Compilación Segura del {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
@@ -114,7 +114,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
                       <h4 className={cn("text-xs font-black uppercase tracking-wider", isDark ? "text-slate-200" : "text-slate-800")}>
                         {item.title}
                       </h4>
-                      <p className={cn("text-xs mt-0.5 leading-relaxed font-semibold", isDark ? "text-slate-400" : "text-slate-600")}>
+                      <p className={cn("text-xs mt-0.5 leading-relaxed font-semibold", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-600")}>
                         {item.description}
                       </p>
                     </div>
@@ -125,7 +125,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
 
             {/* Quick Action Button */}
             <div className="mt-6 border-t border-slate-100 dark:border-slate-800/60 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest sm:block hidden">
+              <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest sm:block hidden">
                 ¡Gracias por su confianza!
               </span>
               <button
