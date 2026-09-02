@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_23_0_full_debt_visibility_in_public_portal",
+    version: "V7.23.0",
+    title: "V7.23.0 • Visibilidad Total y Consolidación de Deuda en Portal Público de Clientes",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se perfeccionó el motor de cálculo y conciliación de saldos del Portal Público de Clientes: (1) La sección de 'Mis Cuentas y Servicios Activos' se mantiene limpia mostrando exclusivamente cuentas operativas y vigentes; (2) La tabla de 'Mis Valores Pendientes de Pago / Conciliación' ahora consolida la totalidad de valores adeudados, incluyendo tanto cuentas activas como suscripciones vencidas o archivadas históricamente, garantizando 100% de coincidencia exacta con el saldo del módulo interno de Cuentas por Cobrar; (3) Se añadió el indicador visual distintivo 'Servicio Vencido' y etiqueta 'Vencida' para diferenciar con total claridad el origen de cada saldo.",
+    type: "feature"
+  },
+  {
     id: "v_7_22_0_encrypted_portal_url_and_cloaking",
     version: "V7.22.0",
     title: "V7.22.0 • Encriptación Criptográfica y Enmascaramiento de URLs en Portal de Clientes",

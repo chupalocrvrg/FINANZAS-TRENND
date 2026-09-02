@@ -346,11 +346,13 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
       const servicesSnap = await getDocs(qServices);
       const allServices = servicesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Filter in memory for maximum safety/robustness against index configuration issues
-      const clientServices = allServices.filter((s: any) => 
-        !s.deletedFromModule && 
+      // All services belonging to the client (including active, expired, and archived/deletedFromModule)
+      const allClientServices = allServices.filter((s: any) => 
         s.clientName?.toLowerCase().trim() === decodedClient.toLowerCase()
       );
+
+      // Active, non-archived services for the portal's active cards
+      const clientServices = allClientServices.filter((s: any) => !s.deletedFromModule);
 
       // 2. Fetch ANT/Transactions matching ownerId and clientName (as intermediary or final client)
       const qTxs = query(
@@ -395,17 +397,17 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
         return currentHour >= 15;
       };
 
-      // Categorize Active services: Only those where status is 'active' AND is not expired
+      // Categorize Active services: Only non-archived services where status is 'active' AND is not expired
       const nonExpiredActiveServices = clientServices.filter((s: any) => {
         if (s.status !== 'active') return false;
         return !isServiceExpired(s.expirationDate);
       });
       setActiveServices(nonExpiredActiveServices);
 
-      // Process receivables (everything unpaid or pending)
+      // Process receivables (everything unpaid or pending across all sources and states)
       const derivedReceivables: any[] = [];
 
-      // Unpaid Transactions
+      // Unpaid Transactions (ANT)
       clientTxs.filter((tx: any) => !tx.isPaid).forEach((tx: any) => {
         derivedReceivables.push({
           id: tx.id,
@@ -420,19 +422,19 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
         });
       });
 
-      // Unpaid Digital Services
-      clientServices.filter((s: any) => !s.isPaid).forEach((s: any) => {
-        const isExpired = isServiceExpired(s.expirationDate);
+      // Unpaid Digital Services (Both Active and Expired/Archived accounts)
+      allClientServices.filter((s: any) => !s.isPaid).forEach((s: any) => {
+        const isExpired = s.deletedFromModule || s.status === 'expired' || isServiceExpired(s.expirationDate);
         derivedReceivables.push({
           id: s.id,
           source: isExpired ? 'Servicio Vencido' : 'Servicio Digital',
           description: isExpired 
-            ? `Suscripción Vencida: ${s.name} • Perfil: ${s.pin || 'S/N'}`
+            ? `Servicio Vencido: ${s.name} • Perfil: ${s.pin || 'S/N'}`
             : `Suscripción Activa: ${s.name} • Perfil: ${s.pin || 'S/N'}`,
           totalAmount: s.revenue || 0,
           pendingAmount: (s.revenue || 0) - (s.amountPaid || 0),
           dueDate: s.expirationDate || 'S/N',
-          status: s.status || 'active',
+          status: isExpired ? 'expired' : (s.status || 'active'),
           finalClientName: s.finalClientName || null,
           finalClientContact: s.finalClientContact || null
         });
@@ -1458,6 +1460,9 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{r.source}</span>
                                     {r.status === 'active' && (
                                       <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Activa</span>
+                                    )}
+                                    {r.status === 'expired' && (
+                                      <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-rose-500/10 text-rose-300 border border-rose-500/20">Vencida</span>
                                     )}
                                   </div>
                                   <span className="text-white text-sm font-bold">{r.description}</span>
