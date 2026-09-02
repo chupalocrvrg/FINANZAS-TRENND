@@ -435,10 +435,10 @@ export function Transactions() {
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 text-left">
         <div className="space-y-1">
-          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
+          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
             Modulo de Actualizaciones ANT
           </h2>
-          <p className="text-slate-700 dark:text-slate-300 font-medium">Registro de datos transaccionales y liquidación de intermediarios.</p>
+          <p className={cn("font-medium", isDark ? "text-white" : "text-black")}>Registro de datos transaccionales y liquidación de intermediarios.</p>
         </div>
         <button 
           onClick={() => {
@@ -455,7 +455,7 @@ export function Transactions() {
       {/* Centered Search Bar */}
       <div className="flex justify-center w-full">
         <div className="relative w-full max-w-xl">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-600 dark:text-slate-300">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
             <Search className="w-5 h-5 animate-pulse text-indigo-500" />
           </span>
           <input
@@ -466,8 +466,8 @@ export function Transactions() {
             className={cn(
               "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
               isDark 
-                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
-                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+                ? "border-slate-800 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                : "border-slate-200 bg-white text-black placeholder-slate-400 focus:bg-slate-50"
             )}
           />
         </div>
@@ -476,11 +476,11 @@ export function Transactions() {
       <div className={cn("rounded-3xl border shadow-sm overflow-hidden", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
         <div className={cn("p-5 border-b flex flex-col sm:flex-row justify-between items-center gap-4", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-50 bg-slate-50/50")}>
           <div className="flex items-center gap-4 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            <Filter className={cn("w-4 h-4", isDark ? "text-white" : "text-black")} />
             <select 
               value={selectedIntermediary}
               onChange={(e) => setSelectedIntermediary(e.target.value)}
-              className={cn("bg-transparent font-black outline-none uppercase text-[10px] tracking-[0.2em] cursor-pointer flex-1 sm:flex-none", isDark ? "text-slate-300" : "text-slate-700 dark:text-slate-300")}
+              className={cn("bg-transparent font-black outline-none uppercase text-[10px] tracking-[0.2em] cursor-pointer flex-1 sm:flex-none", isDark ? "text-white" : "text-black")}
             >
               <option value="all">Visión Global</option>
               {intermediaries.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -499,13 +499,13 @@ export function Transactions() {
         {selectedTxIds.length > 0 && (
           <div className={cn(
             "p-4 px-6 border-b flex flex-col sm:flex-row justify-between items-center gap-4 transition-all animate-fadeIn",
-            isDark ? "bg-slate-950/60 border-slate-850" : "bg-indigo-50/50 border-indigo-105"
+            isDark ? "bg-slate-950/60 border-slate-800" : "bg-indigo-50/50 border-indigo-100"
           )}>
             <div className="flex items-center gap-3">
-              <span className={cn("text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full", isDark ? "bg-slate-800 text-slate-300" : "bg-indigo-100 text-indigo-700")}>
+              <span className={cn("text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full", isDark ? "bg-slate-800 text-white" : "bg-indigo-100 text-indigo-700")}>
                 {selectedTxIds.length} Seleccionados
               </span>
-              <p className="text-xs text-slate-600 dark:text-slate-300 dark:text-slate-350 font-bold">Trámites ANT para operaciones en lote</p>
+              <p className={cn("text-xs font-bold", isDark ? "text-white" : "text-black")}>Trámites ANT para operaciones en lote</p>
             </div>
             
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -527,7 +527,7 @@ export function Transactions() {
 
               <button 
                 onClick={() => setSelectedTxIds([])}
-                className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer transition-colors"
+                className={cn("p-2 rounded-lg border cursor-pointer transition-colors", isDark ? "border-slate-800 text-white hover:text-rose-500" : "border-slate-200 text-black hover:text-rose-500")}
                 title="Limpiar Selección"
               >
                 <X className="w-4 h-4" />
@@ -539,7 +539,7 @@ export function Transactions() {
         <div className="overflow-x-auto overflow-y-hidden">
           <table className="w-full text-left min-w-[700px]">
             <thead>
-              <tr className={cn("text-[10px] font-black uppercase tracking-widest border-b text-left", isDark ? "bg-slate-800/50 text-slate-700 dark:text-slate-300 border-slate-800" : "bg-slate-100 text-slate-600 dark:text-slate-300 border-slate-100")}>
+              <tr className={cn("text-[10px] font-black uppercase tracking-widest border-b text-left", isDark ? "bg-slate-800/50 text-white border-slate-800" : "bg-slate-100 text-black border-slate-100")}>
                 <th className="px-4 py-4 text-center w-12">
                   <input 
                     type="checkbox"
@@ -560,14 +560,14 @@ export function Transactions() {
             <tbody className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Cargando transacciones...</td>
+                  <td colSpan={7} className={cn("py-12 text-center text-[10px] font-black uppercase tracking-widest", isDark ? "text-white" : "text-black")}>Cargando transacciones...</td>
                 </tr>
               ) : visibleTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">No hay registros para este filtro</td>
+                  <td colSpan={7} className={cn("py-12 text-center text-[10px] font-black uppercase tracking-widest", isDark ? "text-white" : "text-black")}>No hay registros para este filtro</td>
                 </tr>
               ) : visibleTransactions.map((tx) => (
-                <tr key={tx.id} className={cn("hover:bg-slate-50/30 transition-colors group", isDark ? "hover:bg-slate-800/20 text-slate-600 dark:text-slate-300" : "text-slate-700", selectedTxIds.includes(tx.id) && (isDark ? "bg-slate-850" : "bg-indigo-50/30"))}>
+                <tr key={tx.id} className={cn("hover:bg-slate-50/30 transition-colors group", isDark ? "hover:bg-slate-800/20 text-white" : "text-black", selectedTxIds.includes(tx.id) && (isDark ? "bg-slate-800" : "bg-indigo-50/30"))}>
                   <td className="px-4 py-4 text-center w-12">
                     <input 
                       type="checkbox"
@@ -578,13 +578,13 @@ export function Transactions() {
                   </td>
                   <td className="px-6 lg:px-8 py-4">
                     <div className="flex flex-col">
-                      <span className={cn("font-bold tracking-tight", isDark ? "text-slate-200" : "text-slate-800")}>{tx.finalClientName}</span>
-                      <span className="text-slate-700 dark:text-slate-300 text-[10px] uppercase font-black tracking-widest">{tx.warehouse}</span>
+                      <span className={cn("font-bold tracking-tight", isDark ? "text-white" : "text-black")}>{tx.finalClientName}</span>
+                      <span className={cn("text-[10px] uppercase font-black tracking-widest", isDark ? "text-white" : "text-black")}>{tx.warehouse}</span>
                     </div>
                   </td>
                   <td className="px-6 lg:px-8 py-4">
                     <div className="flex flex-col gap-1.5 items-start">
-                      <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", isDark ? "bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200")}>
+                      <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border", isDark ? "bg-slate-800 text-white border-slate-700" : "bg-slate-100 text-black border-slate-200")}>
                         Vend: {tx.intermediaryName}
                       </span>
                       {tx.updaterName && (
@@ -594,8 +594,8 @@ export function Transactions() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 lg:px-8 py-4 font-mono text-xs font-bold tracking-tighter text-slate-700 dark:text-slate-300">{tx.billingDate}</td>
-                  <td className={cn("px-6 lg:px-8 py-4 text-right font-mono font-bold tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                  <td className={cn("px-6 lg:px-8 py-4 font-mono text-xs font-bold tracking-tighter", isDark ? "text-white" : "text-black")}>{tx.billingDate}</td>
+                  <td className={cn("px-6 lg:px-8 py-4 text-right font-mono font-bold tracking-tight", isDark ? "text-white" : "text-black")}>
                     {formatCurrency(tx.chargedRate)}
                   </td>
                   <td className="px-6 lg:px-8 py-4">
@@ -617,9 +617,6 @@ export function Transactions() {
                         if (!tx.isPaid) {
                           setPaymentTx(tx);
                         } else {
-                          // Un-paying not fully supported with wallet deduction yet, just visual toggle initially
-                          // But we disable it for simplicity or show alert. Let's do nothing on paid.
-                          // Or we could revert it, but it gets complicated. Let's just alert.
                           if(confirm("El pago ya fue registrado en caja. No puede desmarcarlo desde aquí.")) return;
                         }
                       }}
@@ -665,7 +662,7 @@ export function Transactions() {
                           });
                           setIsModalOpen(true);
                         }}
-                        className="p-2 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors"
+                        className={cn("p-2 hover:text-indigo-500 transition-colors", isDark ? "text-white" : "text-black")}
                         title="Modificar"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -679,7 +676,7 @@ export function Transactions() {
                       </button>
                       <button 
                         onClick={() => handleDelete(tx.id)}
-                        className="p-2 text-slate-600 dark:text-slate-300 hover:text-rose-500 transition-colors"
+                        className={cn("p-2 hover:text-rose-500 transition-colors", isDark ? "text-white" : "text-black")}
                         title="Eliminar"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -691,7 +688,7 @@ export function Transactions() {
             </tbody>
           </table>
           {!loading && transactions.length === 0 && (
-            <div className="py-24 text-center text-slate-700 dark:text-slate-300 font-bold uppercase tracking-widest text-[10px]">No hay transacciones registradas.</div>
+            <div className={cn("py-24 text-center font-bold uppercase tracking-widest text-[10px]", isDark ? "text-white" : "text-black")}>No hay transacciones registradas.</div>
           )}
         </div>
       </div>
@@ -714,13 +711,13 @@ export function Transactions() {
               className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-black")}>
                   {formData.id ? "Modificar Actualización" : "Nueva Actualización ANT"}
                 </h3>
                 <button onClick={() => {
                   setIsModalOpen(false);
                   setFormData({ id: '', intermediaryId: '', updaterId: '', finalClientName: '', warehouse: '', isPaid: false });
-                }} className="text-slate-600 dark:text-slate-300 hover:text-slate-600 transition-colors">
+                }} className={cn("hover:text-slate-600 transition-colors", isDark ? "text-white" : "text-black")}>
                   <X />
                 </button>
               </div>
@@ -728,12 +725,12 @@ export function Transactions() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="flex-1 space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Intermediario (Distribuidor)</label>
+                    <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Intermediario (Distribuidor)</label>
                     <select 
                       required
                       value={formData.intermediaryId}
                       onChange={(e) => setFormData({...formData, intermediaryId: e.target.value})}
-                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 text-black focus:bg-white")}
                     >
                       <option value="">Seleccione Intermediario...</option>
                       {intermediaries.map(i => <option key={i.id} value={i.id}>{i.name} (${i.rate})</option>)}
@@ -744,7 +741,7 @@ export function Transactions() {
                     <select 
                       value={formData.updaterId}
                       onChange={(e) => setFormData({...formData, updaterId: e.target.value})}
-                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-indigo-900/20 border-indigo-800/30 text-indigo-100" : "bg-indigo-50/50 border-indigo-100 focus:bg-indigo-50")}
+                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-indigo-900/20 border-indigo-800/30 text-indigo-100" : "bg-indigo-50/50 border-indigo-100 text-black focus:bg-indigo-50")}
                     >
                       <option value="">Ninguno ($0.00)</option>
                       {updaters.map(u => <option key={u.id} value={u.id}>{u.name} (Cobra ${u.antUpdateCost || 0})</option>)}
@@ -752,24 +749,24 @@ export function Transactions() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Nombre del Cliente Final</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Nombre del Cliente Final</label>
                   <input 
                     required
                     type="text"
                     value={formData.finalClientName}
                     onChange={(e) => setFormData({...formData, finalClientName: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 text-black focus:bg-white focus:border-indigo-500")}
                     placeholder="Ej. Galo Peralta"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Almacén / Origen</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Almacén / Origen</label>
                   <input 
                     required
                     type="text"
                     value={formData.warehouse}
                     onChange={(e) => setFormData({...formData, warehouse: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 text-black focus:bg-white focus:border-indigo-500")}
                     placeholder="Ej. Matrix"
                   />
                 </div>
@@ -782,7 +779,7 @@ export function Transactions() {
                     onChange={(e) => setFormData({...formData, isPaid: e.target.checked})}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                   />
-                  <label htmlFor="isPaidCheck" className="text-xs font-bold text-slate-600 cursor-pointer select-none">
+                  <label htmlFor="isPaidCheck" className="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer select-none">
                     Marcar como pagado (El cliente ya pagó o es en efectivo)
                   </label>
                 </div>
@@ -807,8 +804,8 @@ export function Transactions() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md")} onClick={() => setPaymentTx(null)} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
               <div className="flex justify-between items-center mb-6">
-                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Registrar Cobro</h3>
-                 <button onClick={() => setPaymentTx(null)} className="p-1 text-slate-600 dark:text-slate-300 hover:text-slate-600 rounded-full"><X className="w-5 h-5"/></button>
+                 <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-black")}>Registrar Cobro</h3>
+                 <button onClick={() => setPaymentTx(null)} className={cn("p-1 hover:text-slate-600 rounded-full", isDark ? "text-white" : "text-black")}><X className="w-5 h-5"/></button>
               </div>
               <div className="space-y-4">
                  <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl">
@@ -817,11 +814,11 @@ export function Transactions() {
                  </div>
                  {!isWalletsDisabled && (
                  <div className="space-y-1.5">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Billetera de Destino</label>
+                   <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Billetera de Destino</label>
                    <select 
                      value={targetWalletId}
                      onChange={e => setTargetWalletId(e.target.value)}
-                     className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200")}
+                     className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-black")}
                    >
                      <option value="">Seleccione Billetera / Cuenta...</option>
                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -851,13 +848,13 @@ export function Transactions() {
               <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-slate-900")}>Actualización Creada</h3>
-              <p className="text-slate-700 dark:text-slate-300 text-sm mb-6">El registro se guardó existosamente. ¿Desea notificar al intermediario vía WhatsApp?</p>
+              <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-black")}>Actualización Creada</h3>
+              <p className={cn("text-sm mb-6", isDark ? "text-white" : "text-black")}>El registro se guardó existosamente. ¿Desea notificar al intermediario vía WhatsApp?</p>
               
               <div className="flex w-full gap-3">
                 <button 
                   onClick={() => setSuccessMsg({show: false, phone: '', text: ''})}
-                  className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest", isDark ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+                  className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest", isDark ? "bg-slate-800 text-white hover:bg-slate-700" : "bg-slate-100 text-black hover:bg-slate-200")}
                 >
                   Cerrar
                 </button>

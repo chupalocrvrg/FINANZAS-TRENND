@@ -343,17 +343,17 @@ export function Treasury() {
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div className="space-y-1">
-          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
+          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
             Tesorería Dual
           </h2>
-          <p className="text-slate-500 font-medium">Aislar operaciones comerciales de los flujos financieros personales.</p>
+          <p className={cn("font-medium", isDark ? "text-white" : "text-black")}>Aislar operaciones comerciales de los flujos financieros personales.</p>
         </div>
         <div className={cn("flex gap-2 p-1 rounded-2xl w-full sm:w-auto", isDark ? "bg-slate-900 border border-slate-800" : "bg-slate-100")}>
           <button
             onClick={() => setActiveType('business')}
             className={cn(
               "flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-widest flex items-center justify-center gap-2",
-              activeType === 'business' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : (isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-500 hover:text-slate-900")
+              activeType === 'business' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : (isDark ? "text-white hover:text-slate-300" : "text-black hover:text-slate-900")
             )}
           >
             <Briefcase className="w-4 h-4" />
@@ -363,7 +363,7 @@ export function Treasury() {
             onClick={() => setActiveType('personal')}
             className={cn(
               "flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-widest flex items-center justify-center gap-2",
-              activeType === 'personal' ? (isDark ? "bg-white text-slate-950 shadow-lg shadow-black/5" : "bg-slate-900 text-white shadow-lg shadow-black/20") : (isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-500 hover:text-slate-900")
+              activeType === 'personal' ? (isDark ? "bg-white text-black shadow-lg shadow-black/5" : "bg-slate-900 text-white shadow-lg shadow-black/20") : (isDark ? "text-white hover:text-slate-300" : "text-black hover:text-slate-900")
             )}
           >
             <User className="w-4 h-4" />
@@ -386,8 +386,8 @@ export function Treasury() {
             className={cn(
               "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
               isDark 
-                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
-                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+                ? "border-slate-800 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                : "border-slate-200 bg-white text-black placeholder-slate-400 focus:bg-slate-50"
             )}
           />
         </div>
@@ -406,19 +406,19 @@ export function Treasury() {
             )}
           >
             <div className="flex flex-col">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block truncate">
+              <span className={cn("text-[9px] font-black uppercase tracking-wider block truncate", isDark ? "text-white" : "text-black")}>
                 {wallet.name}
               </span>
-              <span className={cn("text-[8px] font-bold uppercase tracking-wider mt-0.5", wallet.type === 'credit_card' ? 'text-violet-400' : 'text-slate-500')}>
+              <span className={cn("text-[8px] font-bold uppercase tracking-wider mt-0.5", wallet.type === 'credit_card' ? 'text-violet-400' : isDark ? 'text-white' : 'text-black')}>
                 {wallet.type === 'credit_card' ? `Tarjeta (Cupo)` : wallet.type === 'bank' ? 'Banco' : wallet.type === 'cash' ? 'Efectivo' : 'Billetera Digital'}
               </span>
             </div>
-            <div className={cn("text-base font-extrabold tracking-tight font-sans mt-0.5", isDark ? "text-white" : "text-slate-900")}>
+            <div className={cn("text-base font-extrabold tracking-tight font-sans mt-0.5", isDark ? "text-white" : "text-black")}>
               {formatCurrency(wallet.balance)}
             </div>
           </motion.div>
         )) : (
-          <div className="col-span-full py-6 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px] border border-dashed rounded-2xl">
+          <div className={cn("col-span-full py-6 text-center font-bold uppercase tracking-widest text-[10px] border border-dashed rounded-2xl", isDark ? "text-white border-slate-800" : "text-black border-slate-200")}>
             No hay billeteras configuradas.
           </div>
         )}
@@ -427,7 +427,7 @@ export function Treasury() {
 
       <div className={cn("rounded-3xl border shadow-sm overflow-hidden", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
         <div className={cn("p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-50 bg-slate-50/50")}>
-          <h3 className={cn("font-extrabold uppercase tracking-widest text-[10px]", isDark ? "text-slate-500" : "text-slate-800")}>Libro de Auditoría de Registros</h3>
+          <h3 className={cn("font-extrabold uppercase tracking-widest text-[10px]", isDark ? "text-white" : "text-black")}>Libro de Auditoría de Registros</h3>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {!isWalletsDisabled && (
             <button 
@@ -449,7 +449,7 @@ export function Treasury() {
         </div>
         <div className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
           {loading ? (
-            <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">Actualizando registros...</div>
+            <div className={cn("p-12 text-center font-bold uppercase tracking-widest text-[10px]", isDark ? "text-white" : "text-black")}>Actualizando registros...</div>
           ) : filteredLedger.map(entry => (
             <div key={entry.id} className={cn("p-4 lg:p-5 flex items-center justify-between transition-colors group", isDark ? "hover:bg-slate-800/20" : "hover:bg-slate-50/30")}>
               <div className="flex items-center gap-4 min-w-0">
@@ -462,14 +462,14 @@ export function Treasury() {
                   {entry.amount > 0 ? <ArrowUpCircle className="w-5 h-5" /> : <ArrowDownCircle className="w-5 h-5" />}
                 </div>
                 <div className="min-w-0">
-                  <h5 className={cn("font-bold tracking-tight text-sm truncate flex items-center gap-2", isDark ? "text-slate-200" : "text-slate-800")}>
+                  <h5 className={cn("font-bold tracking-tight text-sm truncate flex items-center gap-2", isDark ? "text-white" : "text-black")}>
                     {entry.category}
                     {entry.isRecurring && <span className="px-1.5 py-0.5 bg-indigo-500/10 text-indigo-500 text-[8px] uppercase tracking-widest rounded">Recurrente</span>}
                     {entry.isPending && <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] uppercase tracking-widest rounded">Pendiente</span>}
                   </h5>
-                  <p className="text-slate-500 text-xs font-medium uppercase tracking-wider truncate">{entry.description}</p>
+                  <p className={cn("text-xs font-medium uppercase tracking-wider truncate", isDark ? "text-white" : "text-black")}>{entry.description}</p>
                   {(entry.dueDate || entry.installments) && (
-                    <p className="text-slate-400 text-[10px] font-bold mt-1">
+                    <p className={cn("text-[10px] font-bold mt-1", isDark ? "text-white" : "text-black")}>
                       {entry.dueDate && <span>Vence/Cobro: {entry.dueDate}</span>}
                       {entry.installments && <span className="ml-2">Cuotas: {entry.installments}</span>}
                     </p>
@@ -484,7 +484,7 @@ export function Treasury() {
                   )}>
                     {entry.amount > 0 ? '+' : ''}{formatCurrency(entry.amount)}
                   </p>
-                  <p className="text-slate-500 font-mono text-[10px] font-bold uppercase">{entry.date}</p>
+                  <p className={cn("font-mono text-[10px] font-bold uppercase", isDark ? "text-white" : "text-black")}>{entry.date}</p>
                 </div>
                 <button 
                   onClick={() => handleDelete(entry)}
@@ -496,7 +496,7 @@ export function Treasury() {
             </div>
           ))}
           {!loading && filteredLedger.length === 0 && (
-            <div className="p-12 text-center text-slate-500 font-medium font-bold uppercase tracking-widest text-[10px]">No se encontraron registros en este libro.</div>
+            <div className={cn("p-12 text-center font-medium font-bold uppercase tracking-widest text-[10px]", isDark ? "text-white" : "text-black")}>No se encontraron registros en este libro.</div>
           )}
         </div>
       </div>
@@ -516,13 +516,13 @@ export function Treasury() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
+              className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-100 text-black")}
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-black")}>
                   {formData.isExpense ? 'Nuevo Egreso' : 'Nuevo Ingreso'} - {activeType === 'business' ? 'Negocio' : 'Personal'}
                 </h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={() => setIsModalOpen(false)} className={cn("hover:text-slate-600 transition-colors", isDark ? "text-white" : "text-black")}>
                   <X />
                 </button>
               </div>
@@ -532,40 +532,40 @@ export function Treasury() {
                   <button 
                     type="button" 
                     onClick={() => setFormData({...formData, isExpense: false})}
-                    className={cn("flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", !formData.isExpense ? "bg-emerald-500 text-white shadow-sm" : "text-slate-500")}
+                    className={cn("flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", !formData.isExpense ? "bg-emerald-500 text-white shadow-sm" : "text-black")}
                   >
                     Ingreso
                   </button>
                   <button 
                     type="button" 
                     onClick={() => setFormData({...formData, isExpense: true})}
-                    className={cn("flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", formData.isExpense ? "bg-rose-500 text-white shadow-sm" : "text-slate-500")}
+                    className={cn("flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", formData.isExpense ? "bg-rose-500 text-white shadow-sm" : "text-black")}
                   >
                     Egreso (CxP)
                   </button>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Categoría / Concepto</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Categoría / Concepto</label>
                   <input 
                     required
                     type="text"
                     value={formData.category}
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-55 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white placeholder-slate-400" : "bg-slate-50 border-slate-200 text-black placeholder-slate-400 focus:bg-white focus:border-indigo-500")}
                     placeholder="Ej. Sueldo, Internet, Netflix, etc."
                   />
                   
                   {formData.isExpense && (
                     <div className="pt-2 flex flex-wrap gap-1.5 px-0.5">
-                      <span className="text-[8.5px] font-black uppercase tracking-widest text-slate-400 block w-full mb-0.5">Sugerencias de Gastos:</span>
+                      <span className={cn("text-[8.5px] font-black uppercase tracking-widest block w-full mb-0.5", isDark ? "text-white" : "text-black")}>Sugerencias de Gastos:</span>
                       {[
                         { label: '🌐 Pago de Internet', val: 'Pago de Internet / Wifi' },
                         { label: '🙋‍♂️ Préstamo', val: 'Préstamo (Cuenta por Cobrar)', isLoan: true },
                         { label: '💳 Pagos de Tarjetas de Créditos', val: 'Pago de Tarjeta de Crédito', isCard: true },
                         { label: '🏢 Arriendo de Local', val: 'Arriendo de Local' },
                         { label: '⚡ Plan Celular', val: 'Plan de Telefonía' },
-                        { label: '🔌 Servicios Públicos', val: 'Servicios Básicos (Luz/Agua/Gas)' },
+                        { label: '🔌 Servicios Básicos', val: 'Servicios Básicos (Luz/Agua/Gas)' },
                         { label: '📺 Pago Proveedores', val: 'Pago de Proveedores Digitales' }
                       ].map((item, idx) => (
                         <button
@@ -583,8 +583,8 @@ export function Treasury() {
                           className={cn(
                             "px-2 py-1 text-[9px] font-black rounded-lg border transition-all cursor-pointer hover:scale-105 active:scale-95",
                             isDark 
-                              ? "bg-slate-950/65 border-slate-800 text-slate-300 hover:text-white" 
-                              : "bg-slate-100/80 border-slate-200/80 text-slate-600 hover:text-slate-900"
+                              ? "bg-slate-950/65 border-slate-800 text-white hover:text-white" 
+                              : "bg-slate-100/80 border-slate-200/80 text-black hover:text-black"
                           )}
                         >
                           {item.label}
@@ -595,7 +595,7 @@ export function Treasury() {
 
                   {!formData.isExpense && (
                     <div className="pt-2 flex flex-wrap gap-1.5 px-0.5">
-                      <span className="text-[8.5px] font-black uppercase tracking-widest text-slate-400 block w-full mb-0.5">Sugerencias de Ingresos:</span>
+                      <span className={cn("text-[8.5px] font-black uppercase tracking-widest block w-full mb-0.5", isDark ? "text-white" : "text-black")}>Sugerencias de Ingresos:</span>
                       {[
                         { label: '💰 Venta de Servicio', val: 'Venta de Servicio Digital' },
                         { label: '📈 Comisiones', val: 'Comisiones de Ventas' },
@@ -617,8 +617,8 @@ export function Treasury() {
                           className={cn(
                             "px-2 py-1 text-[9px] font-black rounded-lg border transition-all cursor-pointer hover:scale-105 active:scale-95",
                             isDark 
-                              ? "bg-slate-950/65 border-slate-800 text-slate-300 hover:text-white" 
-                              : "bg-slate-100/80 border-slate-200/80 text-slate-600 hover:text-slate-900"
+                              ? "bg-slate-950/65 border-slate-800 text-white hover:text-white" 
+                              : "bg-slate-100/80 border-slate-200/80 text-black hover:text-black"
                           )}
                         >
                           {item.label}
@@ -630,11 +630,11 @@ export function Treasury() {
                 
                 <div className="flex flex-col gap-4">
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-600">
+                    <label className={cn("flex items-center gap-2 text-[10px] font-black uppercase", isDark ? "text-white" : "text-black")}>
                       <input type="checkbox" checked={formData.isRecurring} onChange={e => setFormData({...formData, isRecurring: e.target.checked})} />
                       {formData.isExpense ? 'Gasto Fijo/Recurrente' : 'Ingreso Fijo/Recurrente (Ej. Sueldo)'}
                     </label>
-                    <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-600">
+                    <label className={cn("flex items-center gap-2 text-[10px] font-black uppercase", isDark ? "text-white" : "text-black")}>
                       <input type="checkbox" checked={formData.isPending} onChange={e => setFormData({...formData, isPending: e.target.checked})} />
                       Pendiente ({formData.isExpense ? (formData.category.toLowerCase().includes('préstamo') || formData.category.toLowerCase().includes('prestamo') ? 'CxC / Préstamo' : 'CxP') : 'CxC'})
                     </label>
@@ -643,23 +643,23 @@ export function Treasury() {
                   {(formData.isRecurring || formData.isPending) && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Fecha de Cobro/Pago</label>
+                        <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Fecha de Cobro/Pago</label>
                         <input 
                           required
                           type="date"
                           value={formData.dueDate}
                           onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
-                          className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                          className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white")}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Cuotas/Veces (Opcial)</label>
+                        <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Cuotas/Veces (Opcial)</label>
                         <input 
                           type="number"
                           min="1"
                           value={formData.installments}
                           onChange={(e) => setFormData({...formData, installments: e.target.value})}
-                          className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                          className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white focus:border-indigo-500")}
                         />
                       </div>
                     </div>
@@ -667,18 +667,18 @@ export function Treasury() {
 
                   {formData.isExpense && (
                     <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-slate-100 dark:border-slate-800/50">
-                      <label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-600">
+                      <label className={cn("flex items-center gap-2 text-[10px] font-black uppercase", isDark ? "text-white" : "text-black")}>
                         <input type="checkbox" checked={formData.isCreditCardPayment} onChange={e => setFormData({...formData, isCreditCardPayment: e.target.checked})} />
                         Es un pago a Tarjeta de Crédito (Liberar cupo)
                       </label>
                       {formData.isCreditCardPayment && (
                         <div className="space-y-1.5 mt-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Tarjeta de Crédito a Pagar (Receptor)</label>
+                          <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Tarjeta de Crédito a Pagar (Receptor)</label>
                           <select 
                             required={formData.isCreditCardPayment}
                             value={formData.targetWalletId}
                             onChange={(e) => setFormData({...formData, targetWalletId: e.target.value})}
-                            className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                            className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white")}
                           >
                             <option value="">Seleccione Tarjeta...</option>
                             {wallets.filter(w => w.type === 'credit_card').map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -691,24 +691,24 @@ export function Treasury() {
 
                 <div className="grid grid-cols-2 gap-4 mt-6">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Monto ($)</label>
+                    <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Monto ($)</label>
                     <input 
                       required
                       type="number"
                       step="0.01"
                       value={formData.amount}
                       onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white focus:border-indigo-500")}
                     />
                   </div>
                   {!isWalletsDisabled && (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera {formData.isPending && '(Para pago futuro)'}</label>
+                    <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Billetera {formData.isPending && '(Para pago futuro)'}</label>
                     <select 
                       required={!formData.isPending}
                       value={formData.walletId}
                       onChange={(e) => setFormData({...formData, walletId: e.target.value})}
-                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white")}
+                      className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white")}
                     >
                       <option value="">Seleccione...</option>
                       {wallets.map(w => (
@@ -721,11 +721,11 @@ export function Treasury() {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Descripción</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Descripción</label>
                   <textarea 
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none h-24 resize-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none h-24 resize-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white focus:border-indigo-500")}
                     placeholder="Detalles adicionales..."
                   />
                 </div>
@@ -760,14 +760,14 @@ export function Treasury() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={cn("relative w-full max-w-2xl p-6 lg:p-8 rounded-3xl border shadow-2xl flex flex-col max-h-[85vh]", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
+              className={cn("relative w-full max-w-2xl p-6 lg:p-8 rounded-3xl border shadow-2xl flex flex-col max-h-[85vh]", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-100 text-black")}
             >
               <div className="flex justify-between items-center mb-6 shrink-0">
                 <div>
-                  <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Movimientos - {selectedWalletForDetail.name}</h3>
-                  <p className="text-slate-500 font-mono font-bold mt-1">Saldo Actual: {formatCurrency(selectedWalletForDetail.balance)}</p>
+                  <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-black")}>Movimientos - {selectedWalletForDetail.name}</h3>
+                  <p className={cn("font-mono font-bold mt-1", isDark ? "text-white" : "text-black")}>Saldo Actual: {formatCurrency(selectedWalletForDetail.balance)}</p>
                 </div>
-                <button onClick={() => setSelectedWalletForDetail(null)} className="text-slate-400 hover:text-slate-600 transition-colors self-start">
+                <button onClick={() => setSelectedWalletForDetail(null)} className={cn("hover:text-slate-600 transition-colors self-start", isDark ? "text-white" : "text-black")}>
                   <X />
                 </button>
               </div>
@@ -775,7 +775,7 @@ export function Treasury() {
               <div className="overflow-y-auto flex-1 pr-2 min-h-[300px]">
                 <div className={cn("divide-y", isDark ? "divide-slate-800" : "divide-slate-100")}>
                   {ledger.filter(l => l.walletId === selectedWalletForDetail.id).length === 0 ? (
-                    <div className="p-12 text-center text-slate-500 font-bold uppercase tracking-widest text-[10px]">No hay movimientos registrados en esta billetera.</div>
+                    <div className={cn("p-12 text-center font-bold uppercase tracking-widest text-[10px]", isDark ? "text-white" : "text-black")}>No hay movimientos registrados en esta billetera.</div>
                   ) : ledger.filter(l => l.walletId === selectedWalletForDetail.id).map(entry => (
                     <div key={entry.id} className="py-4 flex items-center justify-between group">
                       <div className="flex items-center gap-4 min-w-0">
@@ -788,8 +788,8 @@ export function Treasury() {
                           {entry.amount > 0 ? <ArrowUpCircle className="w-5 h-5" /> : <ArrowDownCircle className="w-5 h-5" />}
                         </div>
                         <div className="min-w-0">
-                          <h5 className={cn("font-bold tracking-tight text-sm truncate", isDark ? "text-slate-200" : "text-slate-800")}>{entry.category}</h5>
-                          <p className="text-slate-500 text-xs font-medium uppercase tracking-wider truncate">{entry.description}</p>
+                          <h5 className={cn("font-bold tracking-tight text-sm truncate", isDark ? "text-white" : "text-black")}>{entry.category}</h5>
+                          <p className={cn("text-xs font-medium uppercase tracking-wider truncate", isDark ? "text-white" : "text-black")}>{entry.description}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4 ml-4">
@@ -800,7 +800,7 @@ export function Treasury() {
                           )}>
                             {entry.amount > 0 ? '+' : ''}{formatCurrency(entry.amount)}
                           </p>
-                          <p className="text-slate-500 font-mono text-[10px] font-bold uppercase">{entry.date}</p>
+                          <p className={cn("font-mono text-[10px] font-bold uppercase", isDark ? "text-white" : "text-black")}>{entry.date}</p>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
@@ -860,28 +860,28 @@ export function Treasury() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl text-left", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
+              className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl text-left", isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-100 text-black")}
             >
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
                   <ArrowLeftRight className="w-5 h-5 text-emerald-500" />
-                  <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                  <h3 className={cn("text-lg font-bold uppercase tracking-tight", isDark ? "text-white" : "text-black")}>
                     Transferir Fondos
                   </h3>
                 </div>
-                <button onClick={() => setIsTransferModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                <button onClick={() => setIsTransferModalOpen(false)} className={cn("hover:text-slate-600 transition-colors cursor-pointer", isDark ? "text-white" : "text-black")}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleTransferSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Origen (Deducir)</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Billetera de Origen (Deducir)</label>
                   <select 
                     required
                     value={transferData.sourceWalletId}
                     onChange={(e) => setTransferData({...transferData, sourceWalletId: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white focus:border-indigo-500")}
                   >
                     <option value="">Seleccione Origen...</option>
                     {wallets.map(w => (
@@ -893,12 +893,12 @@ export function Treasury() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Billetera de Destino (Abonar)</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Billetera de Destino (Abonar)</label>
                   <select 
                     required
                     value={transferData.destinationWalletId}
                     onChange={(e) => setTransferData({...transferData, destinationWalletId: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white focus:border-indigo-500")}
                   >
                     <option value="">Seleccione Destino...</option>
                     {wallets.map(w => (
@@ -910,7 +910,7 @@ export function Treasury() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Monto a Transferir ($)</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Monto a Transferir ($)</label>
                   <input 
                     required
                     type="number"
@@ -919,17 +919,17 @@ export function Treasury() {
                     placeholder="0.00"
                     value={transferData.amount}
                     onChange={(e) => setTransferData({...transferData, amount: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white focus:border-indigo-500")}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Comentario / Nota del Movimiento</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Comentario / Nota del Movimiento</label>
                   <textarea 
                     value={transferData.comment}
                     onChange={(e) => setTransferData({...transferData, comment: e.target.value})}
                     placeholder="Escriba el motivo de la transferencia..."
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none h-20 resize-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold outline-none h-20 resize-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white focus:border-indigo-500")}
                   />
                 </div>
 

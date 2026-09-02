@@ -602,7 +602,7 @@ export function NoticeShareModal({
               onClick={handleCopyText}
               className={cn(
                 "p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-lg flex flex-col items-center text-center gap-3 select-none active:scale-98",
-                isDark ? "bg-slate-850/40 border-slate-800 hover:border-slate-700" : "bg-slate-50 border-slate-200 hover:border-slate-350"
+                isDark ? "bg-slate-800/40 border-slate-800 hover:border-slate-700" : "bg-slate-50 border-slate-200 hover:border-slate-400"
               )}
             >
               <div className="h-10 w-10 bg-indigo-500/10 text-indigo-500 flex items-center justify-center rounded-xl border border-indigo-500/20">
@@ -619,7 +619,7 @@ export function NoticeShareModal({
               onClick={handleDownloadPDF}
               className={cn(
                 "p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-lg flex flex-col items-center text-center gap-3 select-none active:scale-98",
-                isDark ? "bg-slate-850/40 border-slate-800 hover:border-slate-700" : "bg-slate-50 border-slate-200 hover:border-slate-350"
+                isDark ? "bg-slate-800/40 border-slate-800 hover:border-slate-700" : "bg-slate-50 border-slate-200 hover:border-slate-400"
               )}
             >
               <div className="h-10 w-10 bg-rose-500/10 text-rose-500 flex items-center justify-center rounded-xl border border-rose-500/20">
@@ -636,7 +636,7 @@ export function NoticeShareModal({
               onClick={handleDownloadImage}
               className={cn(
                 "p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-lg flex flex-col items-center text-center gap-3 select-none active:scale-98",
-                isDark ? "bg-slate-850/40 border-slate-800 hover:border-slate-700" : "bg-slate-50 border-slate-200 hover:border-slate-350"
+                isDark ? "bg-slate-800/40 border-slate-800 hover:border-slate-700" : "bg-slate-50 border-slate-200 hover:border-slate-400"
               )}
             >
               <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 flex items-center justify-center rounded-xl border border-emerald-500/20">
@@ -668,7 +668,7 @@ export function NoticeShareModal({
                 copied 
                   ? "bg-emerald-600 border-emerald-600 text-white" 
                   : isDark
-                    ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850"
+                    ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800"
                     : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
               )}
             >

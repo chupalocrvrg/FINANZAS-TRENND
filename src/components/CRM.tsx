@@ -287,10 +287,10 @@ export function CRM() {
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div className="space-y-1">
-          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
+          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
             {t('crm.title', 'CRM de Relaciones')}
           </h2>
-          <p className="text-slate-500 font-medium">{t('crm.subtitle', 'Gestione su ecosistema de clientes, intermediarios y proveedores.')}</p>
+          <p className={cn("font-medium", isDark ? "text-white" : "text-black")}>{t('crm.subtitle', 'Gestione su ecosistema de clientes, intermediarios y proveedores.')}</p>
         </div>
         <button 
           onClick={() => {
@@ -357,8 +357,8 @@ export function CRM() {
             className={cn(
               "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
               isDark 
-                ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
-                : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+                ? "border-slate-800 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                : "border-slate-200 bg-white text-black placeholder-slate-400 focus:bg-slate-50"
             )}
           />
         </div>
@@ -366,7 +366,7 @@ export function CRM() {
 
       {/* Filtros Inteligentes de Categoría */}
       <div className="space-y-3">
-        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Filtro Inteligente de Categorías / Roles</label>
+        <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Filtro Inteligente de Categorías / Roles</label>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSelectedTypes([])}
@@ -374,7 +374,7 @@ export function CRM() {
               "px-4 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider border",
               selectedTypes.length === 0
                 ? "bg-indigo-600 text-white border-transparent shadow-md"
-                : (isDark ? "border-slate-800 text-slate-400 bg-slate-900 hover:text-white" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50")
+                : (isDark ? "border-slate-800 text-white bg-slate-900 hover:text-white" : "border-slate-200 text-black bg-white hover:bg-slate-50")
             )}
           >
             🌟 Todos los contactos ({entities.length})
@@ -398,7 +398,7 @@ export function CRM() {
                   "px-4 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider border flex items-center gap-2",
                   isSelected
                     ? "bg-indigo-600 text-white border-transparent shadow-md"
-                    : (isDark ? "border-slate-800 text-slate-400 bg-slate-900 hover:text-white" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50")
+                    : (isDark ? "border-slate-800 text-white bg-slate-900 hover:text-white" : "border-slate-200 text-black bg-white hover:bg-slate-50")
                 )}
               >
                 {type === 'client' && <User className="w-3.5 h-3.5" />}
@@ -427,7 +427,7 @@ export function CRM() {
                   "px-4 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider border flex items-center gap-2",
                   isSelected
                     ? "bg-emerald-600 text-white border-transparent shadow-md"
-                    : (isDark ? "border-slate-800 text-slate-400 bg-slate-900 hover:text-white" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50")
+                    : (isDark ? "border-slate-800 text-white bg-slate-900 hover:text-white" : "border-slate-200 text-black bg-white hover:bg-slate-50")
                 )}
               >
                 ⚡ Actualizadores ANT ({count})
@@ -461,15 +461,15 @@ export function CRM() {
                 >
                   <div className="flex items-center gap-4 mb-6 text-left">
                     <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border shrink-0", isDark ? "bg-slate-800 border-slate-700" : "bg-slate-50 border-slate-100")}>
-                      {entityTypes.includes('client') && <User className={isDark ? "text-indigo-400" : "text-slate-400"} />}
+                      {entityTypes.includes('client') && <User className={isDark ? "text-indigo-400" : "text-slate-700"} />}
                       {!entityTypes.includes('client') && entityTypes.includes('reseller') && <Users className="text-amber-500" />}
                       {!entityTypes.includes('client') && !entityTypes.includes('reseller') && entityTypes.includes('intermediary') && <Briefcase className="text-indigo-500" />}
-                      {!entityTypes.includes('client') && !entityTypes.includes('reseller') && !entityTypes.includes('intermediary') && entityTypes.includes('supplier') && <Truck className={isDark ? "text-slate-500" : "text-slate-400"} />}
-                      {entityTypes.length === 0 && <User className="text-slate-400" />}
+                      {!entityTypes.includes('client') && !entityTypes.includes('reseller') && !entityTypes.includes('intermediary') && entityTypes.includes('supplier') && <Truck className={isDark ? "text-slate-300" : "text-slate-700"} />}
+                      {entityTypes.length === 0 && <User className={isDark ? "text-white" : "text-black"} />}
                     </div>
                     <div className="min-w-0">
-                      <h4 className={cn("font-bold uppercase tracking-tight truncate", isDark ? "text-white" : "text-slate-900")}>{entity.name}</h4>
-                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest truncate">{entity.contact || 'Sin contacto'}</p>
+                      <h4 className={cn("font-bold uppercase tracking-tight truncate", isDark ? "text-white" : "text-black")}>{entity.name}</h4>
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest truncate", isDark ? "text-white" : "text-black")}>{entity.contact || 'Sin contacto'}</p>
                       
                       {/* Category Badges */}
                       <div className="flex flex-wrap gap-1 mt-1.5">
@@ -499,8 +499,8 @@ export function CRM() {
 
                   {(entityTypes.includes('intermediary') || (entity.rate && entity.rate > 0)) && (
                     <div className={cn("flex items-center justify-between p-4 rounded-lg border mb-6 font-bold tracking-tight", isDark ? "bg-slate-800/50 border-slate-800" : "bg-slate-50 border-slate-100")}>
-                      <span className="text-slate-500 text-[10px] uppercase tracking-widest">Tasa de Actualización</span>
-                      <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-slate-900")}>{formatCurrency(entity.rate || 0)}</span>
+                      <span className={cn("text-[10px] uppercase tracking-widest", isDark ? "text-white" : "text-black")}>Tasa de Actualización</span>
+                      <span className={cn("text-lg font-mono", isDark ? "text-white" : "text-black")}>{formatCurrency(entity.rate || 0)}</span>
                     </div>
                   )}
                   {entity.isAntUpdater && (
@@ -513,7 +513,7 @@ export function CRM() {
                   <div className="flex gap-2 mt-auto">
                     <button 
                       onClick={() => handleEdit(entity)}
-                      className={cn("flex-1 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2", isDark ? "border-slate-800 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50")}
+                      className={cn("flex-1 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2", isDark ? "border-slate-800 text-white hover:bg-slate-800" : "border-slate-200 text-black hover:bg-slate-50")}
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       Editar
@@ -554,7 +554,7 @@ export function CRM() {
             })}
           </AnimatePresence>
           {filteredEntities.length === 0 && (
-            <div className={cn("col-span-full py-24 text-center rounded-3xl border border-dashed", isDark ? "border-slate-800 text-slate-500" : "border-slate-200 text-slate-400")}>
+            <div className={cn("col-span-full py-24 text-center rounded-3xl border border-dashed font-bold uppercase tracking-widest text-xs", isDark ? "border-slate-800 text-white" : "border-slate-200 text-black")}>
               No se encontraron registros en esta categoría.
             </div>
           )}
@@ -579,7 +579,7 @@ export function CRM() {
               className={cn("relative w-full max-w-md p-8 rounded-3xl border shadow-2xl", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}
             >
               <div className="flex justify-between items-center mb-6 text-left">
-                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                <h3 className={cn("text-xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-black")}>
                   {editingEntity ? 'Editar' : 'Añadir'} Contacto / Entidad
                 </h3>
                 <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -589,30 +589,30 @@ export function CRM() {
  
               <form onSubmit={handleSubmit} className="space-y-4 text-left">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Nombre Completo / Razón Social</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Nombre Completo / Razón Social</label>
                   <input 
                     required
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-700" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500 shadow-inner")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-700" : "bg-slate-50 border-slate-100 text-black focus:bg-white focus:border-indigo-500 shadow-inner")}
                     placeholder="Ej. Juan Pérez"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Contacto (WhatsApp)</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Contacto (WhatsApp)</label>
                   <input 
                     type="text"
                     value={formData.contact}
                     onChange={(e) => setFormData({...formData, contact: e.target.value})}
-                    className={cn("w-full p-4 rounded-xl border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-700" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500 shadow-inner")}
+                    className={cn("w-full p-4 rounded-xl border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-700" : "bg-slate-50 border-slate-100 text-black focus:bg-white focus:border-indigo-500 shadow-inner")}
                     placeholder="Ej. +593987654321"
                   />
                 </div>
 
                 {/* Categorías Multi-Selección */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Categorías / Roles del Contacto</label>
+                  <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Categorías / Roles del Contacto</label>
                   <div className={cn(
                     "grid grid-cols-2 gap-3 p-4 rounded-2xl border",
                     isDark 
@@ -621,7 +621,7 @@ export function CRM() {
                   )}>
                     <label className={cn(
                       "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
-                      isDark ? "text-slate-300" : "text-slate-800"
+                      isDark ? "text-white" : "text-black"
                     )}>
                       <input
                         type="checkbox"
@@ -643,7 +643,7 @@ export function CRM() {
 
                     <label className={cn(
                       "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
-                      isDark ? "text-slate-300" : "text-slate-800"
+                      isDark ? "text-white" : "text-black"
                     )}>
                       <input
                         type="checkbox"
@@ -665,7 +665,7 @@ export function CRM() {
 
                     <label className={cn(
                       "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
-                      isDark ? "text-slate-300" : "text-slate-800"
+                      isDark ? "text-white" : "text-black"
                     )}>
                       <input
                         type="checkbox"
@@ -687,7 +687,7 @@ export function CRM() {
 
                     <label className={cn(
                       "flex items-center gap-2.5 cursor-pointer text-xs font-bold",
-                      isDark ? "text-slate-300" : "text-slate-800"
+                      isDark ? "text-white" : "text-black"
                     )}>
                       <input
                         type="checkbox"
@@ -711,13 +711,13 @@ export function CRM() {
 
                 {formData.types.includes('intermediary') && (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Tasa por Actualización (USD)</label>
+                    <label className={cn("text-[10px] font-black uppercase tracking-widest px-1", isDark ? "text-white" : "text-black")}>Tasa por Actualización (USD)</label>
                     <input 
                       type="number"
                       step="0.01"
                       value={formData.rate}
                       onChange={(e) => setFormData({...formData, rate: e.target.value})}
-                      className={cn("w-full p-4 rounded-xl border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-700" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500 shadow-inner")}
+                      className={cn("w-full p-4 rounded-xl border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-slate-700 text-white focus:bg-slate-700" : "bg-slate-50 border-slate-100 text-black focus:bg-white focus:border-indigo-500 shadow-inner")}
                     />
                   </div>
                 )}
@@ -726,8 +726,8 @@ export function CRM() {
                   <label className={cn(
                     "flex items-center gap-3 cursor-pointer p-4 rounded-xl border text-sm font-bold transition-all outline-none",
                     isDark 
-                      ? "border-slate-800 hover:bg-slate-800/50 bg-slate-950/20 text-slate-300" 
-                      : "border-slate-200 hover:bg-slate-50 bg-slate-50/50 text-slate-800"
+                      ? "border-slate-800 hover:bg-slate-800/50 bg-slate-950/20 text-white" 
+                      : "border-slate-200 hover:bg-slate-50 bg-slate-50/50 text-black"
                   )}>
                     <input
                       type="checkbox"
@@ -737,7 +737,7 @@ export function CRM() {
                     />
                     <span className={cn(
                       "text-[11px] font-black uppercase tracking-wider",
-                      isDark ? "text-slate-300" : "text-slate-700"
+                      isDark ? "text-white" : "text-black"
                     )}>Es un Actualizador ANT (Trámites)</span>
                   </label>
                   
@@ -757,7 +757,7 @@ export function CRM() {
                         step="0.01"
                         value={formData.antUpdateCost}
                         onChange={(e) => setFormData({...formData, antUpdateCost: e.target.value})}
-                        className={cn("w-full p-3 rounded-lg border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-indigo-500/20 text-white focus:bg-slate-700" : "bg-white border-indigo-200 focus:border-indigo-500")}
+                        className={cn("w-full p-3 rounded-lg border text-sm font-bold transition-all outline-none", isDark ? "bg-slate-800 border-indigo-500/20 text-white focus:bg-slate-700" : "bg-white text-black border-indigo-200 focus:border-indigo-500")}
                       />
                     </div>
                   )}

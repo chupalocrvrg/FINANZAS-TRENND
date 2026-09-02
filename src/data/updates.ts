@@ -9,6 +9,78 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_19_3_settings_text_borders_enhancement",
+    version: "V7.19.3",
+    title: "V7.19.3 • Bordes Negros en Textos Clave de Configuración",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se aplicaron bordes negros definidos y estilizados a los textos y etiquetas seleccionados en el módulo de Configuración del Sistema (subtítulo de bienvenida, identificador de módulo, encabezado de personalización global, toggle de módulo, textos descriptivos de soporte y sincronización).",
+    type: "interface"
+  },
+  {
+    id: "v_7_19_2_global_system_contrast_standardization",
+    version: "V7.19.2",
+    title: "V7.19.2 • Estandarización Global de Contraste Absoluto (Blanco/Negro)",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se completó la estandarización global de contraste en todos los módulos y vistas del sistema (Comercio Físico, Cobranzas, Servicios Digitales, Trámites, CRM, Tesorería, Reportes, Alertas y Ajustes): todos los textos, etiquetas, encabezados, tablas y formularios ahora presentan negro puro (#000000) en Modo Claro y blanco puro (#ffffff) en Modo Oscuro, preservando únicamente las insignias semánticas y financieras para una nitidez visual impecable.",
+    type: "interface"
+  },
+  {
+    id: "v_7_19_1_commerce_collections_contrast_update",
+    version: "V7.19.1",
+    title: "V7.19.1 • Máximo Contraste Blanco/Negro en Comercio Físico y Cobranzas",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se aplicó el estándar de contraste puro en todo el módulo de Comercio Físico, Inventario y Cobranzas Inteligentes: textos, etiquetas, subtítulos, detalles de cuotas, clientes y calendarios de pagos ahora se renderizan en negro puro (#000000) en Modo Claro y blanco puro (#ffffff) en Modo Oscuro para una legibilidad y nitidez absolutas.",
+    type: "interface"
+  },
+  {
+    id: "v_7_19_0_bot_credentials_integration",
+    version: "V7.19.0",
+    title: "V7.19.0 • Integración de Acceso por BOT en Cuentas Digitales y Portal de Clientes",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se implementó la funcionalidad de BOT en Servicios Digitales: checkbox interactivo en el registro/edición con despliegue de URL/Página (obligatorio), Usuario (opcional) y Contraseña (opcional). Visualización en tarjetas de servicio con apertura directa de enlace y en el Portal Público del Cliente, manteniéndolo seguro y excluido de comprobantes o plantillas de WhatsApp.",
+    type: "feature"
+  },
+  {
+    id: "v_7_18_4_service_card_text_contrast",
+    version: "V7.18.4",
+    title: "V7.18.4 • Contraste Puro en Contacto, Vencimiento y Credenciales",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se unificó el estilo visual de los textos de contacto telefónico, fechas de expiración, nombres de perfil y clientes finales a negro puro (#000000) en Modo Claro y blanco puro (#ffffff) en Modo Oscuro, garantizando máxima visibilidad y consistencia de contraste.",
+    type: "interface"
+  },
+  {
+    id: "v_7_18_3_black_white_high_contrast_complete",
+    version: "V7.18.3",
+    title: "V7.18.3 • Contraste Absoluto Blanco / Negro en Tarjetas y Controles",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se completó la conversión de todos los textos, títulos, subtítulos, selectores, filtros, credenciales de acceso, información de clientes y métricas a negro puro (#000000) en Modo Claro y blanco puro (#ffffff) en Modo Oscuro, eliminando cualquier tono gris desvanecido para una legibilidad y contraste óptimos.",
+    type: "interface"
+  },
+  {
+    id: "v_7_18_2_high_contrast_cards_refinement",
+    version: "V7.18.2",
+    title: "V7.18.2 • Calibración de Alto Contraste en Tarjetas y Métricas",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se optimizó y reforzó la tonalidad de todos los textos, subtítulos, etiquetas de credenciales (Usuario, Clave, PIN, Perfil), información de clientes, fechas de vencimiento, márgenes y botones de acción en las tarjetas de servicios y paneles métricos, eliminando cualquier gris desvaído para brindar un contraste perfecto y máxima nitidez visual.",
+    type: "interface"
+  },
+  {
+    id: "v_7_18_1_contrast_accessibility_refactor",
+    version: "V7.18.1",
+    title: "V7.18.1 • Optimización de Contraste y Legibilidad Global",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se llevó a cabo una estandarización y corrección integral de todas las clases de color y contraste en la interfaz tanto en Modo Claro como en Modo Oscuro. Se eliminaron clases no estándar y se calibraron los tonos de texto, etiquetas, bordes, tablas y modales en todos los módulos (Servicios Digitales, Trámites ANT, CRM, Tesorería, Reportes, Asistente AI y Ajustes) garantizando máxima nitidez, visibilidad y cumplimiento con los estándares de accesibilidad visual.",
+    type: "interface"
+  },
+  {
+    id: "v_7_18_0_collections_module",
+    version: "V7.18.0",
+    title: "V7.18.0 • Módulo de Cobranza Inteligente",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se ha implementado el nuevo módulo centralizado de Cobranza. Este sistema permite buscar clientes de forma rápida, visualizar sus cuotas pendientes cronológicamente de múltiples ventas combinadas, y aplicar abonos globales que descuentan automáticamente las deudas empezando desde la más antigua. Además, ahora se puede exportar el Estado de Cuenta del cliente en formato PDF directamente con el historial de todos sus abonos.",
+    type: "feature"
+  },
+  {
     id: "v_7_17_0_payment_receipt_modal",
     version: "V7.17.0",
     title: "V7.17.0 • Recibos de Cobro y Panel de Pagos",

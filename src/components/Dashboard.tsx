@@ -1169,7 +1169,7 @@ export function Dashboard() {
             <h3 className={cn("text-lg font-black uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
               📅 Calendario de Control de Caja y Gastos Programados
             </h3>
-            <p className="text-slate-550 dark:text-slate-400 text-xs font-semibold mt-1">
+            <p className="text-slate-600 dark:text-slate-400 text-xs font-semibold mt-1">
               Monitoreo diario de ingresos reales, egresos y vencimientos de tarjetas de crédito o fijos.
             </p>
           </div>
@@ -1232,7 +1232,7 @@ export function Dashboard() {
                 className={cn(
                   "min-h-[85px] p-2 border rounded-2xl cursor-pointer flex flex-col justify-between transition-all duration-300 relative",
                   isCurrent 
-                    ? (isDark ? "bg-slate-950/45 border-slate-850" : "bg-slate-50/50 border-slate-200/50")
+                    ? (isDark ? "bg-slate-950/45 border-slate-800" : "bg-slate-50/50 border-slate-200/50")
                     : (isDark ? "bg-slate-950/10 border-slate-900 opacity-40" : "bg-slate-100/30 border-slate-100 opacity-45"),
                   isToday && (isDark ? "ring-2 ring-indigo-500/50 bg-indigo-950/20" : "ring-2 ring-indigo-500 bg-indigo-50/50"),
                   isSelected && (isDark ? "border-indigo-500 bg-slate-900" : "border-indigo-600 bg-indigo-50/20")
@@ -1295,7 +1295,7 @@ export function Dashboard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className={cn("mt-6 p-5 rounded-2xl border text-left", isDark ? "bg-slate-950/60 border-slate-850" : "bg-slate-50/70 border-slate-100")}
+              className={cn("mt-6 p-5 rounded-2xl border text-left", isDark ? "bg-slate-950/60 border-slate-800" : "bg-slate-50/70 border-slate-100")}
             >
               <div className="flex justify-between items-center mb-4 border-b border-dashed border-slate-500/10 pb-3">
                 <div className="flex items-center gap-2">
@@ -1315,7 +1315,7 @@ export function Dashboard() {
               </div>
 
               {selectedDayData.movements.length === 0 && selectedDayData.pendingLedger.length === 0 && selectedDayData.expiringServices.length === 0 ? (
-                <div className="text-center py-6 text-slate-550 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <div className="text-center py-6 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
                   No hay transacciones guardadas, pagos programados ni cuentas venciendo este día.
                 </div>
               ) : (
@@ -1405,7 +1405,7 @@ export function Dashboard() {
                               <span className="text-xs font-black uppercase tracking-wider block">
                                 {service.name} {isMatriz ? '🏢 (Cuenta Madre)' : `• ${service.clientName}`}
                               </span>
-                              <span className="text-[9px] uppercase font-black text-slate-450 block mt-0.5">
+                              <span className="text-[9px] uppercase font-black text-slate-500 block mt-0.5">
                                 Ref/User: {service.email || 'S/N'} • PIN: {service.pin || 'S/N'}  • Proveedor: {service.supplierName || service.supplier || 'N/A'}
                               </span>
                               {!isSvcPaid && outstanding > 0 ? (
@@ -1496,7 +1496,7 @@ export function Dashboard() {
                             "p-3 rounded-xl border flex justify-between items-center gap-4 transition-colors",
                             entry.amount > 0
                               ? (isDark ? "bg-emerald-950/10 border-emerald-900/20 text-emerald-400" : "bg-emerald-50/30 border-emerald-100 text-emerald-700")
-                              : (isDark ? "bg-rose-950/10 border-rose-900/20 text-rose-450" : "bg-rose-50/30 border-rose-100 text-rose-700")
+                              : (isDark ? "bg-rose-950/10 border-rose-900/20 text-rose-500" : "bg-rose-50/30 border-rose-100 text-rose-700")
                           )}
                         >
                           <div className="min-w-0 flex-1">
@@ -1637,7 +1637,7 @@ export function Dashboard() {
                         title="Vista plana de movimientos"
                         className={cn("p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[10px] font-black uppercase cursor-pointer",
                           viewMode === 'list'
-                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-850/60 dark:border-slate-800 dark:text-indigo-400"
+                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-800/60 dark:border-slate-800 dark:text-indigo-400"
                             : "border-transparent text-slate-400 hover:text-slate-600"
                         )}
                       >
@@ -1649,7 +1649,7 @@ export function Dashboard() {
                         title="Vista agrupada por Entidad"
                         className={cn("p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[10px] font-black uppercase cursor-pointer",
                           viewMode === 'grouped'
-                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-850/60 dark:border-slate-800 dark:text-indigo-400"
+                            ? "bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-slate-800/60 dark:border-slate-800 dark:text-indigo-400"
                             : "border-transparent text-slate-400 hover:text-slate-600"
                         )}
                       >
@@ -1760,7 +1760,7 @@ export function Dashboard() {
                           Efectivo y Cuentas Bancarias
                         </div>
                         {wallets.filter(w => w.type !== 'credit_card').length === 0 ? (
-                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-250 dark:border-slate-800 rounded-xl">No hay cuentas de efectivo registradas.</div>
+                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-300 dark:border-slate-800 rounded-xl">No hay cuentas de efectivo registradas.</div>
                         ) : wallets.filter(w => w.type !== 'credit_card').map(w => (
                           <div key={w.id} className="py-2.5 flex justify-between items-center border-b border-slate-100 dark:border-slate-800/40 last:border-0">
                             <div className="min-w-0 pr-4 text-left font-bold">
@@ -1787,7 +1787,7 @@ export function Dashboard() {
                           Tarjetas de Crédito
                         </div>
                         {wallets.filter(w => w.type === 'credit_card').length === 0 ? (
-                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-250 dark:border-slate-800 rounded-xl">No hay tarjetas de crédito registradas.</div>
+                          <div className="p-4 text-center text-slate-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-slate-300 dark:border-slate-800 rounded-xl">No hay tarjetas de crédito registradas.</div>
                         ) : wallets.filter(w => w.type === 'credit_card').map(w => (
                           <div key={w.id} className="py-2.5 flex justify-between items-center border-b border-slate-100 dark:border-slate-800/40 last:border-0">
                             <div className="min-w-0 pr-4 text-left font-bold">
@@ -2004,7 +2004,7 @@ export function Dashboard() {
                     ) : getGroupedItems('payables').map(({ entityName, total, rawItems }) => {
                       const isExpanded = !!expandedGroups[entityName];
                       return (
-                        <div key={entityName} className="py-3 text-left border-b border-slate-100/10 dark:border-slate-850/50">
+                        <div key={entityName} className="py-3 text-left border-b border-slate-100/10 dark:border-slate-800/50">
                           <div 
                             onClick={() => setExpandedGroups(prev => ({ ...prev, [entityName]: !isExpanded }))}
                             className={cn(

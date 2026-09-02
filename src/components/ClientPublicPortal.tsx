@@ -14,6 +14,7 @@ import {
   DollarSign, 
   ExternalLink,
   ShieldAlert,
+  Bot,
   Eye,
   EyeOff,
   Copy,
@@ -694,7 +695,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
 
                   {/* If digital service account credentials */}
                   {voucherData.type === 'digital' && voucherData.email && (
-                    <div className="bg-slate-950 rounded-2xl border border-slate-850 p-4.5 flex flex-col gap-3">
+                    <div className="bg-slate-950 rounded-2xl border border-slate-800 p-4.5 flex flex-col gap-3">
                       <span className="text-[9px] font-black uppercase tracking-wider text-indigo-400 pb-1.5 border-b border-slate-900">
                         🔑 Datos de Acceso de Cuenta
                       </span>
@@ -760,7 +761,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                   )}
 
                   {/* Financial amounts */}
-                  <div className="bg-slate-950/40 border border-slate-850 rounded-2xl p-5 flex flex-col gap-3">
+                  <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-5 flex flex-col gap-3">
                     <div className="flex justify-between items-center text-xs text-slate-400 font-semibold">
                       <span>Valor Total del Servicio:</span>
                       <span className="text-white font-bold">{formatCurrency(voucherData.amount)}</span>
@@ -794,7 +795,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
 
                       <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                         {merchantWallets.map((wallet) => (
-                          <div key={wallet.id} className="bg-slate-950 border border-slate-850 p-3 rounded-xl flex items-center justify-between gap-3">
+                          <div key={wallet.id} className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3">
                             <div className="flex flex-col gap-0.5 min-w-0">
                               <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">
                                 {wallet.name}
@@ -846,10 +847,10 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 </div>
 
                 {/* Print/Download controls */}
-                <div className="px-6 py-5 bg-slate-950/60 border-t border-slate-850/80 grid grid-cols-2 gap-3">
+                <div className="px-6 py-5 bg-slate-950/60 border-t border-slate-800/80 grid grid-cols-2 gap-3">
                   <button
                     onClick={handlePrint}
-                    className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-300 font-bold text-xs uppercase tracking-wider cursor-pointer transition-all"
+                    className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs uppercase tracking-wider cursor-pointer transition-all"
                   >
                     <Printer className="w-4 h-4" />
                     Imprimir
@@ -889,14 +890,14 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 <div className="flex gap-2">
                   <button
                     onClick={handleDownloadPDF}
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-850 text-indigo-400 hover:text-indigo-300 text-xs font-bold uppercase tracking-wider cursor-pointer transition-all"
+                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-indigo-400 hover:text-indigo-300 text-xs font-bold uppercase tracking-wider cursor-pointer transition-all"
                   >
                     <Download className="w-4 h-4" />
                     Reporte PDF
                   </button>
                   <button
                     onClick={handlePrint}
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-850 text-slate-300 text-xs font-bold uppercase tracking-wider cursor-pointer transition-all"
+                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold uppercase tracking-wider cursor-pointer transition-all"
                   >
                     <Printer className="w-4 h-4" />
                     Imprimir
@@ -908,7 +909,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 
                 {/* Active services box */}
-                <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 text-left flex flex-col justify-between">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-left flex flex-col justify-between">
                   <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
                     Suscripciones Activas
                   </span>
@@ -922,7 +923,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 </div>
 
                 {/* Unpaid items box */}
-                <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 text-left flex flex-col justify-between">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-left flex flex-col justify-between">
                   <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
                     Servicios / Trámites Pendientes
                   </span>
@@ -965,7 +966,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 </div>
 
                 {activeServices.length === 0 ? (
-                  <div className="bg-slate-900/45 border border-slate-850 rounded-2xl p-8 text-center text-slate-500 font-semibold text-xs py-12">
+                  <div className="bg-slate-900/45 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 font-semibold text-xs py-12">
                     No dispone de suscripciones digitales activas en este momento.
                   </div>
                 ) : (
@@ -973,7 +974,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                     {activeServices.map((service) => (
                       <div 
                         key={service.id}
-                        className="bg-slate-900 border border-slate-850 hover:border-slate-800 rounded-2xl p-5 flex flex-col gap-4.5 transition-all text-left relative overflow-hidden"
+                        className="bg-slate-900 border border-slate-800 hover:border-slate-800 rounded-2xl p-5 flex flex-col gap-4.5 transition-all text-left relative overflow-hidden"
                       >
                         <div className="flex justify-between items-start">
                           <div>
@@ -991,7 +992,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                         </div>
 
                         {/* Credentials box */}
-                        {service.email ? (
+                        {service.email && (
                           <div className="bg-slate-950/80 border border-slate-900 p-3.5 rounded-xl flex flex-col gap-2.5 text-xs font-semibold">
                             <div className="flex justify-between items-center gap-1.5">
                               <span className="text-slate-500">Email:</span>
@@ -1042,13 +1043,90 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                               </div>
                             )}
                           </div>
-                        ) : (
+                        )}
+                        {/* BOT Access box */}
+                        {service.isBot && service.botUrl && (
+                          <div className="bg-slate-950/80 border border-indigo-500/30 p-3.5 rounded-xl flex flex-col gap-2.5 text-xs font-semibold">
+                            <div className="flex justify-between items-center pb-1.5 border-b border-indigo-500/20">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                                <Bot className="w-3.5 h-3.5" />
+                                <span>Acceso por BOT / Plataforma</span>
+                              </span>
+                              <a 
+                                href={service.botUrl.startsWith('http') ? service.botUrl : `https://${service.botUrl}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] font-bold text-indigo-300 hover:text-white flex items-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/40 px-2 py-0.5 rounded-lg border border-indigo-500/30 transition-all"
+                              >
+                                <span>Ir a la Página</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+
+                            <div className="flex justify-between items-center gap-1.5">
+                              <span className="text-slate-500">Página:</span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-indigo-300 font-mono break-all text-right truncate">{service.botUrl}</span>
+                                <button 
+                                  onClick={() => handleCopy(service.botUrl, service.id + '_bot_url')}
+                                  className="p-1 text-slate-500 hover:text-white transition-colors cursor-pointer shrink-0"
+                                  title="Copiar URL"
+                                >
+                                  {copiedId === service.id + '_bot_url' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              </div>
+                            </div>
+
+                            {service.botUser && (
+                              <div className="flex justify-between items-center gap-1.5">
+                                <span className="text-slate-500">Usuario BOT:</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-200 font-mono text-right">{service.botUser}</span>
+                                  <button 
+                                    onClick={() => handleCopy(service.botUser, service.id + '_bot_user')}
+                                    className="p-1 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                                    title="Copiar Usuario"
+                                  >
+                                    {copiedId === service.id + '_bot_user' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {service.botPassword && (
+                              <div className="flex justify-between items-center gap-1.5">
+                                <span className="text-slate-500">Clave BOT:</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-200 font-mono">
+                                    {visibleCredentials[service.id + '_bot_pass'] ? service.botPassword : '••••••••'}
+                                  </span>
+                                  <button 
+                                    onClick={() => toggleCredential(service.id + '_bot_pass')}
+                                    className="p-1 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                                    title={visibleCredentials[service.id + '_bot_pass'] ? "Ocultar" : "Mostrar"}
+                                  >
+                                    {visibleCredentials[service.id + '_bot_pass'] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                  </button>
+                                  <button 
+                                    onClick={() => handleCopy(service.botPassword, service.id + '_bot_pass_copy')}
+                                    className="p-1 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                                    title="Copiar Clave"
+                                  >
+                                    {copiedId === service.id + '_bot_pass_copy' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {!service.email && !service.isBot && (
                           <div className="text-[10px] text-slate-500 font-semibold italic">
                             Los datos de acceso no han sido provistos para esta cuenta.
                           </div>
                         )}
                         
-                        <div className="flex justify-between items-center pt-2 border-t border-slate-850 text-[10px] font-bold">
+                        <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-[10px] font-bold">
                           <span className="text-slate-500">Monto del servicio:</span>
                           <span className="text-white">{formatCurrency(service.revenue || 0)}</span>
                         </div>
@@ -1086,7 +1164,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                           <h4 className="text-sm font-black text-white">{wallet.name}</h4>
                         </div>
 
-                        <div className="bg-slate-950 border border-slate-850 p-3.5 rounded-xl flex items-center justify-between gap-3">
+                        <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex items-center justify-between gap-3">
                           <div className="flex flex-col gap-0.5 overflow-hidden">
                             <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Número de Cuenta / ID</span>
                             <span className="text-white text-xs font-black font-mono break-all pr-2">
@@ -1142,15 +1220,15 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                 </div>
 
                 {receivables.length === 0 ? (
-                  <div className="bg-slate-900/45 border border-slate-850 rounded-2xl p-8 text-center text-slate-500 font-semibold text-xs py-12">
+                  <div className="bg-slate-900/45 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 font-semibold text-xs py-12">
                     🎉 ¡Al día! No tiene valores o trámites pendientes de pago.
                   </div>
                 ) : (
-                  <div className="bg-slate-900 border border-slate-850 rounded-2xl overflow-hidden">
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-slate-950 border-b border-slate-850 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                          <tr className="bg-slate-950 border-b border-slate-800 text-[9px] font-black uppercase tracking-wider text-slate-500">
                             <th className="p-4">Origen / Detalle</th>
                             <th className="p-4">Fecha Vence</th>
                             <th className="p-4 text-right">Valor Total</th>
@@ -1158,9 +1236,9 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                             <th className="p-4 text-right">Saldo Pendiente</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-850">
+                        <tbody className="divide-y divide-slate-800">
                           {receivables.map((r, i) => (
-                            <tr key={r.id + '_' + i} className="hover:bg-slate-850/30 transition-colors font-semibold">
+                            <tr key={r.id + '_' + i} className="hover:bg-slate-800/30 transition-colors font-semibold">
                               <td className="p-4">
                                 <div className="flex flex-col gap-0.5">
                                   <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{r.source}</span>
@@ -1189,7 +1267,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
               </div>
 
               {/* 5. Help Notes Footer */}
-              <div className="bg-slate-900/30 border border-slate-850 rounded-2xl p-5 text-left text-xs text-slate-400 flex gap-3 leading-relaxed font-semibold">
+              <div className="bg-slate-900/30 border border-slate-800 rounded-2xl p-5 text-left text-xs text-slate-400 flex gap-3 leading-relaxed font-semibold">
                 <HelpCircle className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-white font-bold mb-1">💡 ¿Cómo reportar un abono o solicitar asistencia?</p>
@@ -1257,7 +1335,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
               </div>
 
               {/* Text Field to Copy */}
-              <div className="w-full bg-slate-950/60 border border-slate-850 p-3 rounded-xl flex items-center justify-between gap-3 text-left">
+              <div className="w-full bg-slate-950/60 border border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3 text-left">
                 <div className="flex flex-col gap-0.5 truncate flex-1 pr-1">
                   <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Valor Registrado</span>
                   <span className="text-white text-xs font-black font-mono truncate">
@@ -1275,7 +1353,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
               {/* Close Button */}
               <button
                 onClick={() => setQrModalData(null)}
-                className="w-full py-3 bg-slate-950 hover:bg-slate-850 text-slate-300 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-slate-850 cursor-pointer"
+                className="w-full py-3 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-slate-800 cursor-pointer"
               >
                 Cerrar Ventana
               </button>

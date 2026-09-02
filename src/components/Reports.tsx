@@ -416,11 +416,11 @@ export function Reports() {
       <div className={cn("p-6 rounded-3xl border relative overflow-hidden text-left shadow-sm", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="space-y-1">
-            <h1 className={cn("text-2xl font-black uppercase tracking-tight flex items-center gap-2", isDark ? "text-white" : "text-slate-900")}>
+            <h1 className={cn("text-2xl font-black uppercase tracking-tight flex items-center gap-2", isDark ? "text-white" : "text-black")}>
               <BarChart3 className="w-6 h-6 text-indigo-500" />
               Módulo de Reportes & Estadísticas
             </h1>
-            <p className={cn("text-xs font-semibold select-none", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-700 dark:text-slate-300")}>
+            <p className={cn("text-xs font-semibold select-none", isDark ? "text-white" : "text-black")}>
               Conectado al motor Firestore de alta fidelidad. Genere, descargue o exporte balances en tiempo real.
             </p>
           </div>
@@ -429,7 +429,10 @@ export function Reports() {
             <button
               onClick={handleExportCSV}
               disabled={loading}
-              className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-205 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider rounded-xl transition-all border border-slate-200 dark:border-slate-705"
+              className={cn(
+                "flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all border",
+                isDark ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-slate-100 hover:bg-slate-200 text-black border-slate-200"
+              )}
             >
               <Download className="w-4 h-4 text-emerald-500" />
               CSV Excel
@@ -447,17 +450,17 @@ export function Reports() {
       </div>
 
       {/* Primary Configuration filters drawer */}
-      <div className={cn("p-6 rounded-3xl border text-left", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+      <div className={cn("p-6 rounded-3xl border text-left", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {/* Module filter */}
-          <div className="space-y-1.5Col">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-450 flex items-center gap-1">
+          <div className="space-y-1.5">
+            <label className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-1", isDark ? "text-white" : "text-black")}>
               <Database className="w-3 h-3" /> Módulo / Fuente de Información
             </label>
             <select
               value={module}
               onChange={(e) => setModule(e.target.value as ReportModule)}
-              className={cn("w-full mt-2 p-3.5 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-805 text-white" : "bg-slate-50 border-slate-150 focus:bg-white")}
+              className={cn("w-full mt-2 p-3.5 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white")}
             >
               <option value="consolidated">General (Consolidado)</option>
               <option value="services">Servicios Digitales solamente</option>
@@ -468,13 +471,13 @@ export function Reports() {
 
           {/* Date presets selection */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-450 flex items-center gap-1">
+            <label className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-1", isDark ? "text-white" : "text-black")}>
               <Calendar className="w-3 h-3" /> Rango Preconfigurado
             </label>
             <select
               value={preset}
               onChange={(e) => setPreset(e.target.value as DatePreset)}
-              className={cn("w-full mt-2 p-3.5 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-805 text-white" : "bg-slate-50 border-slate-150 focus:bg-white")}
+              className={cn("w-full mt-2 p-3.5 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white")}
             >
               <option value="today">Hoy Comercial</option>
               <option value="week">Últimos 7 Días</option>
@@ -485,24 +488,24 @@ export function Reports() {
 
           {/* Custom Date Inputs */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-450 block">Fecha Inicio</label>
+            <label className={cn("text-[10px] font-black uppercase tracking-widest block", isDark ? "text-white" : "text-black")}>Fecha Inicio</label>
             <input
               type="date"
               value={startDate}
               disabled={preset !== 'custom'}
               onChange={(e) => setStartDate(e.target.value)}
-              className={cn("w-full mt-2 p-3 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-805 text-white" : "bg-slate-50 border-slate-150 focus:bg-white disabled:opacity-50")}
+              className={cn("w-full mt-2 p-3 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white disabled:opacity-50")}
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-450 block">Fecha Término</label>
+            <label className={cn("text-[10px] font-black uppercase tracking-widest block", isDark ? "text-white" : "text-black")}>Fecha Término</label>
             <input
               type="date"
               value={endDate}
               disabled={preset !== 'custom'}
               onChange={(e) => setEndDate(e.target.value)}
-              className={cn("w-full mt-2 p-3 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-805 text-white" : "bg-slate-50 border-slate-150 focus:bg-white disabled:opacity-50")}
+              className={cn("w-full mt-2 p-3 rounded-xl border text-xs font-bold outline-none", isDark ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-black focus:bg-white disabled:opacity-50")}
             />
           </div>
         </div>
@@ -510,66 +513,66 @@ export function Reports() {
 
       {/* Analytics statistics counters panel */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-850" : "bg-white border-slate-100 shadow-sm")}>
+        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
           <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Total Ingresos</span>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest", isDark ? "text-white" : "text-black")}>Total Ingresos</span>
             <div className="text-lg font-mono font-bold text-emerald-600">{formatCurrency(metrics.totalIncome)}</div>
           </div>
         </div>
 
-        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-850" : "bg-white border-slate-100 shadow-sm")}>
+        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
           <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl">
             <TrendingDown className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Total Gastos/Costo</span>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest", isDark ? "text-white" : "text-black")}>Total Gastos/Costo</span>
             <div className="text-lg font-mono font-bold text-rose-500">{formatCurrency(metrics.totalExpense)}</div>
           </div>
         </div>
 
-        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-850" : "bg-white border-slate-100 shadow-sm")}>
+        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
           <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl">
             <DollarSign className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Utilidad Neta</span>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest", isDark ? "text-white" : "text-black")}>Utilidad Neta</span>
             <div className={cn("text-lg font-mono font-bold", metrics.netProfit >= 0 ? "text-indigo-500" : "text-rose-500")}>
               {formatCurrency(metrics.netProfit)}
             </div>
           </div>
         </div>
 
-        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-850" : "bg-white border-slate-100 shadow-sm")}>
+        <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:-translate-y-0.5", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
           <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
             <Clock className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Por Cobrar (Saldos)</span>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest", isDark ? "text-white" : "text-black")}>Por Cobrar (Saldos)</span>
             <div className="text-lg font-mono font-bold text-amber-500">{formatCurrency(metrics.pendingPayments)}</div>
           </div>
         </div>
       </div>
 
       {/* MEJORA 2: Analizador de Márgenes de Utilidad y Rendimiento */}
-      <div className={cn("p-6 rounded-3xl border text-left space-y-6", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+      <div className={cn("p-6 rounded-3xl border text-left space-y-6", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
         <div>
-          <h3 className={cn("text-base font-black uppercase tracking-wider flex items-center gap-2", isDark ? "text-white" : "text-slate-900")}>
+          <h3 className={cn("text-base font-black uppercase tracking-wider flex items-center gap-2", isDark ? "text-white" : "text-black")}>
             📊 Rendimiento de Categorías y Márgenes de Ganancia
           </h3>
-          <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold mt-1">
+          <p className={cn("text-xs font-semibold mt-1", isDark ? "text-white" : "text-black")}>
             Análisis detallado de rentabilidad por línea de negocio, calculando ingresos vs. costos reales.
           </p>
         </div>
 
         {categoryMargins.length === 0 ? (
-          <p className="text-xs text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-center py-4">No hay datos de operaciones en el rango especificado.</p>
+          <p className={cn("text-xs font-bold uppercase tracking-wider text-center py-4", isDark ? "text-white" : "text-black")}>No hay datos de operaciones en el rango especificado.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h4 className={cn("text-xs font-black uppercase tracking-wider text-indigo-500", isDark ? "text-slate-300" : "text-slate-650")}>
+              <h4 className={cn("text-xs font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
                 Participación en Utilidades y Márgenes
               </h4>
               <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
@@ -585,8 +588,8 @@ export function Reports() {
                   return (
                     <div key={item.name} className="space-y-1">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{item.name}</span>
-                        <div className="flex items-center gap-2 font-mono font-bold text-slate-600 dark:text-slate-300">
+                        <span className={cn("font-extrabold uppercase tracking-wide", isDark ? "text-white" : "text-black")}>{item.name}</span>
+                        <div className={cn("flex items-center gap-2 font-mono font-bold", isDark ? "text-white" : "text-black")}>
                           <span>Ganancia:</span>
                           <span className={cn(item.profit >= 0 ? "text-emerald-500" : "text-rose-500")}>
                             {formatCurrency(item.profit)}
@@ -596,13 +599,13 @@ export function Reports() {
                           </span>
                         </div>
                       </div>
-                      <div className="h-3.5 w-full bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden relative border border-slate-550/10">
+                      <div className="h-3.5 w-full bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden relative border border-slate-200 dark:border-slate-800">
                         <div 
                           style={{ width: `${Math.max(0, Math.min(100, item.margin))}%` }}
                           className={cn("h-full rounded-full transition-all duration-1000 bg-gradient-to-r", activeColor)} 
                         />
                       </div>
-                      <div className="flex justify-between text-[9px] font-bold text-slate-600 dark:text-slate-300 font-mono">
+                      <div className={cn("flex justify-between text-[9px] font-bold font-mono", isDark ? "text-white" : "text-black")}>
                         <span>Costo: {formatCurrency(item.cost)}</span>
                         <span>Ingreso Total: {formatCurrency(item.revenue)}</span>
                       </div>
@@ -612,27 +615,27 @@ export function Reports() {
               </div>
             </div>
 
-            <div className={cn("p-5 rounded-2xl border flex flex-col justify-between space-y-4", isDark ? "bg-slate-950/40 border-slate-850" : "bg-slate-50 border-slate-100")}>
+            <div className={cn("p-5 rounded-2xl border flex flex-col justify-between space-y-4", isDark ? "bg-slate-950/40 border-slate-800" : "bg-slate-50 border-slate-200")}>
               <div className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Diagnóstico de Salud Financiera</span>
-                <h4 className={cn("text-sm font-black uppercase tracking-tight", isDark ? "text-white" : "text-slate-800")}>
+                <h4 className={cn("text-sm font-black uppercase tracking-tight", isDark ? "text-white" : "text-black")}>
                   EFICIENCIA GLOBAL DE OPERACIONES
                 </h4>
-                <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold leading-relaxed">
-                  El margen consolidado del negocio es de <strong className={cn("font-extrabold font-mono", metrics.totalIncome > 0 ? "text-emerald-500" : "text-slate-600 dark:text-slate-300")}>{metrics.totalIncome > 0 ? `${((metrics.netProfit / metrics.totalIncome) * 100).toFixed(1)}%` : '0%'}</strong>. 
+                <p className={cn("text-xs font-semibold leading-relaxed", isDark ? "text-white" : "text-black")}>
+                  El margen consolidado del negocio es de <strong className={cn("font-extrabold font-mono", metrics.totalIncome > 0 ? "text-emerald-500" : (isDark ? "text-white" : "text-black"))}>{metrics.totalIncome > 0 ? `${((metrics.netProfit / metrics.totalIncome) * 100).toFixed(1)}%` : '0%'}</strong>. 
                   Un margen superior al 30% en servicios digitales indica una excelente asignación de precios. Procure optimizar negociaciones con proveedores con baja utilidad neta.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 border-t border-dashed border-slate-500/10 pt-4">
                 <div className="space-y-1">
-                  <span className="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300">Canal Estrella</span>
+                  <span className={cn("text-[9px] font-black uppercase", isDark ? "text-white" : "text-black")}>Canal Estrella</span>
                   <div className="text-xs font-black uppercase tracking-tight text-indigo-500 truncate">
                     {categoryMargins[0]?.name || 'Ninguno'}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300">Eficiencia Máxima</span>
+                  <span className={cn("text-[9px] font-black uppercase", isDark ? "text-white" : "text-black")}>Eficiencia Máxima</span>
                   <div className="text-xs font-bold font-mono text-emerald-500">
                     {categoryMargins[0] ? `${categoryMargins[0].margin.toFixed(1)}%` : '0.0%'}
                   </div>
@@ -644,11 +647,11 @@ export function Reports() {
       </div>
 
       {/* Main consolidated matching table */}
-      <div className={cn("p-6 rounded-3xl border overflow-hidden text-left space-y-4", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
+      <div className={cn("p-6 rounded-3xl border overflow-hidden text-left space-y-4", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm")}>
         {/* Centered Search Bar */}
         <div className="flex justify-center w-full">
           <div className="relative w-full max-w-xl">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-600 dark:text-slate-300">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500 dark:text-slate-400">
               <Search className="w-5 h-5 animate-pulse text-indigo-500" />
             </span>
             <input
@@ -659,14 +662,14 @@ export function Reports() {
               className={cn(
                 "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
                 isDark 
-                  ? "border-slate-850 bg-slate-950/45 text-white placeholder-slate-500 focus:bg-slate-950" 
-                  : "border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:bg-white"
+                  ? "border-slate-800 bg-slate-950/45 text-white placeholder-slate-500 focus:bg-slate-950" 
+                  : "border-slate-200 bg-slate-50 text-black placeholder-slate-400 focus:bg-white"
               )}
             />
           </div>
         </div>
 
-        <div className="flex justify-between items-center mb-4 border-b border-slate-100/10 pb-3">
+        <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800/60 pb-3">
           <span className="text-xs font-black uppercase tracking-widest text-sky-500">
             Registros Coincidentes (Totales: {filteredServicesData.length + filteredUpdatesData.length + filteredLedgerData.length})
           </span>
@@ -676,7 +679,7 @@ export function Reports() {
         <div className="overflow-x-auto min-w-full">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-100/10 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider">
+              <tr className={cn("border-b border-slate-100 dark:border-slate-800/60 font-bold uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
                 <th className="py-2.5 pb-3">Módulo / Origen</th>
                 <th className="py-2.5 pb-3">Concepto / Detalle</th>
                 <th className="py-2.5 pb-3">Cliente / Tercero</th>
@@ -684,25 +687,25 @@ export function Reports() {
                 <th className="py-2.5 pb-3 text-center">Estado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100/5 font-semibold">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 font-semibold">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-600 dark:text-slate-300">Sincronizando información de bases de datos...</td>
+                  <td colSpan={5} className={cn("py-8 text-center", isDark ? "text-white" : "text-black")}>Sincronizando información de bases de datos...</td>
                 </tr>
               ) : (filteredServicesData.length + filteredUpdatesData.length + filteredLedgerData.length) === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-600 dark:text-slate-300">Ningún registro coincide con la búsqueda o el rango seleccionado.</td>
+                  <td colSpan={5} className={cn("py-8 text-center", isDark ? "text-white" : "text-black")}>Ningún registro coincide con la búsqueda o el rango seleccionado.</td>
                 </tr>
               ) : (
                 <>
                   {(module === 'consolidated' || module === 'services') ? filteredServicesData.map(s => (
                     <tr key={s.id} className="hover:bg-slate-500/5 transition-colors">
-                      <td className="py-3 text-slate-600 dark:text-slate-300">Servicios Digitales</td>
-                      <td className="py-3 font-bold">{s.name}</td>
-                      <td className="py-3 text-slate-550 dark:text-slate-350">{s.clientName}</td>
+                      <td className={cn("py-3", isDark ? "text-white" : "text-black")}>Servicios Digitales</td>
+                      <td className={cn("py-3 font-bold", isDark ? "text-white" : "text-black")}>{s.name}</td>
+                      <td className={cn("py-3", isDark ? "text-white" : "text-black")}>{s.clientName}</td>
                       <td className="py-3 text-right font-mono text-emerald-500 font-bold">{formatCurrency(s.revenue)}</td>
                       <td className="py-3 text-center">
-                        <span className={cn("px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase", s.isPaid ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-505")}>
+                        <span className={cn("px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase", s.isPaid ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500")}>
                           {s.isPaid ? 'Pagado' : 'Pendiente'}
                         </span>
                       </td>
@@ -711,12 +714,12 @@ export function Reports() {
 
                   {(module === 'consolidated' || module === 'updates') ? filteredUpdatesData.map(u => (
                     <tr key={u.id} className="hover:bg-slate-500/5 transition-colors">
-                      <td className="py-3 text-slate-600 dark:text-slate-300">Actualización (ANT)</td>
-                      <td className="py-3 font-bold">{u.warehouse || 'Oficina / Almacén'}</td>
-                      <td className="py-3 text-slate-550 dark:text-slate-350">{u.finalClientName}</td>
+                      <td className={cn("py-3", isDark ? "text-white" : "text-black")}>Actualización (ANT)</td>
+                      <td className={cn("py-3 font-bold", isDark ? "text-white" : "text-black")}>{u.warehouse || 'Oficina / Almacén'}</td>
+                      <td className={cn("py-3", isDark ? "text-white" : "text-black")}>{u.finalClientName}</td>
                       <td className="py-3 text-right font-mono text-emerald-500 font-bold">{formatCurrency(u.chargedRate)}</td>
                       <td className="py-3 text-center">
-                        <span className={cn("px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase", u.isPaid ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-505")}>
+                        <span className={cn("px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase", u.isPaid ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500")}>
                           {u.isPaid ? 'Pagado' : 'Pendiente'}
                         </span>
                       </td>
@@ -725,14 +728,14 @@ export function Reports() {
 
                   {(module === 'consolidated' || module === 'ledger') ? filteredLedgerData.map(l => (
                     <tr key={l.id} className="hover:bg-slate-500/5 transition-colors">
-                      <td className="py-3 text-slate-600 dark:text-slate-300">Tesorería (Libro)</td>
-                      <td className="py-3 font-bold">{l.category}</td>
-                      <td className="py-3 text-slate-550 dark:text-slate-350">{l.description || '-'}</td>
+                      <td className={cn("py-3", isDark ? "text-white" : "text-black")}>Tesorería (Libro)</td>
+                      <td className={cn("py-3 font-bold", isDark ? "text-white" : "text-black")}>{l.category}</td>
+                      <td className={cn("py-3", isDark ? "text-white" : "text-black")}>{l.description || '-'}</td>
                       <td className={cn("py-3 text-right font-mono font-bold", l.amount >= 0 ? "text-emerald-500" : "text-rose-500")}>
                         {l.amount >= 0 ? `+${formatCurrency(l.amount)}` : formatCurrency(l.amount)}
                       </td>
                       <td className="py-3 text-center">
-                        <span className={cn("px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase", l.isPending ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700")}>
+                        <span className={cn("px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase", l.isPending ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400")}>
                           {l.isPending ? 'Pendiente' : 'Asentado'}
                         </span>
                       </td>

@@ -805,7 +805,7 @@ export function Settings() {
           <SettingsIcon className="w-8 h-8 text-indigo-500" />
           Configuración del Sistema
         </h1>
-        <p className="text-slate-700 dark:text-slate-300 font-medium">
+        <p className="text-slate-700 dark:text-slate-300 font-medium border border-black rounded-xl px-3.5 py-2 mt-2 inline-block">
           Gestione sus preferencias arquitectónicas y cuentas bancarias.
         </p>
       </div>
@@ -840,14 +840,14 @@ export function Settings() {
               className={cn(
                 "p-4 rounded-2xl flex items-center justify-between border transition-all",
                 isDark
-                  ? "bg-slate-900/20 border-slate-800/60"
-                  : "bg-slate-50/50 border-slate-100",
+                  ? "bg-slate-900/40 border-slate-800"
+                  : "bg-slate-50 border-slate-200",
               )}
             >
               <span
                 className={cn(
                   "text-xs font-bold",
-                  isDark ? "text-slate-350" : "text-slate-600",
+                  isDark ? "text-slate-200" : "text-slate-700",
                 )}
               >
                 Mostrar cuentas registradas
@@ -966,14 +966,14 @@ export function Settings() {
               className={cn(
                 "p-4 rounded-2xl flex items-center justify-between border transition-all",
                 isDark
-                  ? "bg-slate-900/20 border-slate-800/60"
-                  : "bg-slate-50/50 border-slate-100",
+                  ? "bg-slate-900/40 border-slate-800"
+                  : "bg-slate-50 border-slate-200",
               )}
             >
               <span
                 className={cn(
                   "text-xs font-bold",
-                  isDark ? "text-slate-350" : "text-slate-600",
+                  isDark ? "text-slate-200" : "text-slate-700",
                 )}
               >
                 Mostrar tarjetas de crédito registradas
@@ -1017,7 +1017,7 @@ export function Settings() {
                             "p-4 border rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all",
                             isDark
                               ? "bg-slate-900/40 border-slate-800"
-                              : "bg-white border-slate-100",
+                              : "bg-white border-slate-200",
                           )}
                         >
                           <div>
@@ -1037,7 +1037,7 @@ export function Settings() {
                               <span className="font-bold text-emerald-500">
                                 {formatCurrency(w.balance)}
                               </span>{" "}
-                              <span className="text-slate-450 dark:text-slate-600 dark:text-slate-300">
+                              <span className="text-slate-500 dark:text-slate-400">
                                 / Total: {formatCurrency(w.totalLimit || 0)}
                               </span>
                             </p>
@@ -1072,7 +1072,7 @@ export function Settings() {
           className="space-y-4"
         >
           <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
-            <Shield className="w-4 h-4 text-indigo-505 text-indigo-500 font-extrabold" />
+            <Shield className="w-4 h-4 text-indigo-500 text-indigo-500 font-extrabold" />
             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">
               Privacidad y Seguridad
             </h2>
@@ -1098,7 +1098,7 @@ export function Settings() {
                     <Smartphone className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-600 dark:text-slate-300">
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.05em] text-slate-600 dark:text-slate-300 border border-black rounded px-1.5 py-0.5 inline-block w-fit">
                       Identificación
                     </h3>
                     <p
@@ -1133,7 +1133,7 @@ export function Settings() {
                         <label
                           className={cn(
                             "text-xs font-bold block",
-                            isDark ? "text-slate-300" : "text-slate-650",
+                            isDark ? "text-slate-300" : "text-slate-700",
                           )}
                         >
                           Nombre de la Empresa o Entidad
@@ -1148,7 +1148,7 @@ export function Settings() {
                             "w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold",
                             isDark
                               ? "bg-slate-950 border-slate-800 text-slate-100"
-                              : "bg-slate-50 border-slate-205 text-slate-800",
+                              : "bg-slate-50 border-slate-200 text-slate-800",
                           )}
                           placeholder="Ej. Mi Control Financiero"
                         />
@@ -1159,7 +1159,7 @@ export function Settings() {
                         <label
                           className={cn(
                             "text-xs font-bold block",
-                            isDark ? "text-slate-300" : "text-slate-655",
+                            isDark ? "text-slate-300" : "text-slate-700",
                           )}
                         >
                           Nombre Completo del Propietario
@@ -1174,7 +1174,7 @@ export function Settings() {
                             "w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold",
                             isDark
                               ? "bg-slate-950 border-slate-800 text-slate-100"
-                              : "bg-slate-50 border-slate-205 text-slate-800",
+                              : "bg-slate-50 border-slate-200 text-slate-800",
                           )}
                           placeholder="Ej. Marcelo Gutama"
                         />
@@ -1185,7 +1185,7 @@ export function Settings() {
                         <label
                           className={cn(
                             "text-xs font-bold block",
-                            isDark ? "text-slate-300" : "text-slate-655",
+                            isDark ? "text-slate-300" : "text-slate-700",
                           )}
                         >
                           Cédula o RUC
@@ -1200,7 +1200,7 @@ export function Settings() {
                             "w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold font-mono",
                             isDark
                               ? "bg-slate-950 border-slate-800 text-slate-100"
-                              : "bg-slate-50 border-slate-205 text-slate-800",
+                              : "bg-slate-50 border-slate-200 text-slate-800",
                           )}
                           placeholder="Ej. 0102030405001"
                         />
@@ -1211,7 +1211,7 @@ export function Settings() {
                         <label
                           className={cn(
                             "text-xs font-bold block",
-                            isDark ? "text-slate-300" : "text-slate-655",
+                            isDark ? "text-slate-300" : "text-slate-700",
                           )}
                         >
                           Número de Celular
@@ -1226,7 +1226,7 @@ export function Settings() {
                             "w-full border p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold",
                             isDark
                               ? "bg-slate-950 border-slate-800 text-slate-100"
-                              : "bg-slate-50 border-slate-205 text-slate-800",
+                              : "bg-slate-50 border-slate-200 text-slate-800",
                           )}
                           placeholder="Ej. +593987654321"
                         />
@@ -1291,7 +1291,7 @@ export function Settings() {
                           <label
                             className={cn(
                               "text-xs font-bold block",
-                              isDark ? "text-slate-300" : "text-slate-655",
+                              isDark ? "text-slate-300" : "text-slate-700",
                             )}
                           >
                             Mensaje para Ventas Digitales
@@ -1301,7 +1301,7 @@ export function Settings() {
                             onClick={() =>
                               updateSettings({ salesMessageTemplate: "" })
                             }
-                            className="text-[10px] font-bold text-indigo-505 hover:text-indigo-600 uppercase tracking-wider transition-colors cursor-pointer"
+                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 uppercase tracking-wider transition-colors cursor-pointer"
                           >
                             Restablecer Predeterminado
                           </button>
@@ -1315,7 +1315,7 @@ export function Settings() {
                             })
                           }
                           className={cn(
-                            "w-full border p-3 rounded-xl text-xs outline-none focus:border-indigo-505 transition-colors shadow-sm font-semibold font-mono leading-relaxed",
+                            "w-full border p-3 rounded-xl text-xs outline-none focus:border-indigo-500 transition-colors shadow-sm font-semibold font-mono leading-relaxed",
                             isDark
                               ? "bg-slate-950 border-slate-800 text-slate-100"
                               : "bg-slate-50 border-slate-200 text-slate-800",
@@ -1329,12 +1329,12 @@ export function Settings() {
                           "p-4 rounded-xl space-y-2 border",
                           isDark
                             ? "bg-slate-950/40 border-slate-800"
-                            : "bg-indigo-50/20 border-indigo-100/40",
+                            : "bg-indigo-50/40 border-indigo-100",
                         )}
                       >
                         <p
                           className={cn(
-                            "text-[10px] font-black uppercase tracking-wider text-indigo-505",
+                            "text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400",
                           )}
                         >
                           🏷️ Etiquetas Dinámicas Soportadas:
@@ -1367,7 +1367,7 @@ export function Settings() {
                         </div>
                         <p
                           className={cn(
-                            "text-[9px] font-semibold text-slate-405 mt-1",
+                            "text-[10px] font-semibold text-slate-600 dark:text-slate-400 mt-1",
                           )}
                         >
                           Consejo: Puede dar formato en WhatsApp usando
@@ -1436,7 +1436,7 @@ export function Settings() {
                         <label
                           className={cn(
                             "text-xs font-bold block",
-                            isDark ? "text-slate-300" : "text-slate-655",
+                            isDark ? "text-slate-300" : "text-slate-700",
                           )}
                         >
                           PIN de Seguridad (4 dígitos de acceso)
@@ -1450,14 +1450,14 @@ export function Settings() {
                             updateSettings({ securityPin: val });
                           }}
                           className={cn(
-                            "w-full border p-3 rounded-xl text-center text-lg tracking-[0.5em] font-mono outline-none focus:border-indigo-505 transition-colors shadow-sm",
+                            "w-full border p-3 rounded-xl text-center text-lg tracking-[0.5em] font-mono outline-none focus:border-indigo-500 transition-colors shadow-sm",
                             isDark
-                              ? "bg-slate-950 border-slate-850 text-slate-100"
-                              : "bg-slate-50 border-slate-205 text-slate-800",
+                              ? "bg-slate-950 border-slate-800 text-slate-100"
+                              : "bg-slate-50 border-slate-200 text-slate-800",
                           )}
                           placeholder="****"
                         />
-                        <p className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold mt-1">
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold mt-1">
                           Requerido para purgar datos y autorizar cambios de
                           seguridad críticos.
                         </p>
@@ -1468,7 +1468,7 @@ export function Settings() {
                         <label
                           className={cn(
                             "text-xs font-bold block",
-                            isDark ? "text-slate-300" : "text-slate-655",
+                            isDark ? "text-slate-300" : "text-slate-700",
                           )}
                         >
                           Desbloqueo Biométrico (Face ID/Touch ID)
@@ -1489,15 +1489,15 @@ export function Settings() {
                                 (settings?.biometricEnabled ?? false) === opt.id
                                   ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                   : isDark
-                                    ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-800"
-                                    : "bg-slate-100 text-slate-600 border-slate-205 hover:bg-slate-200",
+                                    ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800"
+                                    : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200",
                               )}
                             >
                               {opt.label}
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold mt-1">
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold mt-1">
                           Utiliza la autenticación WebAuthn nativa de su
                           dispositivo móvil o PC.
                         </p>
@@ -1508,7 +1508,7 @@ export function Settings() {
                         <label
                           className={cn(
                             "text-xs font-bold block",
-                            isDark ? "text-slate-300" : "text-slate-655",
+                            isDark ? "text-slate-300" : "text-slate-700",
                           )}
                         >
                           Temporizador de Bloqueo Automático por Inactividad
@@ -1532,15 +1532,15 @@ export function Settings() {
                                 (settings?.autoLockTimer ?? 5) === opt.id
                                   ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                   : isDark
-                                    ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-850 hover:bg-slate-800"
-                                    : "bg-slate-100 text-slate-600 border-slate-205 hover:bg-slate-200",
+                                    ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800"
+                                    : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200",
                               )}
                             >
                               {opt.label}
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold mt-1">
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold mt-1">
                           El sistema solicitará el PIN o biometría después de
                           transcurrido este tiempo sin registrar pulsaciones.
                         </p>
@@ -1809,7 +1809,7 @@ export function Settings() {
                                 className={cn(
                                   "p-3 rounded-xl border flex gap-3 items-start",
                                   isDark
-                                    ? "bg-slate-950/40 border-slate-850"
+                                    ? "bg-slate-950/40 border-slate-800"
                                     : "bg-slate-50 border-slate-100",
                                 )}
                               >
@@ -1865,7 +1865,7 @@ export function Settings() {
                                               ? "Copia de Seguridad"
                                               : "Ajuste Sistema"}
                                     </span>
-                                    <span className="text-slate-600 dark:text-slate-300 text-[8px] font-sans font-semibold shrink-0">
+                                    <span className="text-slate-500 dark:text-slate-400 text-[9px] font-sans font-semibold shrink-0">
                                       {log.timestamp}
                                     </span>
                                   </div>
@@ -1874,7 +1874,7 @@ export function Settings() {
                                       "font-medium text-xs leading-relaxed font-sans mt-0.5",
                                       isDark
                                         ? "text-slate-300"
-                                        : "text-slate-705",
+                                        : "text-slate-700",
                                     )}
                                   >
                                     {log.description}
@@ -1961,8 +1961,8 @@ export function Settings() {
                             className={cn(
                               "text-[8px] uppercase px-2 py-0.5 rounded font-black tracking-wider",
                               localApiKey
-                                ? "bg-emerald-100 text-emerald-850 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                : "bg-amber-100 text-amber-850 dark:bg-amber-950/40 dark:text-amber-400",
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400",
                             )}
                           >
                             {localApiKey
@@ -1978,13 +1978,13 @@ export function Settings() {
                           <label
                             className={cn(
                               "text-xs font-bold block",
-                              isDark ? "text-slate-300" : "text-slate-655",
+                              isDark ? "text-slate-300" : "text-slate-700",
                             )}
                           >
                             Clave de API de Gemini (Google AI Studio)
                           </label>
                           <div className="relative flex items-center font-mono">
-                            <span className="absolute left-3.5 text-slate-600 dark:text-slate-300">
+                            <span className="absolute left-3.5 text-slate-500 dark:text-slate-400">
                               <Key className="w-4 h-4" />
                             </span>
                             <input
@@ -1998,13 +1998,13 @@ export function Settings() {
                                 "w-full pl-10 pr-12 py-3 rounded-xl text-sm font-bold outline-none border transition-colors shadow-sm focus:border-indigo-500",
                                 isDark
                                   ? "bg-slate-950 border-slate-800 text-slate-100"
-                                  : "bg-slate-50 border-slate-205 text-slate-800",
+                                  : "bg-slate-50 border-slate-200 text-slate-800",
                               )}
                             />
                             <button
                               type="button"
                               onClick={() => setShowApiKey(!showApiKey)}
-                              className="absolute right-3.5 text-slate-600 dark:text-slate-300 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
+                              className="absolute right-3.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors p-1"
                             >
                               {showApiKey ? (
                                 <EyeOff className="w-4 h-4" />
@@ -2013,7 +2013,7 @@ export function Settings() {
                               )}
                             </button>
                           </div>
-                          <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-normal font-medium mt-1">
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-normal font-medium mt-1">
                             Su clave se almacena exclusivamente en la memoria
                             local de su navegador, garantizando total privacidad
                             y seguridad "Zero-Server".
@@ -2065,7 +2065,7 @@ export function Settings() {
                 className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-500/5 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-rose-50 dark:bg-rose-950/45 text-rose-650 dark:text-rose-400 rounded-lg">
+                  <div className="p-2 bg-rose-50 dark:bg-rose-950/45 text-rose-700 dark:text-rose-400 rounded-lg">
                     <Trash2 className="w-4 h-4" />
                   </div>
                   <div>
@@ -2099,7 +2099,7 @@ export function Settings() {
                     className="overflow-hidden border-t border-slate-100/10"
                   >
                     <div className="p-5 space-y-4 text-left">
-                      <div className="rounded-xl bg-rose-500/10 p-4 border border-rose-500/20 text-rose-600 dark:text-rose-405">
+                      <div className="rounded-xl bg-rose-500/10 p-4 border border-rose-500/20 text-rose-700 dark:text-rose-300">
                         <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-2 mb-1.5 font-bold">
                           <Shield className="w-4 h-4 animate-pulse" />{" "}
                           Advertencia de Destrucción Irreversible
@@ -2115,7 +2115,7 @@ export function Settings() {
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
                         <div className="space-y-1">
-                          <p className="text-xs text-slate-550 dark:text-slate-600 dark:text-slate-300 font-semibold">
+                          <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold">
                             Para iniciar la destrucción, presione el botón
                             lateral e ingrese su PIN de seguridad de 4 dígitos.
                           </p>
@@ -2123,7 +2123,7 @@ export function Settings() {
                         <button
                           type="button"
                           onClick={handleOpenPurgeModal}
-                          className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 border border-rose-500/25 animate-pulse"
+                          className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 border border-rose-500/25 animate-pulse shadow-sm"
                         >
                           <Trash2 className="w-4 h-4" /> Ejecutar Purga Total
                         </button>
@@ -2144,8 +2144,8 @@ export function Settings() {
           className="space-y-4"
         >
           <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
-            <Palette className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300 font-extrabold">
+            <Palette className="w-4 h-4 text-indigo-500" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 dark:text-slate-300 font-extrabold border border-black rounded px-2 py-0.5 inline-block">
               Módulo de Personalización Global
             </h2>
           </div>
@@ -2164,10 +2164,10 @@ export function Settings() {
                 <span className="text-[9px] font-black uppercase tracking-wider text-indigo-500">
                   Suite de Apariencia
                 </span>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-150">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 border border-black rounded-lg px-2.5 py-1 inline-block w-fit">
                   Habilitar módulo de personalización
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium border border-black rounded-lg p-2 mt-1.5">
                   Configure fotos, temas de interfaz, idioma, colores de acento
                   y tipografías arquitectónicas a medida.
                 </p>
@@ -2293,10 +2293,10 @@ export function Settings() {
                             className={cn(
                               "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
                               settings?.useGoogleAvatar
-                                ? "bg-indigo-600 text-white border-indigo-600"
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                 : isDark
-                                  ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-850"
-                                  : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50",
+                                  ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                             )}
                           >
                             <span>Usar foto de Google</span>
@@ -2313,10 +2313,10 @@ export function Settings() {
                             className={cn(
                               "w-full px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
                               !settings?.useGoogleAvatar
-                                ? "bg-indigo-600 text-white border-indigo-600"
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                 : isDark
-                                  ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-850"
-                                  : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50",
+                                  ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                             )}
                           >
                             <span>Foto personalizada</span>
@@ -2356,10 +2356,10 @@ export function Settings() {
                             className={cn(
                               "w-full px-3 py-2 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
                               settings?.theme === themeOpt.id
-                                ? "bg-indigo-600 text-white border-indigo-600"
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                 : isDark
-                                  ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-850"
-                                  : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50",
+                                  ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                             )}
                           >
                             <span>{themeOpt.label}</span>
@@ -2375,7 +2375,7 @@ export function Settings() {
                     <div className="space-y-3 p-4 rounded-2xl bg-slate-500/5 h-full flex flex-col justify-between text-left">
                       <div>
                         <div className="flex items-center gap-2">
-                          <Languages className="w-4 h-4 text-slate-450" />
+                          <Languages className="w-4 h-4 text-indigo-500" />
                           <h3 className="text-sm font-bold tracking-tight">
                             Idioma de Preferencia / Localization
                           </h3>
@@ -2392,10 +2392,10 @@ export function Settings() {
                           className={cn(
                             "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
                             settings?.language === "es"
-                              ? "bg-indigo-600 text-white border-indigo-600"
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                               : isDark
-                                ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-850"
-                                : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100",
+                                ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                           )}
                         >
                           <span>🇪🇸 Español</span>
@@ -2410,10 +2410,10 @@ export function Settings() {
                           className={cn(
                             "py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all flex items-center justify-between cursor-pointer",
                             settings?.language === "en"
-                              ? "bg-indigo-600 text-white border-indigo-600"
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                               : isDark
-                                ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-850"
-                                : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100",
+                                ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                           )}
                         >
                           <span>🇺🇸 English</span>
@@ -2454,10 +2454,10 @@ export function Settings() {
                             className={cn(
                               "w-full px-3 py-2 border rounded-lg text-[9px] font-black uppercase tracking-wider transition-all text-left flex items-center justify-between cursor-pointer",
                               (settings?.uiStyle || "plastic") === styleOpt.id
-                                ? "bg-indigo-600 text-white border-indigo-600"
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                 : isDark
-                                  ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-850"
-                                  : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50",
+                                  ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                             )}
                           >
                             <span>{styleOpt.label}</span>
@@ -2468,7 +2468,7 @@ export function Settings() {
 
                         {settings?.uiStyle === "liquid_glass" && (
                           <div className="mt-4 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-2">
                               Variante Liquid Glass
                             </h4>
                             <div className="grid grid-cols-2 gap-2">
@@ -2493,13 +2493,13 @@ export function Settings() {
                                     "px-2 py-1.5 border rounded flex items-center justify-between text-[9px] font-bold uppercase tracking-wider transition-all",
                                     (settings?.liquidGlassColor ||
                                       "default") === color.id
-                                      ? "bg-indigo-600 border-indigo-600 text-white"
+                                      ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
                                       : isDark
-                                        ? "bg-slate-800 border-slate-700 text-slate-600 dark:text-slate-300"
-                                        : "bg-white border-slate-200 text-slate-600",
+                                        ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                                   )}
                                 >
-                                  {color.label}
+                                  <span>{color.label}</span>
                                   {(settings?.liquidGlassColor || "default") ===
                                     color.id && <Check className="w-3 h-3" />}
                                 </button>
@@ -2519,7 +2519,7 @@ export function Settings() {
                     {/* Paleta de Colores de Acento */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <Palette className="w-4 h-4 text-slate-450" />
+                        <Palette className="w-4 h-4 text-indigo-500" />
                         <h3 className="text-sm font-bold tracking-tight">
                           Paleta Cromática de Acento
                         </h3>
@@ -2549,7 +2549,7 @@ export function Settings() {
                             className={cn(
                               "w-9 h-9 rounded-full transition-all flex items-center justify-center border border-black/10 relative cursor-pointer ring-4 ring-transparent hover:scale-105",
                               (settings?.accentColor || "indigo") === col.id
-                                ? "scale-110 ring-indigo-505 dark:ring-indigo-500/40"
+                                ? "scale-110 ring-indigo-500 dark:ring-indigo-500/40 shadow-sm"
                                 : "hover:ring-slate-300 dark:hover:ring-slate-700",
                             )}
                             style={{ backgroundColor: col.hex }}
@@ -2566,7 +2566,7 @@ export function Settings() {
                     {/* Selector de Fuente */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <Type className="w-4 h-4 text-slate-450" />
+                        <Type className="w-4 h-4 text-indigo-500" />
                         <h3 className="text-sm font-bold tracking-tight">
                           Tipo de Letra del Sistema
                         </h3>
@@ -2616,8 +2616,8 @@ export function Settings() {
                               (settings?.fontFamily || "inter") === fontSpec.id
                                 ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                 : isDark
-                                  ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-800"
-                                  : "bg-slate-50 text-slate-650 border-slate-205 hover:bg-slate-100",
+                                  ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                             )}
                           >
                             <span>{fontSpec.label}</span>
@@ -2644,7 +2644,7 @@ export function Settings() {
           className="space-y-4"
         >
           <div className="flex items-center gap-2 border-b border-indigo-100/20 pb-2">
-            <Database className="w-4 h-4 text-indigo-550 text-indigo-500 font-black" />
+            <Database className="w-4 h-4 text-indigo-500 font-black" />
             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 font-extrabold">
               Copias de Seguridad y Migración
             </h2>
@@ -2716,7 +2716,7 @@ export function Settings() {
                           type="button"
                           onClick={handleExportData}
                           disabled={isExporting}
-                          className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-500/20"
+                          className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-500/20 shadow-sm"
                         >
                           {isExporting ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -2730,7 +2730,7 @@ export function Settings() {
                           type="button"
                           onClick={handleExportExcel}
                           disabled={isExporting}
-                          className="flex-1 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-600/20 whitespace-nowrap"
+                          className="flex-1 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-600/20 whitespace-nowrap shadow-sm"
                         >
                           {isExporting ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -2742,7 +2742,7 @@ export function Settings() {
                             : "Formato Excel (XLSX)"}
                         </button>
                       </div>
-                      <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-normal font-semibold mt-1">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-normal font-semibold mt-1">
                         El formato Excel genera un libro con múltiples hojas de
                         cálculo (una por cada colección de datos), facilitando
                         la depuración, control y auditoría manual de registros.
@@ -2755,7 +2755,7 @@ export function Settings() {
                         <Upload className="w-4 h-4" /> Restaurar Copia de
                         Seguridad
                       </h3>
-                      <p className="text-xs text-slate-505 leading-relaxed font-semibold">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-semibold">
                         ¿Cambió de navegador o dispositivo? Seleccione su
                         archivo de respaldo en formato de texto JSON (.json) o
                         libro de cálculo de Microsoft Excel (.xlsx, .xls) para
@@ -2764,7 +2764,7 @@ export function Settings() {
                       </p>
 
                       <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                        <label className="w-full sm:w-auto relative cursor-pointer px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-indigo-505/20">
+                        <label className="w-full sm:w-auto relative cursor-pointer px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-indigo-500/20 shadow-sm">
                           <Upload className="w-4 h-4" />
                           {isImporting ? "Cargando..." : "Seleccionar Archivo"}
                           <input
@@ -2788,8 +2788,8 @@ export function Settings() {
                           className={cn(
                             "p-3 rounded-xl border text-xs font-bold transition-all mt-2",
                             importFeedback.success
-                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-650 dark:text-emerald-400"
-                              : "bg-rose-500/10 border-rose-500/20 text-rose-500",
+                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                              : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400",
                           )}
                         >
                           {importFeedback.text}
@@ -2828,12 +2828,12 @@ export function Settings() {
               <h3
                 className={cn(
                   "text-base font-bold",
-                  isDark ? "text-slate-100" : "text-slate-805",
+                  isDark ? "text-slate-100" : "text-slate-900",
                 )}
               >
                 Centro de Soporte, Cambios y Adaptabilidad
               </h3>
-              <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold">
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold border border-black rounded-lg p-2 mt-1.5">
                 Revise el historial exacto de actualizaciones, la versión
                 instalada y personalice las características activas del
                 aplicativo.
@@ -2858,7 +2858,7 @@ export function Settings() {
           className="pt-12 border-t border-indigo-100/20 flex flex-col sm:flex-row justify-between items-center gap-4"
         >
           <div className="flex flex-col text-left">
-            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-widest">
+            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-widest border border-black rounded-lg px-3 py-1.5 inline-block w-fit">
               Última Sincronización:{" "}
               {settings?.updatedAt
                 ? new Date(settings.updatedAt).toLocaleString()
@@ -2901,7 +2901,7 @@ export function Settings() {
             >
               {/* Header */}
               <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-450">
+                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-500">
                   <Shield className="w-5 h-5 shrink-0" />
                   <h3 className="text-sm font-extrabold uppercase tracking-widest font-black">
                     Confirmación de Seguridad
@@ -2938,7 +2938,7 @@ export function Settings() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-450 font-semibold leading-relaxed">
+                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-500 font-semibold leading-relaxed">
                     ⚠️ ALERTA EXTREMA: Esta acción purgará de manera
                     irreversible todas sus cuentas bancarias, transacciones,
                     registros de CRM, libros diarios de caja y servicios de
@@ -2989,8 +2989,8 @@ export function Settings() {
                       className={cn(
                         "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all text-center shrink-0 cursor-pointer",
                         isDark
-                          ? "bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-800 hover:bg-slate-850"
-                          : "bg-white text-slate-550 border-slate-200 hover:bg-slate-100",
+                          ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900",
                       )}
                     >
                       Cancelar
@@ -2999,7 +2999,7 @@ export function Settings() {
                       type="button"
                       disabled={isPurging || purgePinInput.length !== 4}
                       onClick={executeDataPurge}
-                      className="flex-1 py-3 px-4 rounded-xl text-[10px] bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider text-center shrink-0 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 px-4 rounded-xl text-[10px] bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-wider text-center shrink-0 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed shadow-sm"
                     >
                       {isPurging ? (
                         <>
@@ -3034,7 +3034,7 @@ export function Settings() {
                 "relative w-full max-w-sm p-8 rounded-3xl border shadow-2xl z-10",
                 isDark
                   ? "bg-slate-900 border-slate-800"
-                  : "bg-white border border-slate-100",
+                  : "bg-white border-slate-200",
               )}
             >
               <div className="flex justify-between items-center mb-6">
@@ -3053,9 +3053,9 @@ export function Settings() {
                     setIsWalletModalOpen(false);
                     resetWalletForm();
                   }}
-                  className="text-slate-600 dark:text-slate-300 p-1 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-slate-600"
+                  className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-full transition-colors"
                 >
-                  <X />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               <form onSubmit={handleAddWallet} className="space-y-4">
@@ -3178,7 +3178,7 @@ export function Settings() {
                     )}
                     placeholder="Ej. Ahorros Pichincha 2203948576, o URL PayPal"
                   />
-                  <p className="text-[9px] text-slate-600 dark:text-slate-300 mt-1 font-semibold leading-snug">
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300 mt-1 font-semibold leading-snug">
                     Si ingresa el número o URL, esta cuenta se mostrará en el
                     portal de sus clientes y comprobantes de pago.
                   </p>
@@ -3186,7 +3186,7 @@ export function Settings() {
                 <button
                   disabled={isSubmitting}
                   type="submit"
-                  className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-700 cursor-pointer"
+                  className="w-full mt-4 bg-indigo-600 text-white p-4 rounded-2xl font-bold uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-indigo-700 cursor-pointer shadow-sm"
                 >
                   {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -3213,7 +3213,7 @@ export function Settings() {
                         resetWalletForm();
                       }
                     }}
-                    className="w-full mt-2 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-450 p-4 rounded-2xl text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border border-rose-500/20 transition-colors"
+                    className="w-full mt-2 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 p-4 rounded-2xl text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border border-rose-500/20 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Eliminar Billetera /
                     Tarjeta
@@ -3263,8 +3263,8 @@ export function Settings() {
                   className={cn(
                     "p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors",
                     isDark
-                      ? "text-slate-600 dark:text-slate-300 bg-slate-800"
-                      : "text-slate-700 dark:text-slate-300 bg-slate-100",
+                      ? "text-slate-400 hover:text-slate-200 bg-slate-800"
+                      : "text-slate-600 hover:text-slate-900 bg-slate-100",
                   )}
                 >
                   <X className="w-4 h-4" />
@@ -3280,7 +3280,7 @@ export function Settings() {
                     "pb-2.5 px-4 text-xs font-bold uppercase tracking-wider relative transition-all border-b-2",
                     infoTab === "history"
                       ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                      : "border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-600",
+                      : "border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white",
                   )}
                 >
                   Acerca de e Historial De Cambios
@@ -3292,7 +3292,7 @@ export function Settings() {
                     "pb-2.5 px-4 text-xs font-bold uppercase tracking-wider relative transition-all border-b-2",
                     infoTab === "features"
                       ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                      : "border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-600",
+                      : "border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white",
                   )}
                 >
                   Habilitar/Deshabilitar Características
@@ -3304,7 +3304,7 @@ export function Settings() {
                     "pb-2.5 px-4 text-xs font-bold uppercase tracking-wider relative transition-all border-b-2",
                     infoTab === "support"
                       ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                      : "border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-600",
+                      : "border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white",
                   )}
                 >
                   Soporte y Guías
@@ -3332,7 +3332,7 @@ export function Settings() {
                           {SYSTEM_UPDATES[0]?.version || "Versión Reciente"} •
                           Estable
                         </h4>
-                        <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 mt-1 font-medium">
+                        <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 font-medium">
                           Formato: Día.Mes.Año (Local) • Código de Compilación
                         </p>
                       </div>
@@ -3340,13 +3340,13 @@ export function Settings() {
                         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 block">
                           Compilado Exacto
                         </span>
-                        <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 block bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-500/10 mt-1">
+                        <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 block bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-500/10 mt-1">
                           {SYSTEM_UPDATES[0]?.date || "Reciente"}
                         </span>
                       </div>
                     </div>
 
-                    {/* Resguatados de seguridad summary */}
+                    {/* Resguardos de seguridad summary */}
                     <div
                       className={cn(
                         "p-5 rounded-xl border space-y-3",
@@ -3362,7 +3362,7 @@ export function Settings() {
                           (SQLi)
                         </h5>
                       </div>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
                         El sistema actual cuenta con inmunidad estructural
                         frente a inyecciones SQL convencionales. Al estar
                         construido sobre una arquitectura Serverless NoSQL
@@ -3393,14 +3393,14 @@ export function Settings() {
                               )}
                             />
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
-                              <span className="text-xs font-black text-slate-850 dark:text-slate-200">
+                              <span className="text-xs font-black text-slate-900 dark:text-slate-100">
                                 {item.version} • {item.title}
                               </span>
                               <span className="text-[9px] font-mono text-slate-600 dark:text-slate-300 font-bold">
                                 {item.date}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 mt-1 font-semibold leading-relaxed">
+                            <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 font-semibold leading-relaxed">
                               {item.description}
                             </p>
                           </div>
@@ -3433,8 +3433,8 @@ export function Settings() {
                           className={cn(
                             "p-2 rounded-xl border transition-all cursor-pointer",
                             isDark
-                              ? "border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-600 dark:text-slate-300"
-                              : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600",
+                              ? "border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300"
+                              : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700",
                           )}
                           title="Guía Anterior"
                         >
@@ -3473,8 +3473,8 @@ export function Settings() {
                           className={cn(
                             "p-2 rounded-xl border transition-all cursor-pointer",
                             isDark
-                              ? "border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-600 dark:text-slate-300"
-                              : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600",
+                              ? "border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300"
+                              : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700",
                           )}
                           title="Guía Siguiente"
                         >
@@ -3494,7 +3494,7 @@ export function Settings() {
                             transition={{ duration: 0.25 }}
                             className="space-y-4"
                           >
-                            <div className="bg-indigo-50 dark:bg-indigo-950/10 p-4 rounded-xl border border-indigo-100/50 dark:border-indigo-505/10 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed text-left">
+                            <div className="bg-indigo-50 dark:bg-indigo-950/10 p-4 rounded-xl border border-indigo-100/50 dark:border-indigo-500/10 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed text-left">
                               Guía paso a paso y herramientas de diagnóstico
                               para verificar si una factura está lista o si el
                               trámite requiere una actualización de datos
@@ -3509,21 +3509,21 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-extrabold flex items-center justify-center shrink-0">
                                   1
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-indigo-500 block">
+                                  <label className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 block">
                                     Paso 1: Dirigirse al portal oficial de la
                                     ANT
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     Vaya a la página de solicitudes de servicios
                                     de la{" "}
-                                    <strong>
+                                    <strong className="text-slate-900 dark:text-slate-100">
                                       Agencia Nacional de Tránsito (ANT)
                                     </strong>
                                     :
@@ -3532,14 +3532,14 @@ export function Settings() {
                                     href="https://consultaweb.ant.gob.ec/svt/paginas/portal/svf_solicitar_servicio.jsp?ps_param_tip_serv=otr"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1 mt-2 break-all"
+                                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 mt-2 break-all"
                                   >
                                     🔗
                                     https://consultaweb.ant.gob.ec/svt/paginas/portal/...
                                   </a>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-2 text-slate-600 dark:text-slate-300 dark:text-slate-505">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed mt-2">
                                     Y busque la opción llamada:{" "}
-                                    <strong className="text-slate-700 dark:text-slate-350">
+                                    <strong className="text-slate-900 dark:text-slate-100">
                                       EXPEDICIÓN DE SERIES NUEVAS DE PLACAS DE
                                       IDENTIFICACIÓN DE MOTOCICLETAS
                                     </strong>
@@ -3554,22 +3554,22 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-extrabold flex items-center justify-center shrink-0">
                                   2
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-indigo-500 block">
+                                  <label className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 block">
                                     Paso 2: Diagnóstico mediante el nombre del
                                     cliente
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     Si le sale algún mensaje de error y no se
                                     muestran los nombres reales del cliente, se
                                     entiende de antemano que el trámite{" "}
-                                    <strong>
+                                    <strong className="text-slate-900 dark:text-slate-100">
                                       necesita una actualización de datos
                                     </strong>{" "}
                                     de manera obligatoria.
@@ -3583,17 +3583,17 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-extrabold flex items-center justify-center shrink-0">
                                   3
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-indigo-500 block">
+                                  <label className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 block">
                                     Paso 3: Carga de valores al SRI
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     Asegúrese de tener subidos los datos
                                     correspondientes y los valores completos en
                                     la plataforma del SRI. Para verificar si los
@@ -3609,17 +3609,17 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-550 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-extrabold flex items-center justify-center shrink-0">
                                   4
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-indigo-500 block">
+                                  <label className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 block">
                                     Paso 4: Verificación final en el SRI
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     Consulte y valide directamente en el SRI si
                                     el cliente tiene valores ya
                                     cancelados/saldados o cuánto adeuda
@@ -3629,7 +3629,7 @@ export function Settings() {
                                     href="https://srienlinea.sri.gob.ec/"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1 mt-2.5 break-all"
+                                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 mt-2.5 break-all"
                                   >
                                     🔗 https://srienlinea.sri.gob.ec/
                                   </a>
@@ -3646,7 +3646,7 @@ export function Settings() {
                             transition={{ duration: 0.25 }}
                             className="space-y-4"
                           >
-                            <div className="bg-emerald-50 dark:bg-emerald-950/10 p-4 rounded-xl border border-emerald-100/30 dark:border-emerald-505/10 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed text-left">
+                            <div className="bg-emerald-50 dark:bg-emerald-950/10 p-4 rounded-xl border border-emerald-100/30 dark:border-emerald-500/10 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-relaxed text-left">
                               Aprenda a habilitar el Asistente Inteligente
                               mediante una clave de API de Gemini personal de
                               Google AI Studio. Este proceso toma menos de un
@@ -3660,17 +3660,17 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center justify-center shrink-0">
                                   1
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">
+                                  <label className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300 block">
                                     Paso 1: obtener la API Key
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     Esto se logra entrando al portal de
                                     desarrolladores de Google AI Studio con su
                                     cuenta habitual:
@@ -3679,7 +3679,7 @@ export function Settings() {
                                     href="https://aistudio.google.com/api-keys?project=gen-lang-client-0052201582"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-600 hover:underline flex items-center gap-1 mt-2 break-all"
+                                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 mt-2 break-all"
                                   >
                                     🔗
                                     https://aistudio.google.com/api-keys?project=gen-lang-client-0052201582
@@ -3693,18 +3693,18 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center justify-center shrink-0">
                                   2
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">
+                                  <label className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300 block">
                                     Paso 2: buscar la opción llamada obtener API
                                     KEY
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     En la barra izquierda o cabecera del portal
                                     de Google, busque y presione la opción
                                     principal identificada con el nombre de{" "}
@@ -3722,17 +3722,17 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center justify-center shrink-0">
                                   3
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">
+                                  <label className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300 block">
                                     Paso 3: aceptar términos y copiar la llave
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     Se le cargará automáticamente una ventana
                                     flotante de Google. Marque la casilla para
                                     aceptar los términos de servicio, complete
@@ -3748,18 +3748,18 @@ export function Settings() {
                                   "p-5 rounded-2xl border flex gap-4 transition-all text-left",
                                   isDark
                                     ? "bg-slate-900/60 border-slate-800"
-                                    : "bg-white border-slate-100 shadow-sm",
+                                    : "bg-white border-slate-200 shadow-sm",
                                 )}
                               >
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-650 dark:text-emerald-400 font-extrabold flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center justify-center shrink-0">
                                   4
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-450 block">
+                                  <label className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300 block">
                                     Paso 4: pegar la API KEY en configuración
                                     del asistente
                                   </label>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                                     Regrese a esta pantalla de Configuración y
                                     pegue su llave en la sección superior{" "}
                                     <strong className="text-indigo-600 dark:text-indigo-400">
@@ -3834,7 +3834,7 @@ export function Settings() {
                               "p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all",
                               isDark
                                 ? "bg-slate-900/40 border-slate-800 hover:border-slate-700"
-                                : "bg-white border-slate-100 hover:border-slate-200",
+                                : "bg-white border-slate-200 hover:border-slate-300",
                             )}
                           >
                             <div className="space-y-0.5 max-w-[80%]">
@@ -3854,7 +3854,7 @@ export function Settings() {
                                     Activo
                                   </span>
                                 ) : (
-                                  <span className="bg-slate-100 text-slate-700 dark:text-slate-300 dark:bg-slate-850 dark:text-slate-600 dark:text-slate-300 text-[8px] font-bold px-1.5 py-0.2 rounded uppercase">
+                                  <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[8px] font-bold px-1.5 py-0.2 rounded uppercase">
                                     Inactivo
                                   </span>
                                 )}
@@ -3899,7 +3899,7 @@ export function Settings() {
                 <button
                   type="button"
                   onClick={() => setIsInfoModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-350 dark:hover:bg-slate-700/80 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   Cerrar Ventana
                 </button>

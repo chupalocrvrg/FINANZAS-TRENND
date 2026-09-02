@@ -273,7 +273,7 @@ export function LockScreen({ settings, onUnlock }: LockScreenProps) {
             <button 
               type="button"
               onClick={() => setTempPin((prev) => prev.slice(0, -1))}
-              className="h-14 bg-slate-900/40 hover:bg-slate-900/80 border border-slate-800/60 rounded-2xl font-bold tracking-widest text-[9px] uppercase hover:text-rose-450 transition-colors cursor-pointer flex items-center justify-center"
+              className="h-14 bg-slate-900/40 hover:bg-slate-900/80 border border-slate-800/60 rounded-2xl font-bold tracking-widest text-[9px] uppercase hover:text-rose-500 transition-colors cursor-pointer flex items-center justify-center"
             >
               Borrar
             </button>

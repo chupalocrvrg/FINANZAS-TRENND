@@ -162,7 +162,7 @@ export function TutorialModal() {
                   onClick={handlePrev}
                   className={cn(
                     "px-4 py-3 border rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer select-none",
-                    isDark ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800" : "bg-white text-slate-550 border-slate-200 hover:bg-slate-50"
+                    isDark ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                   )}
                 >
                   <ChevronLeft className="w-4 h-4" /> Atrás

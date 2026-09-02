@@ -85,7 +85,7 @@ export function ReportSelectorModal({
               "relative w-full max-w-lg overflow-hidden rounded-3xl border shadow-2xl p-6 text-left z-10",
               isDark 
                 ? "bg-slate-900 border-slate-800 text-white shadow-black/40" 
-                : "bg-white border-slate-100 text-slate-850 shadow-slate-100/40"
+                : "bg-white border-slate-100 text-slate-800 shadow-slate-100/40"
             )}
           >
             {/* Close button */}
@@ -132,7 +132,7 @@ export function ReportSelectorModal({
                         : "bg-indigo-50 border-indigo-600 text-indigo-700 ring-2 ring-indigo-600/15")
                     : (isDark 
                         ? "bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700" 
-                        : "bg-slate-50/50 border-slate-205 text-slate-600 hover:border-slate-300")
+                        : "bg-slate-50/50 border-slate-200 text-slate-600 hover:border-slate-300")
                 )}
               >
                 <div className={cn(
@@ -166,7 +166,7 @@ export function ReportSelectorModal({
                         : "bg-indigo-50 border-indigo-600 text-indigo-700 ring-2 ring-indigo-600/15")
                     : (isDark 
                         ? "bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700" 
-                        : "bg-slate-50/50 border-slate-205 text-slate-600 hover:border-slate-300")
+                        : "bg-slate-50/50 border-slate-200 text-slate-600 hover:border-slate-300")
                 )}
               >
                 <div className={cn(
@@ -213,7 +213,7 @@ export function ReportSelectorModal({
                           disabled={isGenerating}
                           className={cn(
                             "w-full p-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner",
-                            isDark ? "bg-slate-900 border-slate-850 text-white" : "bg-white border-slate-205 text-slate-850"
+                            isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
                           )}
                         />
                       </div>
@@ -226,7 +226,7 @@ export function ReportSelectorModal({
                           disabled={isGenerating}
                           className={cn(
                             "w-full p-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner",
-                            isDark ? "bg-slate-900 border-slate-850 text-white" : "bg-white border-slate-205 text-slate-850"
+                            isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
                           )}
                         />
                       </div>
@@ -245,7 +245,7 @@ export function ReportSelectorModal({
                 className={cn(
                   "px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer text-center sm:min-w-[100px] disabled:opacity-50",
                   isDark 
-                    ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850 hover:text-white" 
+                    ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white" 
                     : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
                 )}
               >

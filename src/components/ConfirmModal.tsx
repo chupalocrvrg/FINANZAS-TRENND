@@ -84,8 +84,8 @@ export function ConfirmModal({
                 className={cn(
                   "px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer text-center sm:min-w-[100px]",
                   isDark 
-                    ? "bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-850 hover:text-white" 
-                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white" 
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
                 )}
               >
                 {cancelText}

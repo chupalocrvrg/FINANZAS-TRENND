@@ -204,7 +204,7 @@ export function Onboarding() {
                     setDisplayName(e.target.value);
                     if (errors.displayName) setErrors(prev => ({ ...prev, displayName: '' }));
                   }}
-                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-850 transition-colors focus:border-indigo-500 ${
+                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-900 transition-colors focus:border-indigo-500 ${
                     errors.displayName ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'
                   }`}
                   placeholder="Ej. Juan Carlos Peralta"
@@ -224,7 +224,7 @@ export function Onboarding() {
                     setCompanyName(e.target.value);
                     if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' }));
                   }}
-                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-850 transition-colors focus:border-indigo-500 ${
+                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-900 transition-colors focus:border-indigo-500 ${
                     errors.companyName ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'
                   }`}
                   placeholder="Ej. Comercial o Distribuidora Peralta"
@@ -266,7 +266,7 @@ export function Onboarding() {
                     setRuc(e.target.value);
                     if (errors.ruc) setErrors(prev => ({ ...prev, ruc: '' }));
                   }}
-                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-850 transition-colors focus:border-indigo-500 ${
+                  className={`w-full bg-slate-50 border p-3 rounded-xl outline-none text-sm font-bold text-slate-900 transition-colors focus:border-indigo-500 ${
                     errors.ruc ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'
                   }`}
                   placeholder="Ej. 1726485930001 o 0928374829"
@@ -283,7 +283,7 @@ export function Onboarding() {
                   type="tel" 
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none text-sm font-bold text-slate-850 focus:border-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none text-sm font-bold text-slate-900 focus:border-indigo-500"
                   placeholder="Ej. +593 99 999 9999"
                 />
               </div>

@@ -328,7 +328,7 @@ export function Admin() {
                   return (
                     <tr 
                       key={u.uid} 
-                      className={`hover:bg-slate-850/40 transition-colors ${isCurrentImpersonated ? 'bg-indigo-950/20' : ''}`}
+                      className={`hover:bg-slate-800/40 transition-colors ${isCurrentImpersonated ? 'bg-indigo-950/20' : ''}`}
                     >
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">

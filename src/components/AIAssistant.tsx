@@ -421,7 +421,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
         {/* Toggle between End Client & Reseller */}
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tipo de Cliente / Comprador</label>
-          <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-250 dark:bg-slate-800 rounded-lg">
+          <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-300 dark:bg-slate-800 rounded-lg">
             <button
               type="button"
               onClick={() => { setClientType('client'); setSelectedClientId(''); }}
@@ -472,7 +472,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
                 onChange={(e) => setSupplierId(e.target.value)}
                 className={cn(
                   "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
-                  isDark ? "bg-slate-800 border-slate-750 text-slate-100" : "bg-white border-slate-200 text-slate-850"
+                  isDark ? "bg-slate-800 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"
                 )}
               >
                 <option value="">-- Seleccionar Proveedor --</option>
@@ -486,7 +486,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
                 title="Añadir nuevo proveedor"
                 className={cn(
                   "p-1.5 rounded-lg border flex items-center justify-center cursor-pointer hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors",
-                  isDark ? "bg-slate-850 border-slate-700" : "bg-white border-slate-200"
+                  isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
                 )}
               >
                 <PlusCircle className="w-4 h-4" />
@@ -501,13 +501,13 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
                 onChange={(e) => setCustomSupplierInput(e.target.value)}
                 className={cn(
                   "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
-                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-880"
+                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
                 )}
               />
               <button
                 type="button"
                 onClick={() => { setShowCustomSupplier(false); setCustomSupplierInput(''); }}
-                className="text-[10px] font-extrabold text-slate-450 hover:text-indigo-500 cursor-pointer"
+                className="text-[10px] font-extrabold text-slate-500 hover:text-indigo-500 cursor-pointer"
               >
                 Volver
               </button>
@@ -526,7 +526,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
                 onChange={(e) => handleSelectClient(e.target.value)}
                 className={cn(
                   "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
-                  isDark ? "bg-slate-800 border-slate-750 text-slate-100" : "bg-white border-slate-200 text-slate-850"
+                  isDark ? "bg-slate-800 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"
                 )}
               >
                 <option value="">-- Seleccionar --</option>
@@ -546,7 +546,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
                 title="Añadir nuevo cliente/socio"
                 className={cn(
                   "p-1.5 rounded-lg border flex items-center justify-center cursor-pointer hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors",
-                  isDark ? "bg-slate-850 border-slate-700" : "bg-white border-slate-200"
+                  isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
                 )}
               >
                 <PlusCircle className="w-5 h-5" />
@@ -561,7 +561,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
                 onChange={(e) => setCustomNameInput(e.target.value)}
                 className={cn(
                   "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
-                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-880"
+                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
                 )}
               />
               <button
@@ -605,7 +605,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
               onChange={(e) => setCost(parseFloat(e.target.value) || 0)}
               className={cn(
                 "px-2 py-1 rounded text-xs text-center font-bold font-mono outline-none border focus:border-indigo-500",
-                isDark ? "bg-slate-800 border-slate-700 text-rose-350" : "bg-white border-slate-200 text-rose-600"
+                isDark ? "bg-slate-800 border-slate-700 text-rose-400" : "bg-white border-slate-200 text-rose-600"
               )}
             />
           </div>
@@ -618,7 +618,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
               onChange={(e) => setPvpClient(parseFloat(e.target.value) || 0)}
               className={cn(
                 "px-2 py-1 rounded text-xs text-center font-bold font-mono outline-none border focus:border-indigo-500",
-                isDark ? "bg-slate-800 border-slate-700 text-emerald-350" : "bg-white border-slate-200 text-emerald-600"
+                isDark ? "bg-slate-800 border-slate-700 text-emerald-400" : "bg-white border-slate-200 text-emerald-600"
               )}
             />
           </div>
@@ -631,7 +631,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
               onChange={(e) => setPvpReseller(parseFloat(e.target.value) || 0)}
               className={cn(
                 "px-2 py-1 rounded text-xs text-center font-bold font-mono outline-none border focus:border-indigo-500",
-                isDark ? "bg-slate-800 border-slate-700 text-sky-350" : "bg-white border-slate-200 text-sky-600"
+                isDark ? "bg-slate-800 border-slate-700 text-sky-400" : "bg-white border-slate-200 text-sky-600"
               )}
             />
           </div>
@@ -700,7 +700,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
               type="button"
               onClick={() => setIsCostPaid(true)}
               className={cn("py-1 rounded text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer",
-                isCostPaid ? "bg-indigo-650 text-white shadow-xs" : "text-slate-400 hover:text-slate-200"
+                isCostPaid ? "bg-indigo-600 text-white shadow-xs" : "text-slate-400 hover:text-slate-200"
               )}
             >
               Pagado
@@ -758,9 +758,9 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
           type="checkbox"
           checked={isVerified}
           onChange={(e) => setIsVerified(e.target.checked)}
-          className="w-4 h-4 text-emerald-650 border-slate-300 rounded focus:ring-emerald-500 mt-0.5 cursor-pointer accent-emerald-500"
+          className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 mt-0.5 cursor-pointer accent-emerald-500"
         />
-        <label htmlFor="chk-verify-save" className={cn("text-[10px] font-bold cursor-pointer select-none leading-snug", isDark ? "text-slate-300" : "text-slate-750")}>
+        <label htmlFor="chk-verify-save" className={cn("text-[10px] font-bold cursor-pointer select-none leading-snug", isDark ? "text-slate-300" : "text-slate-800")}>
           He verificado y confirmo que los nombres de cliente final, revendedores, intermediarios y proveedores son correctos y deseo guardar la venta.
         </label>
       </div>
@@ -772,7 +772,7 @@ function DigitalServiceFormCard({ draft, clients, resellers, intermediaries, cat
         className={cn(
           "w-full p-2.5 rounded-xl font-bold uppercase text-[9px] tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer",
           isVerified 
-            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-650/15" 
+            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15" 
             : "bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed opacity-50"
         )}
       >
@@ -885,7 +885,7 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
         {/* Toggle between End Client, Reseller & Intermediary */}
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tipo de Socio Comercial</label>
-          <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-250 dark:bg-slate-800 rounded-lg">
+          <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-300 dark:bg-slate-800 rounded-lg">
             <button
               type="button"
               onClick={() => { setClientType('client'); setSelectedClientId(''); }}
@@ -936,7 +936,7 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
                 onChange={(e) => setSelectedClientId(e.target.value)}
                 className={cn(
                   "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
-                  isDark ? "bg-slate-800 border-slate-750 text-slate-100" : "bg-white border-slate-200 text-slate-850"
+                  isDark ? "bg-slate-800 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"
                 )}
               >
                 <option value="">-- Seleccionar socio --</option>
@@ -956,7 +956,7 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
                 title="Añadir nuevo socio"
                 className={cn(
                   "p-1.5 rounded-lg border flex items-center justify-center cursor-pointer hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors",
-                  isDark ? "bg-slate-850 border-slate-700" : "bg-white border-slate-200"
+                  isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
                 )}
               >
                 <PlusCircle className="w-5 h-5" />
@@ -971,7 +971,7 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
                 onChange={(e) => setCustomNameInput(e.target.value)}
                 className={cn(
                   "flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
-                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-880"
+                  isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
                 )}
               />
               <button
@@ -994,7 +994,7 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
             onChange={(e) => setWarehouse(e.target.value)}
             className={cn(
               "w-full px-2.5 py-1.5 rounded-lg text-xs font-bold border outline-none focus:border-indigo-500",
-              isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-white border-slate-200 text-slate-880"
+              isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
             )}
             placeholder="Ej. Bodega Principal / Terminal..."
           />
@@ -1008,7 +1008,7 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
             onChange={(e) => setIntermediaryId(e.target.value)}
             className={cn(
               "w-full px-2.5 py-1.5 rounded-lg text-xs font-bold outline-none border focus:border-indigo-500",
-              isDark ? "bg-slate-800 border-slate-750 text-slate-100" : "bg-white border-slate-200 text-slate-850"
+              isDark ? "bg-slate-800 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-800"
             )}
           >
             <option value="">-- No asignado / Seleccione revendedor --</option>
@@ -1026,9 +1026,9 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
           type="checkbox"
           checked={isVerified}
           onChange={(e) => setIsVerified(e.target.checked)}
-          className="w-4 h-4 text-emerald-650 border-slate-300 rounded focus:ring-emerald-500 mt-0.5 cursor-pointer accent-emerald-500"
+          className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 mt-0.5 cursor-pointer accent-emerald-500"
         />
-        <label htmlFor="chk-verify-save-ant" className={cn("text-[10px] font-bold cursor-pointer select-none leading-snug", isDark ? "text-slate-300" : "text-slate-750")}>
+        <label htmlFor="chk-verify-save-ant" className={cn("text-[10px] font-bold cursor-pointer select-none leading-snug", isDark ? "text-slate-300" : "text-slate-800")}>
           He verificado y confirmo que los nombres de cliente final, revendedores, intermediarios y establecimientos son correctos y deseo guardar la actualización.
         </label>
       </div>
@@ -1040,7 +1040,7 @@ function AntUpdateFormCard({ draft, clients, resellers, intermediaries, onConfir
         className={cn(
           "w-full p-2.5 rounded-xl font-bold uppercase text-[9px] tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer",
           isVerified 
-            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-650/15" 
+            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15" 
             : "bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed opacity-50"
         )}
       >
@@ -2307,13 +2307,13 @@ export function AIAssistant() {
                             <motion.div 
                               initial={{ opacity: 0, scale: 0.98 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              className="mt-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-450 text-xs font-bold leading-relaxed shadow-xs flex flex-col gap-1.5"
+                              className="mt-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold leading-relaxed shadow-xs flex flex-col gap-1.5"
                             >
                               <div className="text-[9px] font-black uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-bounce" />
                                 Venta Digital Registrada Exitosamente
                               </div>
-                              <div className="grid grid-cols-2 gap-y-1 gap-x-2 pt-1 border-t border-emerald-500/10 font-mono text-[10px] text-slate-500 dark:text-slate-405">
+                              <div className="grid grid-cols-2 gap-y-1 gap-x-2 pt-1 border-t border-emerald-500/10 font-mono text-[10px] text-slate-500 dark:text-slate-400">
                                 <div>Socio/Cliente:</div>
                                 <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{m.actionParsed.customClientName}</div>
                                 <div>Producto:</div>
@@ -2421,7 +2421,7 @@ export function AIAssistant() {
                           Apagar
                         </button>
                       </div>
-                      <div className="relative rounded-xl overflow-hidden border border-slate-705 bg-black aspect-video max-h-48 shadow-inner">
+                      <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video max-h-48 shadow-inner">
                         <video 
                           ref={videoRef} 
                           autoPlay 
@@ -2462,7 +2462,7 @@ export function AIAssistant() {
                       className={cn(
                         "p-2.5 rounded-xl border transition-colors cursor-pointer",
                         isDark 
-                          ? "bg-slate-800 hover:bg-slate-700 border-slate-705 text-slate-350" 
+                          ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-400" 
                           : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500"
                       )}
                     >
@@ -2479,7 +2479,7 @@ export function AIAssistant() {
                         isCameraActive
                           ? "bg-rose-600 hover:bg-rose-700 border-rose-600 text-white animate-pulse"
                           : isDark 
-                          ? "bg-slate-800 hover:bg-slate-700 border-slate-705 text-slate-350" 
+                          ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-400" 
                           : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500"
                       )}
                     >
@@ -2494,7 +2494,7 @@ export function AIAssistant() {
                       className={cn(
                         "flex-1 px-4 py-2.5 rounded-xl text-sm outline-none border transition-all duration-300", 
                         isDark 
-                          ? "bg-slate-800 border-slate-750 text-white focus:border-indigo-505 focus:border-indigo-500" 
+                          ? "bg-slate-800 border-slate-800 text-white focus:border-indigo-500 focus:border-indigo-500" 
                           : "bg-slate-50 border-slate-200 focus:border-indigo-500 text-slate-800"
                       )}
                     />
@@ -2507,8 +2507,8 @@ export function AIAssistant() {
                       <Send className="w-4 h-4" />
                     </button>
                   </form>
-                  <div className="text-[9px] text-center text-slate-450 mt-2 tracking-wide font-medium">
-                    Tip: Toma una captura de pantalla y presiona <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">Ctrl</kbd> + <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-150 dark:bg-slate-800 rounded mx-0.5 font-sans">V</kbd> para pegarla al instante.
+                  <div className="text-[9px] text-center text-slate-500 mt-2 tracking-wide font-medium">
+                    Tip: Toma una captura de pantalla y presiona <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 rounded mx-0.5 font-sans">Ctrl</kbd> + <kbd className="px-1 py-0.5 border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 rounded mx-0.5 font-sans">V</kbd> para pegarla al instante.
                   </div>
                 </div>
               </>

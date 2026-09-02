@@ -101,7 +101,7 @@ export function WelcomeUpdateModal({ theme }: WelcomeUpdateModalProps) {
             <div className="space-y-4 my-2 overflow-y-auto max-h-[40vh] pr-1 scrollbar-hide flex-1">
               {SYSTEM_UPDATES.slice(0, 4).map((item) => {
                 let badgeClass = "bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400";
-                if (item.type === 'security') badgeClass = "bg-rose-500/15 dark:bg-rose-500/20 text-rose-600 dark:text-rose-450";
+                if (item.type === 'security') badgeClass = "bg-rose-500/15 dark:bg-rose-500/20 text-rose-600 dark:text-rose-500";
                 if (item.type === 'feature') badgeClass = "bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400";
                 if (item.type === 'interface') badgeClass = "bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400";
 

@@ -24,7 +24,9 @@ import {
   EyeOff,
   Filter,
   RotateCcw,
-  Link
+  Link,
+  ExternalLink,
+  Bot
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
 import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate, addSecurityAuditLog, formatSalesMessage } from '../lib/utils';
@@ -80,6 +82,10 @@ export interface DigitalServiceItem {
   clientType?: 'client' | 'reseller';
   finalClientName?: string;
   finalClientContact?: string;
+  isBot?: boolean;
+  botUrl?: string;
+  botUser?: string;
+  botPassword?: string;
   status?: 'active' | 'expired' | 'pending';
   isPaid?: boolean;
   isCostPaid?: boolean;
@@ -234,6 +240,10 @@ export function DigitalServices() {
     clientType: 'client' as 'client' | 'reseller',
     finalClientName: '',
     finalClientContact: '',
+    isBot: false,
+    botUrl: '',
+    botUser: '',
+    botPassword: '',
     expirationDate: '',
     email: '',
     password: '',
@@ -381,6 +391,13 @@ export function DigitalServices() {
       }
     }
 
+    // Validate BOT URL if BOT is enabled
+    if (formData.isBot && (!formData.botUrl || formData.botUrl.trim() === '')) {
+      alert("Por favor, ingrese la URL / Página del BOT (campo obligatorio).");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Check duplicates if not editing
     if (!formData.id) {
       const isDuplicate = services.some(s => 
@@ -413,6 +430,10 @@ export function DigitalServices() {
       clientType: formData.clientType,
       finalClientName: formData.finalClientName || '',
       finalClientContact: formData.finalClientContact || '',
+      isBot: !!formData.isBot,
+      botUrl: formData.isBot ? (formData.botUrl || '').trim() : '',
+      botUser: formData.isBot ? (formData.botUser || '').trim() : '',
+      botPassword: formData.isBot ? (formData.botPassword || '').trim() : '',
       expirationDate: formData.expirationDate,
       email: formData.email,
       password: formData.password,
@@ -601,6 +622,10 @@ export function DigitalServices() {
       clientType: 'client',
       finalClientName: '',
       finalClientContact: '',
+      isBot: false,
+      botUrl: '',
+      botUser: '',
+      botPassword: '',
       expirationDate: '',
       email: '',
       password: '',
@@ -629,6 +654,10 @@ export function DigitalServices() {
       clientType: (service as any).clientType || 'client',
       finalClientName: (service as any).finalClientName || '',
       finalClientContact: (service as any).finalClientContact || '',
+      isBot: !!service.isBot,
+      botUrl: service.botUrl || '',
+      botUser: service.botUser || '',
+      botPassword: service.botPassword || '',
       expirationDate: service.expirationDate || '',
       email: service.email || '',
       password: service.password || '',
@@ -1157,10 +1186,10 @@ export function DigitalServices() {
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div className="space-y-1">
-          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-slate-900")}>
+          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
             Suscripciones y Servicios
           </h2>
-          <p className="text-slate-700 dark:text-slate-300 font-medium">Control de clientes, vencimientos y credenciales de cuentas digitales.</p>
+          <p className={cn("font-medium", isDark ? "text-white" : "text-black")}>Control de clientes, vencimientos y credenciales de cuentas digitales.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button 
@@ -1171,7 +1200,7 @@ export function DigitalServices() {
           </button>
           <button 
             onClick={() => setShowCatalog(true)}
-            className={cn("flex-1 sm:flex-none border px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-colors cursor-pointer", isDark ? "border-slate-800 text-slate-300 hover:bg-slate-800/30" : "border-slate-200 text-slate-700 bg-white shadow-sm")}
+            className={cn("flex-1 sm:flex-none border px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-slate-50 transition-colors cursor-pointer", isDark ? "border-slate-800 text-white hover:bg-slate-800/30" : "border-slate-200 text-black bg-white shadow-sm")}
           >
             Catálogo
           </button>
@@ -1195,24 +1224,24 @@ export function DigitalServices() {
       {/* Metrics Row (Mejora: Predictive Profitability Analytics Row) */}
       {!loading && services.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-850" : "bg-white border-slate-200")}>
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200")}>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Facturación Activa (MRR)</span>
+              <span className={cn("text-[9px] font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Facturación Activa (MRR)</span>
               <div className="w-7 h-7 bg-indigo-500/10 text-indigo-500 flex items-center justify-center rounded-xl">
                 <Wallet className="w-4 h-4" />
               </div>
             </div>
             <div>
-              <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+              <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight", isDark ? "text-white" : "text-black")}>
                 {formatCurrency(activeRevenueMonth)}
               </p>
-              <p className="text-[9px] text-slate-600 dark:text-slate-300 mt-0.5 font-bold uppercase tracking-wider">Ingreso total estimado por cuentas activas</p>
+              <p className={cn("text-[9px] mt-0.5 font-bold uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Ingreso total estimado por cuentas activas</p>
             </div>
           </div>
 
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-850" : "bg-white border-slate-200")}>
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm", isDark ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200")}>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Coste de Proveedores</span>
+              <span className={cn("text-[9px] font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Coste de Proveedores</span>
               <div className="w-7 h-7 bg-rose-500/10 text-rose-500 flex items-center justify-center rounded-xl">
                 <Receipt className="w-4 h-4" />
               </div>
@@ -1221,11 +1250,11 @@ export function DigitalServices() {
               <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight", isDark ? "text-rose-400" : "text-rose-600")}>
                 {formatCurrency(activeCostMonth)}
               </p>
-              <p className="text-[9px] text-slate-600 dark:text-slate-300 mt-0.5 font-bold uppercase tracking-wider">Costo invertido en las suscripciones activas</p>
+              <p className={cn("text-[9px] mt-0.5 font-bold uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Costo invertido en las suscripciones activas</p>
             </div>
           </div>
 
-          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm ring-2 ring-indigo-500/10", isDark ? "bg-indigo-950/20 border-indigo-500/20" : "bg-indigo-50/50 border-indigo-150")}>
+          <div className={cn("p-4 rounded-3xl border flex flex-col justify-between shadow-sm ring-2 ring-indigo-500/10", isDark ? "bg-indigo-950/20 border-indigo-500/20" : "bg-indigo-50/50 border-indigo-200")}>
             <div className="flex justify-between items-center mb-1">
               <span className="text-[9px] font-black uppercase tracking-wider text-indigo-500 font-extrabold">Ganancia Estimada ({currentMonthName})</span>
               <div className="w-7 h-7 bg-indigo-500 text-white flex items-center justify-center rounded-xl shadow-md">
@@ -1237,11 +1266,11 @@ export function DigitalServices() {
                 <p className={cn("text-lg lg:text-xl font-bold font-mono tracking-tight text-indigo-600 dark:text-indigo-400")}>
                   {formatCurrency(expiringProfitMonth)}
                 </p>
-                <p className="text-[9px] text-indigo-500/80 mt-0.5 font-bold uppercase tracking-wider">
+                <p className={cn("text-[9px] mt-0.5 font-bold uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
                   Bajo supuesto de renovación del 100% ({servicesExpiringThisMonth.length} por vencer este mes)
                 </p>
               </div>
-              <div className="bg-indigo-550 text-white font-extrabold uppercase tracking-widest text-[8px] px-2 py-1 rounded-lg shadow-sm shrink-0">
+              <div className="bg-indigo-600 text-white font-extrabold uppercase tracking-widest text-[8px] px-2 py-1 rounded-lg shadow-sm shrink-0">
                 +{expiringMarginPercent}% Margen
               </div>
             </div>
@@ -1253,7 +1282,7 @@ export function DigitalServices() {
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center w-full">
         <div className="flex gap-2 w-full md:max-w-md">
           <div className="relative flex-1">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-600 dark:text-slate-300">
+            <span className={cn("absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none", isDark ? "text-white" : "text-black")}>
               <Search className="w-5 h-5 text-indigo-500" />
             </span>
             <input
@@ -1264,8 +1293,8 @@ export function DigitalServices() {
               className={cn(
                 "w-full pl-11 pr-4 py-3 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner",
                 isDark 
-                  ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
-                  : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50"
+                  ? "border-slate-800 bg-slate-900/45 text-white placeholder-slate-400 focus:bg-slate-900" 
+                  : "border-slate-200 bg-white text-black placeholder-slate-500 focus:bg-slate-50"
               )}
             />
           </div>
@@ -1279,8 +1308,8 @@ export function DigitalServices() {
                 : isAnyFilterActive
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-500 font-bold"
                   : isDark
-                    ? "border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-800/30"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm"
+                    ? "border-slate-800 bg-slate-900/40 text-white hover:bg-slate-800/30"
+                    : "border-slate-200 bg-white text-black hover:bg-slate-50 shadow-sm"
             )}
           >
             <Filter className="w-4 h-4" />
@@ -1293,18 +1322,18 @@ export function DigitalServices() {
 
         {/* Dynamic Categorization Filter Tabs */}
         {!loading && (
-          <div className={cn("flex items-center gap-1.5 p-1 rounded-2xl border w-full md:w-auto overflow-x-auto", isDark ? "bg-slate-900/60 border-slate-850" : "bg-slate-100/70 border-slate-205")}>
+          <div className={cn("flex items-center gap-1.5 p-1 rounded-2xl border w-full md:w-auto overflow-x-auto", isDark ? "bg-slate-900/60 border-slate-800" : "bg-slate-100/70 border-slate-200")}>
             <button
               onClick={() => setStatusFilter('all')}
               className={cn(
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'all'
-                  ? (isDark ? "bg-slate-800 text-white shadow-md font-extrabold" : "bg-white text-slate-900 shadow-sm border border-black/5")
-                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
+                  ? (isDark ? "bg-slate-800 text-white shadow-md font-extrabold" : "bg-white text-black shadow-sm border border-black/5 font-extrabold")
+                  : (isDark ? "text-white hover:text-white" : "text-black hover:text-black")
               )}
             >
               Todos
-              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'all' ? "bg-indigo-500 text-white" : "bg-slate-200/50 text-slate-700 dark:text-slate-300 dark:bg-slate-800")}>
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'all' ? "bg-indigo-500 text-white" : (isDark ? "bg-slate-800 text-white" : "bg-slate-200/80 text-black"))}>
                 {totalCounts}
               </span>
             </button>
@@ -1314,12 +1343,12 @@ export function DigitalServices() {
               className={cn(
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'active'
-                  ? (isDark ? "bg-slate-800 text-emerald-400 shadow-md font-extrabold" : "bg-white text-emerald-600 shadow-sm border border-emerald-500/10")
-                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
+                  ? (isDark ? "bg-slate-800 text-emerald-400 shadow-md font-extrabold" : "bg-white text-emerald-600 shadow-sm border border-emerald-500/10 font-extrabold")
+                  : (isDark ? "text-white hover:text-white" : "text-black hover:text-black")
               )}
             >
               Activos
-              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'active' ? "bg-emerald-500 text-white" : "bg-slate-200/50 text-slate-505 dark:bg-slate-800")}>
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'active' ? "bg-emerald-500 text-white" : (isDark ? "bg-slate-800 text-white" : "bg-slate-200/80 text-black"))}>
                 {activeCounts}
               </span>
             </button>
@@ -1329,13 +1358,13 @@ export function DigitalServices() {
               className={cn(
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'expiring'
-                  ? (isDark ? "bg-slate-800 text-amber-400 shadow-md font-extrabold" : "bg-white text-amber-600 shadow-sm border border-amber-500/10")
-                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
+                  ? (isDark ? "bg-slate-800 text-amber-400 shadow-md font-extrabold" : "bg-white text-amber-600 shadow-sm border border-amber-500/10 font-extrabold")
+                  : (isDark ? "text-white hover:text-white" : "text-black hover:text-black")
               )}
             >
               <Calendar className="w-3.5 h-3.5 text-amber-500" />
               Vencen Pronto
-              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'expiring' ? "bg-amber-500 text-white" : "bg-slate-200/50 text-slate-505 dark:bg-slate-800")}>
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'expiring' ? "bg-amber-500 text-white" : (isDark ? "bg-slate-800 text-white" : "bg-slate-200/80 text-black"))}>
                 {expiringCounts}
               </span>
             </button>
@@ -1345,13 +1374,13 @@ export function DigitalServices() {
               className={cn(
                 "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
                 statusFilter === 'expired'
-                  ? (isDark ? "bg-slate-800 text-rose-400 shadow-md font-extrabold" : "bg-white text-rose-600 shadow-sm border border-rose-500/10")
-                  : "text-slate-700 dark:text-slate-300 hover:text-slate-705"
+                  ? (isDark ? "bg-slate-800 text-rose-400 shadow-md font-extrabold" : "bg-white text-rose-600 shadow-sm border border-rose-500/10 font-extrabold")
+                  : (isDark ? "text-white hover:text-white" : "text-black hover:text-black")
               )}
             >
               <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
               Vencidos
-              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'expired' ? "bg-rose-500 text-white" : "bg-slate-200/50 text-slate-505 dark:bg-slate-800")}>
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'expired' ? "bg-rose-500 text-white" : (isDark ? "bg-slate-800 text-white" : "bg-slate-200/80 text-black"))}>
                 {expiredCounts}
               </span>
             </button>
@@ -1369,7 +1398,7 @@ export function DigitalServices() {
             transition={{ duration: 0.2 }}
             className={cn(
               "overflow-hidden w-full rounded-2xl border p-4 lg:p-6 text-left shadow-inner flex flex-col gap-4",
-              isDark ? "bg-slate-900/50 border-slate-850" : "bg-slate-50/50 border-slate-200"
+              isDark ? "bg-slate-900/50 border-slate-800" : "bg-slate-50/50 border-slate-200"
             )}
           >
             <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800">
@@ -1391,13 +1420,13 @@ export function DigitalServices() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Proveedor */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Proveedor</label>
+                <label className={cn("text-[10px] font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Proveedor</label>
                 <select
                   value={filterSupplierId}
                   onChange={(e) => setFilterSupplierId(e.target.value)}
                   className={cn(
                     "w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                    isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                    isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-black"
                   )}
                 >
                   <option value="">Todos los Proveedores</option>
@@ -1409,13 +1438,13 @@ export function DigitalServices() {
 
               {/* Servicio */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Servicio / Producto</label>
+                <label className={cn("text-[10px] font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Servicio / Producto</label>
                 <select
                   value={filterServiceName}
                   onChange={(e) => setFilterServiceName(e.target.value)}
                   className={cn(
                     "w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                    isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                    isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-black"
                   )}
                 >
                   <option value="">Todos los Servicios</option>
@@ -1427,7 +1456,7 @@ export function DigitalServices() {
 
               {/* Fecha de Corte */}
               <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Rango de Vencimiento (Corte)</label>
+                <label className={cn("text-[10px] font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Rango de Vencimiento (Corte)</label>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
@@ -1435,17 +1464,17 @@ export function DigitalServices() {
                     onChange={(e) => setFilterCutoffStart(e.target.value)}
                     className={cn(
                       "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-black"
                     )}
                   />
-                  <span className="text-slate-600 dark:text-slate-300 text-xs">al</span>
+                  <span className={cn("text-xs font-bold", isDark ? "text-white" : "text-black")}>al</span>
                   <input
                     type="date"
                     value={filterCutoffEnd}
                     onChange={(e) => setFilterCutoffEnd(e.target.value)}
                     className={cn(
                       "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-black"
                     )}
                   />
                 </div>
@@ -1453,7 +1482,7 @@ export function DigitalServices() {
 
               {/* Fecha de Venta */}
               <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Rango de Venta / Registro</label>
+                <label className={cn("text-[10px] font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Rango de Venta / Registro</label>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
@@ -1461,17 +1490,17 @@ export function DigitalServices() {
                     onChange={(e) => setFilterSaleStart(e.target.value)}
                     className={cn(
                       "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-black"
                     )}
                   />
-                  <span className="text-slate-600 dark:text-slate-300 text-xs">al</span>
+                  <span className={cn("text-xs font-bold", isDark ? "text-white" : "text-black")}>al</span>
                   <input
                     type="date"
                     value={filterSaleEnd}
                     onChange={(e) => setFilterSaleEnd(e.target.value)}
                     className={cn(
                       "w-full px-2 py-1.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all",
-                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                      isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-black"
                     )}
                   />
                 </div>
@@ -1494,7 +1523,7 @@ export function DigitalServices() {
                 }
               }}
               className={cn("px-3 py-1.5 rounded-xl border font-bold uppercase tracking-wider transition-all cursor-pointer text-[9px] select-none", 
-                isDark ? "border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50")}
+                isDark ? "border-slate-800 text-white hover:bg-slate-800" : "border-slate-200 text-black bg-white hover:bg-slate-50")}
             >
               {selectedItemIds.length === filteredServices.length ? 'Desmarcar Todos' : 'Seleccionar Todos'}
             </button>
@@ -1507,10 +1536,10 @@ export function DigitalServices() {
 
           {/* Grid columns selector for accessibility / visually impaired users */}
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className={cn("text-[9px] font-black uppercase tracking-widest hidden sm:inline-block", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-700 dark:text-slate-300")}>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest hidden sm:inline-block", isDark ? "text-white" : "text-black")}>
               👁️ Ver por Fila:
             </span>
-            <div className={cn("flex items-center gap-1 p-1 rounded-xl border w-full md:w-auto overflow-x-auto", isDark ? "bg-slate-900/80 border-slate-850" : "bg-slate-50 border-slate-200")}>
+            <div className={cn("flex items-center gap-1 p-1 rounded-xl border w-full md:w-auto overflow-x-auto", isDark ? "bg-slate-900/80 border-slate-800" : "bg-slate-50 border-slate-200")}>
               {[1, 2, 3, 4].map((cols) => (
                 <button
                   key={cols}
@@ -1519,8 +1548,8 @@ export function DigitalServices() {
                   className={cn(
                     "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex-1 md:flex-none",
                     gridCols === cols
-                      ? (isDark ? "bg-indigo-650 text-white shadow font-black" : "bg-white text-indigo-600 shadow-sm border border-black/5 font-black")
-                      : (isDark ? "text-slate-600 dark:text-slate-300 hover:text-white" : "text-slate-700 dark:text-slate-300 hover:text-slate-900")
+                      ? (isDark ? "bg-indigo-600 text-white shadow font-black" : "bg-white text-indigo-600 shadow-sm border border-black/5 font-black")
+                      : (isDark ? "text-white hover:text-white" : "text-black hover:text-black")
                   )}
                   title={cols === 1 ? "1 Tarjeta Grande (ideal para problemas de vista)" : `${cols} Tarjetas`}
                 >
@@ -1533,7 +1562,7 @@ export function DigitalServices() {
       )}
 
       {loading ? (
-        <div className="py-32 flex flex-col items-center justify-center gap-4 text-slate-700 dark:text-slate-300">
+        <div className={cn("py-32 flex flex-col items-center justify-center gap-4", isDark ? "text-white" : "text-black")}>
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
           <p className="font-bold uppercase tracking-widest text-[10px]">Sincronizando Servicios...</p>
         </div>
@@ -1612,12 +1641,13 @@ export function DigitalServices() {
                           {['Software', 'Otros'].includes(service.category) && <ShoppingBag className={cn(gridCols === 1 ? "w-7 h-7" : gridCols === 2 ? "w-6 h-6" : "w-5 h-5")} />}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <span className={cn("font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 block",
+                          <span className={cn("font-black uppercase tracking-widest block",
+                            isDark ? "text-white" : "text-black",
                             gridCols === 1 ? "text-xs mb-0.5" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                           )}>{service.category}</span>
                           <h4 className={cn("font-bold tracking-tight truncate", 
                             gridCols === 1 ? "text-xl md:text-2xl font-black" : gridCols === 2 ? "text-base md:text-lg" : "text-sm",
-                            isDark ? "text-white" : "text-slate-900"
+                            isDark ? "text-white" : "text-black"
                           )} title={service.name}>
                             {service.name}
                           </h4>
@@ -1635,7 +1665,7 @@ export function DigitalServices() {
                           <div className="min-w-0">
                             <p className={cn("font-bold truncate flex items-center gap-1.5", 
                               gridCols === 1 ? "text-base md:text-lg font-black" : gridCols === 2 ? "text-sm md:text-base" : "text-xs",
-                              isDark ? "text-slate-250" : "text-slate-800"
+                              isDark ? "text-white" : "text-black"
                             )}>
                               <span>👤</span> <span>{service.clientName}</span>
                               {(service as any).clientType === 'reseller' && (
@@ -1643,8 +1673,9 @@ export function DigitalServices() {
                               )}
                             </p>
                             {(service as any).finalClientName && (
-                              <p className="text-[10px] font-bold text-slate-450 dark:text-slate-600 dark:text-slate-300 flex items-center gap-1 mt-0.5 truncate">
-                                <span className="text-indigo-500 dark:text-indigo-400">└ 👤 Final:</span> <span>{(service as any).finalClientName}</span>
+                              <p className={cn("text-[10px] font-bold flex items-center gap-1 mt-0.5 truncate", isDark ? "text-white" : "text-black")}>
+                                <span className={cn("font-extrabold", isDark ? "text-white" : "text-black")}>└ 👤 Final:</span> 
+                                <span className={cn(isDark ? "text-white" : "text-black")}>{(service as any).finalClientName}</span>
                               </p>
                             )}
                           </div>
@@ -1690,18 +1721,20 @@ export function DigitalServices() {
                           </div>
                         </div>
                         {service.clientContact && (
-                          <p className={cn("font-mono text-slate-700 dark:text-slate-300 flex items-center gap-1.5", 
+                          <p className={cn("font-mono font-bold flex items-center gap-1.5", 
+                            isDark ? "text-white" : "text-black",
                             gridCols === 1 ? "text-sm mt-1" : gridCols === 2 ? "text-xs" : "text-[10px]"
                           )}>
-                            <span>📞</span> <span>{service.clientContact}</span>
+                            <span>📞</span> <span className={cn(isDark ? "text-white" : "text-black")}>{service.clientContact}</span>
                           </p>
                         )}
                         {service.expirationDate && (
                           <p className={cn("font-bold flex items-center gap-1.5", 
                             gridCols === 1 ? "text-sm mt-2" : gridCols === 2 ? "text-xs mt-1" : "text-[10px]",
-                            expired ? "text-rose-500" : expiring ? "text-amber-500" : "text-slate-700 dark:text-slate-300"
+                            isDark ? "text-white" : "text-black"
                           )}>
-                            <span>📅 Expira:</span> <span>{service.expirationDate}</span>
+                            <span className={cn(isDark ? "text-white" : "text-black")}>📅 Expira:</span> 
+                            <span className={cn("font-extrabold", isDark ? "text-white" : "text-black")}>{service.expirationDate}</span>
                           </p>
                         )}
                       </div>
@@ -1710,11 +1743,11 @@ export function DigitalServices() {
                     {/* Cuenta credenciales ocultas/visibles */}
                     {(service.email || service.password || service.pin || (service as any).profileName) && (
                       <div className={cn(
-                        "border border-dashed border-slate-500/10 font-medium bg-slate-950/10 tracking-wide",
+                        "border border-dashed border-slate-500/20 font-medium bg-slate-950/10 tracking-wide",
                         gridCols === 1 ? "p-5 rounded-2xl text-base mb-6 space-y-2.5" : gridCols === 2 ? "p-3.5 rounded-xl text-sm mb-4 space-y-2" : "p-2.5 rounded-xl text-[10px] mb-4 space-y-1"
                       )}>
-                        <div className="flex justify-between items-center gap-4 border-b border-dashed border-slate-500/10 pb-1.5 mb-1.5">
-                          <span className="text-slate-600 dark:text-slate-300 font-semibold uppercase tracking-wider text-[8px]">Acceso:</span>
+                        <div className="flex justify-between items-center gap-4 border-b border-dashed border-slate-500/20 pb-1.5 mb-1.5">
+                          <span className={cn("font-extrabold uppercase tracking-wider text-[8px]", isDark ? "text-white" : "text-black")}>Acceso:</span>
                           <span className={cn(
                             "font-black uppercase tracking-widest text-[8px] px-1.5 py-0.5 rounded",
                             (service as any).serviceType === 'matriz' ? "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20" :
@@ -1727,15 +1760,15 @@ export function DigitalServices() {
                         </div>
                         {service.email && (
                           <div className="flex justify-between items-center gap-4 truncate">
-                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">User:</span>
-                            <span className={cn("font-bold select-all truncate", isDark ? "text-indigo-200" : "text-slate-700")}>{service.email}</span>
+                            <span className={cn("font-bold font-mono uppercase text-[9px]", isDark ? "text-white" : "text-black")}>User:</span>
+                            <span className={cn("font-bold select-all truncate", isDark ? "text-indigo-200" : "text-black")}>{service.email}</span>
                           </div>
                         )}
                         {service.password && (
                           <div className="flex justify-between items-center gap-2 truncate">
-                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">Clave:</span>
+                            <span className={cn("font-bold font-mono uppercase text-[9px]", isDark ? "text-white" : "text-black")}>Clave:</span>
                             <div className="flex items-center gap-1.5 shrink-0 max-w-full">
-                              <span className={cn("font-black font-mono tracking-wider select-all", isDark ? "text-indigo-300" : "text-slate-800")}>
+                              <span className={cn("font-black font-mono tracking-wider select-all", isDark ? "text-indigo-300" : "text-black")}>
                                 {revealedPasswords[service.id] ? service.password : "••••••••"}
                               </span>
                               <button
@@ -1749,7 +1782,7 @@ export function DigitalServices() {
                                     [service.id]: !wasRevealed
                                   });
                                 }}
-                                className="p-1 rounded hover:bg-slate-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
+                                className={cn("p-1 rounded hover:bg-slate-500/10 hover:text-indigo-500 transition-colors cursor-pointer shrink-0", isDark ? "text-white" : "text-black")}
                                 title={revealedPasswords[service.id] ? "Ocultar Clave" : "Revelar de forma segura"}
                               >
                                 {revealedPasswords[service.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -1759,15 +1792,15 @@ export function DigitalServices() {
                         )}
                         {(service as any).profileName && (
                           <div className="flex justify-between items-center gap-4 truncate">
-                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">Perfil:</span>
-                            <span className="font-bold text-indigo-400">{(service as any).profileName}</span>
+                            <span className={cn("font-bold font-mono uppercase text-[9px]", isDark ? "text-white" : "text-black")}>Perfil:</span>
+                            <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>{(service as any).profileName}</span>
                           </div>
                         )}
                         {service.pin && (
                           <div className="flex justify-between items-center gap-2">
-                            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono uppercase text-[9px]">PIN / Acceso:</span>
+                            <span className={cn("font-bold font-mono uppercase text-[9px]", isDark ? "text-white" : "text-black")}>PIN / Acceso:</span>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <span className={cn("font-bold bg-indigo-500/10 text-indigo-500 rounded font-mono select-all",
+                              <span className={cn("font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded font-mono select-all",
                                 gridCols === 1 ? "px-2.5 py-0.5 text-base" : gridCols === 2 ? "px-1.5 py-0.3 text-sm" : "px-1 py-0.2"
                               )}>
                                 {revealedPins[service.id] ? service.pin : "••••"}
@@ -1783,10 +1816,77 @@ export function DigitalServices() {
                                     [service.id]: !wasRevealed
                                   });
                                 }}
-                                className="p-1 rounded hover:bg-slate-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors cursor-pointer shrink-0"
+                                className={cn("p-1 rounded hover:bg-slate-500/10 hover:text-indigo-500 transition-colors cursor-pointer shrink-0", isDark ? "text-white" : "text-black")}
                                 title={revealedPins[service.id] ? "Ocultar PIN" : "Revelar PIN de acceso"}
                               >
                                 {revealedPins[service.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bot de Acceso */}
+                    {service.isBot && service.botUrl && (
+                      <div className={cn(
+                        "border border-indigo-500/30 font-medium bg-indigo-500/5 rounded-xl tracking-wide",
+                        gridCols === 1 ? "p-4 text-base mb-4 space-y-2" : gridCols === 2 ? "p-3 text-xs mb-3 space-y-1.5" : "p-2.5 text-[10px] mb-3 space-y-1.5"
+                      )}>
+                        <div className="flex justify-between items-center border-b border-indigo-500/20 pb-1">
+                          <span className="font-black uppercase tracking-wider text-[8px] text-indigo-500 dark:text-indigo-400 flex items-center gap-1">
+                            🤖 ACCESO BOT
+                          </span>
+                          <a 
+                            href={service.botUrl.startsWith('http') ? service.botUrl : `https://${service.botUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                          >
+                            <span>Abrir enlace</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </div>
+
+                        <div className="flex justify-between items-center gap-2 truncate">
+                          <span className={cn("font-bold font-mono uppercase text-[9px]", isDark ? "text-white" : "text-black")}>URL / Página:</span>
+                          <span className="font-bold select-all truncate text-indigo-600 dark:text-indigo-400">
+                            {service.botUrl}
+                          </span>
+                        </div>
+
+                        {service.botUser && (
+                          <div className="flex justify-between items-center gap-2 truncate">
+                            <span className={cn("font-bold font-mono uppercase text-[9px]", isDark ? "text-white" : "text-black")}>Usuario BOT:</span>
+                            <span className={cn("font-bold select-all truncate", isDark ? "text-white" : "text-black")}>
+                              {service.botUser}
+                            </span>
+                          </div>
+                        )}
+
+                        {service.botPassword && (
+                          <div className="flex justify-between items-center gap-2 truncate">
+                            <span className={cn("font-bold font-mono uppercase text-[9px]", isDark ? "text-white" : "text-black")}>Clave BOT:</span>
+                            <div className="flex items-center gap-1.5 shrink-0 max-w-full">
+                              <span className={cn("font-black font-mono tracking-wider select-all", isDark ? "text-white" : "text-black")}>
+                                {revealedPasswords['bot_' + service.id] ? service.botPassword : "••••••••"}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  const wasRevealed = !!revealedPasswords['bot_' + service.id];
+                                  if (!wasRevealed) {
+                                    addSecurityAuditLog('credential_disclosed', `Revelación de clave BOT del servicio de ${service.clientName || 'Cliente'} (${service.name || 'Digital'}).`);
+                                  }
+                                  setRevealedPasswords({
+                                    ...revealedPasswords,
+                                    ['bot_' + service.id]: !wasRevealed
+                                  });
+                                }}
+                                className={cn("p-1 rounded hover:bg-slate-500/10 hover:text-indigo-500 transition-colors cursor-pointer shrink-0", isDark ? "text-white" : "text-black")}
+                                title={revealedPasswords['bot_' + service.id] ? "Ocultar Clave BOT" : "Mostrar Clave BOT"}
+                              >
+                                {revealedPasswords['bot_' + service.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                               </button>
                             </div>
                           </div>
@@ -1802,7 +1902,8 @@ export function DigitalServices() {
                       gridCols === 1 ? "py-4 mb-5" : gridCols === 2 ? "py-3 mb-4" : "py-2 mb-4"
                     )}>
                       <div>
-                        <p className={cn("font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest",
+                        <p className={cn("font-extrabold uppercase tracking-widest",
+                          isDark ? "text-white" : "text-black",
                           gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                         )}>Costo</p>
                         <p className={cn("font-black font-mono text-rose-500",
@@ -1810,7 +1911,8 @@ export function DigitalServices() {
                         )}>{formatCurrency(service.cost || 0)}</p>
                       </div>
                       <div className="text-center">
-                        <p className={cn("font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest",
+                        <p className={cn("font-extrabold uppercase tracking-widest",
+                          isDark ? "text-white" : "text-black",
                           gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                         )}>PVP</p>
                         <p className={cn("font-black font-mono text-emerald-500",
@@ -1818,7 +1920,8 @@ export function DigitalServices() {
                         )}>{formatCurrency(service.revenue)}</p>
                       </div>
                       <div className="text-right">
-                        <p className={cn("font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest",
+                        <p className={cn("font-extrabold uppercase tracking-widest",
+                          isDark ? "text-white" : "text-black",
                           gridCols === 1 ? "text-xs" : gridCols === 2 ? "text-[10px]" : "text-[9px]"
                         )}>Rentabilidad</p>
                         <p className={cn("font-black font-mono text-indigo-500",
@@ -1834,12 +1937,12 @@ export function DigitalServices() {
                           onClick={() => handleEdit(service)}
                           title="Editar suscripción"
                           className={cn(
-                            "flex-1 border hover:bg-slate-50 transition-colors flex justify-center text-slate-700 dark:text-slate-300 hover:text-indigo-600 cursor-pointer items-center", 
-                            gridCols === 1 ? "p-3.5 rounded-2xl text-xs md:text-sm h-12" : gridCols === 2 ? "p-2.5 rounded-xl text-xs h-10" : "p-2 rounded-xl text-[10px] h-9",
-                            isDark ? "border-slate-800 hover:bg-slate-800/40" : "border-slate-200 bg-white shadow-xs"
+                            "flex-1 border hover:bg-slate-50 transition-colors flex justify-center hover:text-indigo-600 cursor-pointer items-center", 
+                            isDark ? "border-slate-800 text-white hover:bg-slate-800/40" : "border-slate-200 bg-white text-black shadow-xs font-bold",
+                            gridCols === 1 ? "p-3.5 rounded-2xl text-xs md:text-sm h-12" : gridCols === 2 ? "p-2.5 rounded-xl text-xs h-10" : "p-2 rounded-xl text-[10px] h-9"
                           )}
                         >
-                          <span className="font-bold uppercase tracking-widest">Editar</span>
+                          <span className="font-extrabold uppercase tracking-widest">Editar</span>
                         </button>
                         <button 
                           onClick={() => setRenewalService(service)}
@@ -1884,7 +1987,7 @@ export function DigitalServices() {
                           }}
                           title="Copiar Enlace Portal de Cliente"
                           className={cn(
-                            "border border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0",
+                            "border border-slate-300 dark:border-slate-700 text-black dark:text-white hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0",
                             gridCols === 1 ? "w-12 h-12 rounded-2xl" : gridCols === 2 ? "w-10 h-10 rounded-xl" : "w-9 h-9 rounded-xl"
                           )}
                         >
@@ -1916,8 +2019,8 @@ export function DigitalServices() {
             <ShoppingBag className="w-8 h-8 text-slate-300" />
           </div>
           <div className="space-y-1">
-            <h3 className={cn("text-lg font-bold", isDark ? "text-slate-600 dark:text-slate-300" : "text-slate-700")}>Venda su primer servicio</h3>
-            <p className="text-slate-700 dark:text-slate-300 text-sm max-w-xs">Introduzca ventas de streaming para Galo Peralta, Disney Plus que vencen, etc.</p>
+            <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-black")}>Venda su primer servicio</h3>
+            <p className={cn("text-sm max-w-xs", isDark ? "text-white" : "text-black")}>Introduzca ventas de streaming para Galo Peralta, Disney Plus que vencen, etc.</p>
           </div>
           <button 
             onClick={() => setShowCatalog(true)}
@@ -2035,7 +2138,7 @@ export function DigitalServices() {
                         className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer",
                           formData.clientType === 'client'
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-600 dark:text-slate-300" : "bg-white border-slate-250 text-slate-700 dark:text-slate-300")
+                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-600 dark:text-slate-300" : "bg-white border-slate-300 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Cliente Final
@@ -2060,7 +2163,7 @@ export function DigitalServices() {
                         className={cn("py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer",
                           formData.clientType === 'reseller'
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-600 dark:text-slate-300" : "bg-white border-slate-250 text-slate-700 dark:text-slate-300")
+                            : (isDark ? "bg-slate-800 border-slate-700 text-slate-600 dark:text-slate-300" : "bg-white border-slate-300 text-slate-700 dark:text-slate-300")
                         )}
                       >
                         Revendedor
@@ -2158,7 +2261,7 @@ export function DigitalServices() {
                           type="text"
                           value={formData.finalClientName || ''}
                           onChange={(e) => setFormData({...formData, finalClientName: e.target.value})}
-                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-white border-slate-100 focus:bg-white focus:border-indigo-500")}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-100 focus:bg-white focus:border-indigo-500")}
                           placeholder="Ej. Sofía Benítez"
                         />
                       </div>
@@ -2168,7 +2271,7 @@ export function DigitalServices() {
                           type="text"
                           value={formData.finalClientContact || ''}
                           onChange={(e) => setFormData({...formData, finalClientContact: e.target.value})}
-                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-705 text-white" : "bg-white border-slate-100 focus:bg-white focus:border-indigo-500")}
+                          className={cn("w-full p-3 rounded-xl border text-xs font-semibold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-100 focus:bg-white focus:border-indigo-500")}
                           placeholder="Ej. +593912345678"
                         />
                       </div>
@@ -2285,6 +2388,105 @@ export function DigitalServices() {
                       />
                     </div>
                   )}
+                  {/* BOT Configuration */}
+                  <div className={cn(
+                    "p-4 rounded-2xl border transition-all space-y-3",
+                    formData.isBot 
+                      ? (isDark ? "bg-indigo-950/40 border-indigo-500/50 shadow-inner" : "bg-indigo-50/80 border-indigo-300 shadow-xs") 
+                      : (isDark ? "bg-slate-900/40 border-slate-800" : "bg-slate-50 border-slate-200")
+                  )}>
+                    <label className="flex items-center justify-between cursor-pointer select-none">
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn(
+                          "w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm",
+                          formData.isBot 
+                            ? "bg-indigo-600 text-white shadow-sm" 
+                            : (isDark ? "bg-slate-800 text-slate-400" : "bg-slate-200 text-slate-700")
+                        )}>
+                          <Bot className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={cn("text-xs font-black uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
+                              BOT
+                            </span>
+                            {formData.isBot && (
+                              <span className="text-[9px] font-black uppercase tracking-widest bg-indigo-500 text-white px-2 py-0.5 rounded-full">
+                                Activado
+                              </span>
+                            )}
+                          </div>
+                          <span className={cn("text-[10px] font-medium block", isDark ? "text-slate-300" : "text-slate-700")}>
+                            Habilitar enlace de página/bot y credenciales de acceso
+                          </span>
+                        </div>
+                      </div>
+                      <input 
+                        type="checkbox"
+                        checked={formData.isBot}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isBot: e.target.checked }))}
+                        className="w-5 h-5 rounded-md accent-indigo-600 cursor-pointer"
+                      />
+                    </label>
+
+                    {formData.isBot && (
+                      <div className="space-y-3 pt-3 border-t border-dashed border-indigo-500/30 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1">
+                            <span>URL / Página *</span>
+                            <span className="text-rose-500 font-bold">(Obligatorio)</span>
+                          </label>
+                          <input 
+                            type="text"
+                            required={formData.isBot}
+                            value={formData.botUrl}
+                            onChange={(e) => setFormData({ ...formData, botUrl: e.target.value })}
+                            className={cn(
+                              "w-full p-3 rounded-xl border text-xs font-semibold outline-none transition-all",
+                              isDark 
+                                ? "bg-slate-800 border-indigo-500/40 text-white focus:border-indigo-400" 
+                                : "bg-white border-indigo-300 text-black focus:border-indigo-600 focus:bg-white"
+                            )}
+                            placeholder="https://bot.ejemplo.com o bot.telegram.me/..."
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className={cn("text-[9px] font-bold uppercase", isDark ? "text-white" : "text-black")}>
+                              Usuario (Opcional)
+                            </label>
+                            <input 
+                              type="text"
+                              value={formData.botUser}
+                              onChange={(e) => setFormData({ ...formData, botUser: e.target.value })}
+                              className={cn(
+                                "w-full p-3 rounded-xl border text-xs font-semibold outline-none",
+                                isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-black focus:bg-white"
+                              )}
+                              placeholder="Ej. usuario_bot"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className={cn("text-[9px] font-bold uppercase", isDark ? "text-white" : "text-black")}>
+                              Contraseña (Opcional)
+                            </label>
+                            <input 
+                              type="text"
+                              value={formData.botPassword}
+                              onChange={(e) => setFormData({ ...formData, botPassword: e.target.value })}
+                              className={cn(
+                                "w-full p-3 rounded-xl border text-xs font-semibold outline-none",
+                                isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-black focus:bg-white"
+                              )}
+                              placeholder="Ej. clave_bot"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* 4. Fechas y Estado */}
@@ -2412,7 +2614,7 @@ export function DigitalServices() {
                         onClick={() => setFormData(prev => ({ ...prev, isCostPaid: true }))}
                         className={cn("py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all cursor-pointer",
                           formData.isCostPaid
-                            ? "bg-indigo-600 text-white border-indigo-650 shadow-sm"
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                             : (isDark ? "bg-slate-900 border-slate-800 text-slate-600 dark:text-slate-300" : "bg-white border-slate-200 text-slate-700 dark:text-slate-300")
                         )}
                       >
@@ -2534,7 +2736,11 @@ export function DigitalServices() {
                                 finalClientName: '',
                                 finalClientContact: '',
                                 revenueWalletId: '',
-                                costWalletId: ''
+                                costWalletId: '',
+                                isBot: false,
+                                botUrl: '',
+                                botUser: '',
+                                botPassword: ''
                               });
                               setShowProfilesManager(false);
                               setIsModalOpen(true);
@@ -2637,7 +2843,7 @@ export function DigitalServices() {
                                setShowCatalog(false);
                                setIsModalOpen(true);
                              }}
-                             className={cn("text-left font-bold text-sm hover:text-indigo-505 transition-colors", isDark ? "text-slate-200" : "text-slate-800")}
+                             className={cn("text-left font-bold text-sm hover:text-indigo-500 transition-colors", isDark ? "text-slate-200" : "text-slate-800")}
                            >
                              {item.name}
                            </button>
@@ -2659,7 +2865,7 @@ export function DigitalServices() {
                              type="text"
                              value={editingCatalogName}
                              onChange={(e) => setEditingCatalogName(e.target.value)}
-                             className={cn("flex-1 p-1 px-2 rounded border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-705 text-white" : "bg-white border-slate-250 text-slate-800")}
+                             className={cn("flex-1 p-1 px-2 rounded border text-xs font-bold outline-none", isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-800")}
                            />
                            <button
                              onClick={async () => {
@@ -2805,7 +3011,7 @@ export function DigitalServices() {
                                      <button
                                        type="button"
                                        onClick={() => setEditingProviderKey(null)}
-                                       className="bg-slate-200 dark:bg-slate-700 text-slate-650 dark:text-slate-300 text-[9px] font-bold uppercase px-2 py-0.5 rounded"
+                                       className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] font-bold uppercase px-2 py-0.5 rounded"
                                      >
                                        X
                                      </button>
@@ -2969,14 +3175,14 @@ export function DigitalServices() {
                  <div className="space-y-1.5">
                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 px-1 flex justify-between">
                      <span>Monto a Registrar ({paymentType === 'revenue' ? 'Saldo pendiente' : 'Costo pendiente'})</span>
-                     <span className="font-mono font-bold text-indigo-550 dark:text-indigo-400">
+                     <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
                        {formatCurrency(paymentType === 'revenue' ? (paymentService.revenue - (paymentService.amountPaid || 0)) : ((paymentService.cost || 0) - (paymentService.costPaid || 0)))}
                      </span>
                    </label>
                    <input
                      type="number"
                      step="0.01"
-                     className={cn("w-full p-3.5 rounded-xl border text-sm font-black font-mono outline-none", isDark ? "bg-slate-950 border-slate-800 text-white focus:border-indigo-505" : "bg-white border-slate-200 focus:border-indigo-505 shadow-sm")}
+                     className={cn("w-full p-3.5 rounded-xl border text-sm font-black font-mono outline-none", isDark ? "bg-slate-950 border-slate-800 text-white focus:border-indigo-500" : "bg-white border-slate-200 focus:border-indigo-500 shadow-sm")}
                      value={paymentAmount}
                      onChange={e => setPaymentAmount(e.target.value)}
                      max={paymentType === 'revenue' ? (paymentService.revenue - (paymentService.amountPaid || 0)) : ((paymentService.cost || 0) - (paymentService.costPaid || 0))}
@@ -3015,7 +3221,7 @@ export function DigitalServices() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={cn("absolute inset-0 backdrop-blur-sm", isDark ? "bg-emerald-950/40" : "bg-emerald-900/20")} />
             <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.9 }} className={cn("relative w-full max-w-sm p-6 sm:p-8 rounded-3xl border shadow-2xl z-10 flex flex-col items-center text-center", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
-              <div className="w-16 h-16 bg-emerald-105 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className={cn("text-xl font-bold uppercase tracking-tight mb-2", isDark ? "text-white" : "text-slate-900")}>Servicio Creado</h3>
@@ -3100,7 +3306,7 @@ export function DigitalServices() {
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-705 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none outline-none"
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border-none outline-none"
               >
                 🗑️ Eliminar
               </button>

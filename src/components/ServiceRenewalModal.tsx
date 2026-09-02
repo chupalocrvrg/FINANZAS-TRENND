@@ -387,7 +387,7 @@ export function ServiceRenewalModal({
               {/* 3. DETALLE DE PAGO PROVEEDOR */}
               <div className={cn("p-4 rounded-2xl border", isDark ? "bg-slate-950/40 border-slate-800" : "bg-slate-50/50 border-slate-200/60")}>
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-rose-450">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-rose-500">
                     💸 Coste de proveedor
                   </span>
                   <div className="flex gap-2">
@@ -471,10 +471,10 @@ export function ServiceRenewalModal({
                 onClick={onClose}
                 disabled={isSubmitting}
                 className={cn(
-                  "flex-1 py-3 px-4 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer",
+                  "flex-1 py-3 px-4 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer border",
                   isDark
-                    ? "bg-slate-950 border border-slate-800 text-slate-400 hover:bg-slate-850 hover:text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800"
+                    ? "bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                    : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-900"
                 )}
               >
                 Cancelar

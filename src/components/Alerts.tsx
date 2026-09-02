@@ -345,12 +345,12 @@ export function Alerts() {
           <h2
             className={cn(
               "text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider",
-              isDark ? "text-white" : "text-slate-900",
+              isDark ? "text-white" : "text-black",
             )}
           >
             Alertas y Cobranza
           </h2>
-          <p className="text-slate-700 dark:text-slate-300 font-medium font-sans flex flex-col sm:flex-row sm:items-center gap-2 gap-y-1">
+          <p className={cn("font-medium font-sans flex flex-col sm:flex-row sm:items-center gap-2 gap-y-1", isDark ? "text-white" : "text-black")}>
             <span>
               Monitoreo inteligente en tiempo real para cuentas expiradas,
               servicios caídos y pagos ANT impagos.
@@ -374,9 +374,9 @@ export function Alerts() {
               "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer",
               activeFilter === "all"
                 ? isDark
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "bg-white text-slate-900 shadow-sm"
-                : "text-slate-700 dark:text-slate-300",
+                  ? "bg-white text-black shadow-sm"
+                  : "bg-white text-black shadow-sm"
+                : isDark ? "text-white" : "text-black",
             )}
           >
             Todo
@@ -387,7 +387,7 @@ export function Alerts() {
               "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer",
               activeFilter === "expiration"
                 ? "bg-white text-indigo-600 shadow-sm"
-                : "text-slate-700 dark:text-slate-300",
+                : isDark ? "text-white" : "text-black",
             )}
           >
             Expiraciones ({alerts.filter((a) => a.type === "expiration").length}
@@ -399,7 +399,7 @@ export function Alerts() {
               "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer",
               activeFilter === "receivable"
                 ? "bg-white text-rose-600 shadow-sm"
-                : "text-slate-700 dark:text-slate-300",
+                : isDark ? "text-white" : "text-black",
             )}
           >
             Cobros ANT ({alerts.filter((a) => a.type === "receivable").length})
@@ -410,7 +410,7 @@ export function Alerts() {
               "flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer",
               activeFilter === "scheduled_payment"
                 ? "bg-white text-amber-600 shadow-sm"
-                : "text-slate-700 dark:text-slate-300",
+                : isDark ? "text-white" : "text-black",
             )}
           >
             Programados (
@@ -421,7 +421,7 @@ export function Alerts() {
 
       {/* Modern Search Input */}
       <div className="relative w-full">
-        <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-600 dark:text-slate-300">
+        <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
           <Search className="w-5 h-5 text-indigo-500" />
         </span>
         <input
@@ -432,14 +432,14 @@ export function Alerts() {
           className={cn(
             "w-full pl-11 pr-4 py-3 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner",
             isDark
-              ? "border-slate-850 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900"
-              : "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:bg-slate-50",
+              ? "border-slate-800 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900"
+              : "border-slate-200 bg-white text-black placeholder-slate-400 focus:bg-slate-50",
           )}
         />
       </div>
 
       {loading ? (
-        <div className="py-24 flex flex-col items-center justify-center gap-4 text-slate-700 dark:text-slate-300">
+        <div className={cn("py-24 flex flex-col items-center justify-center gap-4", isDark ? "text-white" : "text-black")}>
           <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
           <p className="font-bold uppercase tracking-widest text-[10px]">
             Calculando vencimientos del protocolo...
@@ -496,7 +496,7 @@ export function Alerts() {
                     </div>
                     <div className="min-w-0 text-left">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-widest", isDark ? "text-white" : "text-black")}>
                           {alert.type === "expiration"
                             ? "Expiración Digital"
                             : alert.type === "receivable"
@@ -525,12 +525,12 @@ export function Alerts() {
                       <h4
                         className={cn(
                           "text-base lg:text-lg font-bold tracking-tight truncate",
-                          isDark ? "text-slate-100" : "text-slate-900",
+                          isDark ? "text-white" : "text-black",
                         )}
                       >
                         {alert.customer}
                       </h4>
-                      <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold truncate leading-relaxed">
+                      <p className={cn("text-xs font-semibold truncate leading-relaxed", isDark ? "text-white" : "text-black")}>
                         {alert.item}{" "}
                         {alert.amount
                           ? ` - ${formatCurrency(alert.amount)}`
@@ -637,7 +637,7 @@ export function Alerts() {
                 </motion.div>
               ))
             ) : (
-              <div className="p-16 text-center text-slate-700 dark:text-slate-300 font-bold uppercase tracking-widest text-[10px] border border-dashed rounded-3xl">
+              <div className={cn("p-16 text-center font-bold uppercase tracking-widest text-[10px] border border-dashed rounded-3xl", isDark ? "text-white border-slate-800" : "text-black border-slate-200")}>
                 ✨ ¡Protocolo limpio! No hay alertas ni moribundos por cortar.
               </div>
             )}
@@ -654,7 +654,7 @@ export function Alerts() {
               "w-full max-w-md p-6 rounded-3xl border shadow-2xl relative space-y-5",
               isDark
                 ? "bg-slate-900 border-slate-800 text-white"
-                : "bg-white border-slate-100 text-slate-900",
+                : "bg-white border-slate-100 text-black",
             )}
           >
             <div className="flex justify-between items-start">
@@ -665,13 +665,13 @@ export function Alerts() {
                 <h3 className="text-lg lg:text-xl font-bold tracking-tight mt-1">
                   Saldar Pago Programado
                 </h3>
-                <p className="text-slate-700 dark:text-slate-300 text-xs font-semibold font-sans mt-0.5">
+                <p className={cn("text-xs font-semibold font-sans mt-0.5", isDark ? "text-white" : "text-black")}>
                   Autoriza el débito financiero de este egreso recurrente.
                 </p>
               </div>
               <button
                 onClick={() => setSettleLedgerItem(null)}
-                className="p-1 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-200 hover:bg-slate-800/10 cursor-pointer"
+                className={cn("p-1 rounded-full hover:text-slate-200 hover:bg-slate-800/10 cursor-pointer", isDark ? "text-white" : "text-black")}
               >
                 <XCircle className="w-6 h-6" />
               </button>
@@ -686,7 +686,7 @@ export function Alerts() {
               )}
             >
               <div className="flex justify-between">
-                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold">
+                <span className={cn("text-xs font-bold", isDark ? "text-white" : "text-black")}>
                   Concepto:
                 </span>
                 <span className="text-xs font-black truncate max-w-[200px]">
@@ -694,7 +694,7 @@ export function Alerts() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold">
+                <span className={cn("text-xs font-bold", isDark ? "text-white" : "text-black")}>
                   Detalle/Notas:
                 </span>
                 <span className="text-xs font-semibold truncate max-w-[200px]">
@@ -702,7 +702,7 @@ export function Alerts() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold">
+                <span className={cn("text-xs font-bold", isDark ? "text-white" : "text-black")}>
                   Fecha Límite:
                 </span>
                 <span className="text-xs font-mono font-black">
@@ -725,7 +725,7 @@ export function Alerts() {
 
             {!isWalletsDisabled && (
               <div className="space-y-1.5 text-left">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300 pl-1">
+                <label className={cn("text-[10px] font-bold uppercase tracking-widest pl-1", isDark ? "text-white" : "text-black")}>
                   🏦 Seleccionar Billetera de Origen (Débito)
                 </label>
                 <select
@@ -735,7 +735,7 @@ export function Alerts() {
                     "w-full px-3 py-2.5 rounded-xl border text-xs font-bold transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer",
                     isDark
                       ? "border-slate-800 bg-slate-950 text-white focus:bg-slate-950"
-                      : "border-slate-200 bg-white text-slate-950 focus:bg-slate-50",
+                      : "border-slate-200 bg-white text-black focus:bg-slate-50",
                   )}
                 >
                   <option value="" disabled>
@@ -757,8 +757,8 @@ export function Alerts() {
                 className={cn(
                   "flex-1 py-3 rounded-2xl cursor-pointer text-xs font-bold uppercase tracking-widest border transition-all text-center",
                   isDark
-                    ? "border-slate-800 text-slate-600 dark:text-slate-300 hover:text-white hover:bg-slate-850"
-                    : "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+                    ? "border-slate-800 text-white hover:bg-slate-800"
+                    : "border-slate-200 text-black hover:bg-slate-100",
                 )}
               >
                 Cancelar

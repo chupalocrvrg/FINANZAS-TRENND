@@ -1,4 +1,5 @@
 import { useAuth } from '../lib/AuthContext';
+import { CollectionsTab } from "./PhysicalCommerceCollections";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -40,7 +41,7 @@ export function PhysicalCommerce({
   user: any;
   isDark: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<"inventory" | "sales">(
+  const [activeTab, setActiveTab] = useState<"inventory" | "sales" | "collections">(
     "inventory",
   );
 
@@ -67,10 +68,10 @@ export function PhysicalCommerce({
               activeTab === "inventory"
                 ? isDark
                   ? "bg-slate-700 text-white shadow"
-                  : "bg-slate-100 text-slate-900 shadow-sm"
+                  : "bg-slate-100 text-black shadow-sm"
                 : isDark
-                  ? "text-slate-400 hover:text-slate-300"
-                  : "text-slate-500 hover:text-slate-700",
+                  ? "text-slate-300 hover:text-white"
+                  : "text-slate-700 hover:text-black",
             )}
           >
             <Package className="w-4 h-4" />
@@ -83,23 +84,38 @@ export function PhysicalCommerce({
               activeTab === "sales"
                 ? isDark
                   ? "bg-slate-700 text-white shadow"
-                  : "bg-slate-100 text-slate-900 shadow-sm"
+                  : "bg-slate-100 text-black shadow-sm"
                 : isDark
-                  ? "text-slate-400 hover:text-slate-300"
-                  : "text-slate-500 hover:text-slate-700",
+                  ? "text-slate-300 hover:text-white"
+                  : "text-slate-700 hover:text-black",
             )}
           >
             <ShoppingBag className="w-4 h-4" />
             Ventas
           </button>
+
+          <button
+            onClick={() => setActiveTab("collections")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all",
+              activeTab === "collections"
+                ? isDark
+                  ? "bg-slate-700 text-white shadow"
+                  : "bg-slate-100 text-black shadow-sm"
+                : isDark
+                  ? "text-slate-300 hover:text-white"
+                  : "text-slate-700 hover:text-black",
+            )}
+          >
+            <CreditCard className="w-4 h-4" />
+            Cobranzas
+          </button>
         </div>
       </div>
       <div className="flex-1 w-full overflow-y-auto p-4 lg:p-8">
-        {activeTab === "inventory" ? (
-          <InventoryTab user={user} isDark={isDark} />
-        ) : (
-          <SalesTab user={user} isDark={isDark} />
-        )}
+                {activeTab === "inventory" && <InventoryTab user={user} isDark={isDark} />}
+        {activeTab === "sales" && <SalesTab user={user} isDark={isDark} />}
+        {activeTab === "collections" && <CollectionsTab user={user} isDark={isDark} />}
       </div>
 
     </div>
@@ -204,27 +220,27 @@ function InventoryTab({ user, isDark }: { user: any; isDark: boolean }) {
             className={cn(
               "p-4 rounded-2xl border",
               isDark
-                ? "bg-slate-800 border-slate-700"
-                : "bg-white border-slate-200",
+                ? "bg-slate-800 border-slate-700 text-white"
+                : "bg-white border-slate-200 text-black",
             )}
           >
-            <h3 className="font-bold text-lg">{item.name}</h3>
-            <p className="text-sm opacity-70 mb-3">Stock: {item.qty} unid.</p>
+            <h3 className={cn("font-bold text-lg", isDark ? "text-white" : "text-black")}>{item.name}</h3>
+            <p className={cn("text-sm font-semibold mb-3", isDark ? "text-white" : "text-black")}>Stock: {item.qty} unid.</p>
             <div className="space-y-1 mb-4">
               <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400">
-                <span className="opacity-70">Costo:</span>{" "}
+                <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>Costo:</span>{" "}
                 <strong>{formatCurrency(item.cost || 0)}</strong>
               </div>
               <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
-                <span className="opacity-70">PVP Contado:</span>{" "}
+                <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>PVP Contado:</span>{" "}
                 <strong>{formatCurrency(item.price)}</strong>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="opacity-70">3 Meses:</span>{" "}
+              <div className={cn("flex justify-between text-sm", isDark ? "text-white" : "text-black")}>
+                <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>3 Meses:</span>{" "}
                 <strong>{formatCurrency(item.price3m)}</strong>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="opacity-70">6 Meses:</span>{" "}
+              <div className={cn("flex justify-between text-sm", isDark ? "text-white" : "text-black")}>
+                <span className={cn("font-semibold", isDark ? "text-white" : "text-black")}>6 Meses:</span>{" "}
                 <strong>{formatCurrency(item.price6m)}</strong>
               </div>
             </div>
@@ -662,12 +678,12 @@ function SalesTab({ user, isDark }: { user: any; isDark: boolean }) {
             className={cn(
               "p-4 rounded-2xl border",
               isDark
-                ? "bg-slate-800 border-slate-700"
-                : "bg-white border-slate-200",
+                ? "bg-slate-800 border-slate-700 text-white"
+                : "bg-white border-slate-200 text-black",
             )}
           >
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-bold">
+              <h3 className={cn("font-bold text-base", isDark ? "text-white" : "text-black")}>
                 {sale.clientName || entities.find((e) => e.id === sale.clientId)?.name || "Cliente sin nombre"}
               </h3>
               <span
@@ -681,34 +697,34 @@ function SalesTab({ user, isDark }: { user: any; isDark: boolean }) {
                 {sale.status === "completed" ? "Pagado" : "Activo"}
               </span>
             </div>
-            <p className="text-sm opacity-70 mb-2">
+            <p className={cn("text-sm font-semibold mb-2", isDark ? "text-white" : "text-black")}>
               Total: <strong>{formatCurrency(sale.total)}</strong>
             </p>
-            <div className="text-xs space-y-1 mb-3">
+            <div className={cn("text-xs space-y-1 mb-3 font-medium", isDark ? "text-white" : "text-black")}>
               {sale.items?.map((i: any, idx: number) => (
                 <div key={idx}>
                   - {i.qty}x {i.name}
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold mb-2">
+            <div className={cn("flex items-center gap-2 text-xs font-bold mb-2", isDark ? "text-white" : "text-black")}>
               <CreditCard className="w-4 h-4" />
               {sale.installmentsCount} cuotas ({sale.frequency})
             </div>
             
             {sale.installments && sale.installments.length > 0 && (
-              <div className="mt-3 bg-slate-50 dark:bg-slate-900 rounded-lg p-3">
-                <h4 className="text-xs font-bold mb-2 opacity-70 uppercase tracking-wider">Calendario de Pagos</h4>
+              <div className={cn("mt-3 rounded-lg p-3", isDark ? "bg-slate-900 border border-slate-700/50" : "bg-slate-50 border border-slate-200")}>
+                <h4 className={cn("text-xs font-black mb-2 uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Calendario de Pagos</h4>
                 <div className="space-y-1">
                   {sale.installments.map((inst: any, idx: number) => (
-                    <div key={idx} className="flex justify-between items-center text-xs p-1.5 border-b dark:border-slate-700/50 last:border-0">
-                      <div>
+                    <div key={idx} className={cn("flex justify-between items-center text-xs p-1.5 border-b last:border-0", isDark ? "border-slate-800" : "border-slate-200")}>
+                      <div className={cn("font-medium", isDark ? "text-white" : "text-black")}>
                         <span className="font-bold text-indigo-600 dark:text-indigo-400 mr-2">#{inst.installmentNumber}</span>
                         {new Date(inst.dueDate).toLocaleDateString()}
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col items-end">
-                           <span className="font-bold">{formatCurrency(inst.amount)}</span>
+                           <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>{formatCurrency(inst.amount)}</span>
                            {inst.paidAmount > 0 && inst.status !== "paid" && (
                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Abonado: {formatCurrency(inst.paidAmount)}</span>
                            )}

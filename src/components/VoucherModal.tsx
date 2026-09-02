@@ -556,7 +556,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
             transition={{ type: "spring", duration: 0.35 }}
             className={cn(
               "relative w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden z-10 flex flex-col md:flex-row gap-6 p-6",
-              isDark ? "bg-slate-900 border-slate-850" : "bg-white border-slate-100"
+              isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"
             )}
           >
             {/* Left Column: Canvas Preview (Beautiful receipt) */}
@@ -564,7 +564,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
               <span className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", isDark ? "text-slate-400" : "text-slate-500")}>
                 Vista Previa del Ticket
               </span>
-              <div className="border border-slate-205/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg bg-white p-1">
+              <div className="border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg bg-white p-1">
                 <canvas 
                   ref={canvasRef} 
                   className="w-[280px] h-[392px] rounded-xl"
@@ -597,9 +597,9 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
                 </div>
 
                 <div className={cn("p-4 rounded-2xl border text-xs space-y-1 bg-slate-50 dark:bg-slate-950/20", isDark ? "border-slate-800" : "border-slate-100")}>
-                  <div className="flex justify-between font-bold"><span className="text-slate-450">Cliente:</span> <span className={isDark ? "text-slate-100" : "text-slate-800"}>{voucher.clientName}</span></div>
-                  <div className="flex justify-between font-bold"><span className="text-slate-450">Servicio:</span> <span className="text-indigo-500 font-black">{voucher.title}</span></div>
-                  <div className="flex justify-between font-bold"><span className="text-slate-450">{isDigitalService ? 'Valor PVP:' : 'Total:'}</span> <span className="font-mono text-indigo-500 font-extrabold">{formatCurrency(voucher.amount)}</span></div>
+                  <div className="flex justify-between font-bold"><span className="text-slate-500">Cliente:</span> <span className={isDark ? "text-slate-100" : "text-slate-800"}>{voucher.clientName}</span></div>
+                  <div className="flex justify-between font-bold"><span className="text-slate-500">Servicio:</span> <span className="text-indigo-500 font-black">{voucher.title}</span></div>
+                  <div className="flex justify-between font-bold"><span className="text-slate-500">{isDigitalService ? 'Valor PVP:' : 'Total:'}</span> <span className="font-mono text-indigo-500 font-extrabold">{formatCurrency(voucher.amount)}</span></div>
                 </div>
               </div>
 
@@ -636,7 +636,7 @@ export function VoucherModal({ isOpen, onClose, voucher }: VoucherModalProps) {
                     copied 
                       ? "bg-indigo-600 text-white border-indigo-600" 
                       : isDark
-                        ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850"
+                        ? "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800"
                         : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
                   )}
                 >
