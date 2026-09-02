@@ -24,10 +24,14 @@ import {
   HelpCircle,
   TrendingUp,
   Inbox,
-  QrCode
+  QrCode,
+  MessageCircle,
+  RefreshCw,
+  LifeBuoy,
+  Phone
 } from 'lucide-react';
+import { formatCurrency, cn, getGMT5DateString } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatCurrency, cn } from '../lib/utils';
 
 export function generateSecureToken(ownerId: string, clientName: string): string {
   const combined = `${ownerId}:${clientName.toLowerCase().trim()}:security_salt_2026`;
@@ -124,6 +128,73 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
     }));
   };
 
+  // Helper to normalize phone numbers for WhatsApp
+  const cleanPhoneNumber = (rawPhone?: string) => {
+    if (!rawPhone) return '';
+    const digits = rawPhone.replace(/\D/g, '');
+    if (!digits) return '';
+    // If it starts with 0 and has 10 digits (Ecuador standard e.g. 0991234567), prefix country code 593
+    if (digits.startsWith('0') && digits.length === 10) {
+      return `593${digits.substring(1)}`;
+    }
+    // If it already has 9 digits without 0 (e.g. 991234567), prefix 593
+    if (digits.length === 9 && digits.startsWith('9')) {
+      return `593${digits}`;
+    }
+    return digits;
+  };
+
+  // WhatsApp Action: Blank Chat with Business / Merchant
+  const handleOpenBlankWhatsApp = () => {
+    const phone = cleanPhoneNumber(merchantSettings?.phone);
+    if (!phone) {
+      alert("El número de WhatsApp del asesor no está configurado en el sistema.");
+      return;
+    }
+    window.open(`https://wa.me/${phone}`, '_blank');
+  };
+
+  // WhatsApp Action: Solicitar Renovación (Active Service)
+  const handleRequestRenewal = (service: any) => {
+    const phone = cleanPhoneNumber(merchantSettings?.phone);
+    if (!phone) {
+      alert("El número de WhatsApp del asesor no está configurado en el sistema.");
+      return;
+    }
+    const emailUser = service.isBot && service.botUser ? service.botUser : (service.email || 'S/N');
+    const profile = service.pin || 'Principal / Estándar';
+    const password = service.isBot && service.botPassword ? service.botPassword : (service.password || 'S/N');
+    
+    const message = `Hola, deseo solicitar la renovación de mi servicio:\n\n` +
+      `📌 *Servicio:* ${service.name}\n` +
+      `👤 *Correo/Usuario:* ${emailUser}\n` +
+      `🏷️ *Perfil:* ${profile}\n` +
+      `🔑 *Contraseña:* ${password}\n\n` +
+      `Quedo a la espera de su confirmación para proceder con el pago. ¡Muchas gracias!`;
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  // WhatsApp Action: Solicitar Soporte (Active Service)
+  const handleRequestSupport = (service: any) => {
+    const phone = cleanPhoneNumber(merchantSettings?.phone);
+    if (!phone) {
+      alert("El número de WhatsApp del asesor no está configurado en el sistema.");
+      return;
+    }
+    const emailUser = service.isBot && service.botUser ? service.botUser : (service.email || 'S/N');
+    const profile = service.pin || 'Principal / Estándar';
+    const password = service.isBot && service.botPassword ? service.botPassword : (service.password || 'S/N');
+
+    const message = `Hola, la cuenta de *${service.name}* con datos de acceso:\n` +
+      `👤 *Correo/Usuario:* ${emailUser}\n` +
+      `🏷️ *Perfil:* ${profile}\n` +
+      `🔑 *Contraseña:* ${password}\n\n` +
+      `Tiene el siguiente problema: `;
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
   // Fetch client statement data
   const fetchPortalData = async () => {
     if (!ownerId) {
@@ -174,10 +245,14 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
       }
 
       // Fetch Merchant's settings for custom logo and business name
-      const settingsRef = doc(db, 'users', ownerId);
-      const settingsSnap = await getDoc(settingsRef);
-      if (settingsSnap.exists()) {
-        setMerchantSettings(settingsSnap.data());
+      try {
+        const settingsRef = doc(db, 'users', ownerId);
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists()) {
+          setMerchantSettings(settingsSnap.data());
+        }
+      } catch (err) {
+        console.warn("Could not load merchant settings for portal header:", err);
       }
 
       // Fetch merchant's active payment accounts (registered wallets with account numbers)
@@ -231,17 +306,29 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
         (e.description?.toLowerCase().includes(decodedClient.toLowerCase()) || e.category?.toLowerCase().includes(decodedClient.toLowerCase()))
       );
 
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      const todayStr = `${yyyy}-${mm}-${dd}`;
+      // Date & Time checking for 15:00 UTC-5 cutoff
+      const now = new Date();
+      const ecuadorIso = now.toLocaleString("en-US", { timeZone: "America/Guayaquil" });
+      const ecuadorDate = new Date(ecuadorIso);
+      const ecY = ecuadorDate.getFullYear();
+      const ecM = String(ecuadorDate.getMonth() + 1).padStart(2, '0');
+      const ecD = String(ecuadorDate.getDate()).padStart(2, '0');
+      const todayStr = `${ecY}-${ecM}-${ecD}`;
+
+      // Helper to determine if a service is expired considering the 15:00 UTC-5 (Ecuador) cutoff
+      const isServiceExpired = (expDate?: string) => {
+        if (!expDate) return false;
+        if (expDate < todayStr) return true;
+        if (expDate > todayStr) return false;
+        // Same day: active only until 15:00 (3:00 PM) UTC-5
+        const currentHour = ecuadorDate.getHours();
+        return currentHour >= 15;
+      };
 
       // Categorize Active services: Only those where status is 'active' AND is not expired
       const nonExpiredActiveServices = clientServices.filter((s: any) => {
         if (s.status !== 'active') return false;
-        if (!s.expirationDate) return true;
-        return s.expirationDate >= todayStr;
+        return !isServiceExpired(s.expirationDate);
       });
       setActiveServices(nonExpiredActiveServices);
 
@@ -257,13 +344,15 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
           totalAmount: tx.chargedRate || 0,
           pendingAmount: (tx.chargedRate || 0) - (tx.amountPaid || 0),
           dueDate: tx.billingDate || tx.createdAt?.split('T')[0] || 'S/N',
-          status: 'pending'
+          status: 'pending',
+          finalClientName: tx.finalClientName || null,
+          finalClientContact: tx.finalClientContact || null
         });
       });
 
       // Unpaid Digital Services
       clientServices.filter((s: any) => !s.isPaid).forEach((s: any) => {
-        const isExpired = s.expirationDate && s.expirationDate < todayStr;
+        const isExpired = isServiceExpired(s.expirationDate);
         derivedReceivables.push({
           id: s.id,
           source: isExpired ? 'Servicio Vencido' : 'Servicio Digital',
@@ -273,7 +362,9 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
           totalAmount: s.revenue || 0,
           pendingAmount: (s.revenue || 0) - (s.amountPaid || 0),
           dueDate: s.expirationDate || 'S/N',
-          status: s.status || 'active'
+          status: s.status || 'active',
+          finalClientName: s.finalClientName || null,
+          finalClientContact: s.finalClientContact || null
         });
       });
 
@@ -986,10 +1077,42 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                             </h4>
                           </div>
                           
-                          <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                            Vence: {service.expirationDate}
+                          <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1 shrink-0">
+                            <Calendar className="w-3 h-3 text-indigo-400" />
+                            <span>Corte: {service.expirationDate || 'S/F'}</span>
                           </span>
                         </div>
+
+                        {/* If registered or linked for a reseller with final client data */}
+                        {(service.finalClientName || service.finalClientContact) && (
+                          <div className="bg-slate-950/60 border border-slate-800/80 p-3 rounded-xl flex items-center justify-between gap-3 text-xs">
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <span className="text-[8px] font-black uppercase text-indigo-400 tracking-wider flex items-center gap-1">
+                                <User className="w-2.5 h-2.5" /> Cliente Vinculado / Final
+                              </span>
+                              <span className="text-white font-bold truncate">
+                                {service.finalClientName || 'Cliente Asignado'}
+                              </span>
+                              {service.finalClientContact && (
+                                <span className="text-slate-400 text-[10px] font-mono">
+                                  {service.finalClientContact}
+                                </span>
+                              )}
+                            </div>
+                            {service.finalClientContact && (
+                              <a
+                                href={`https://wa.me/${cleanPhoneNumber(service.finalClientContact)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+                                title="Contactar por WhatsApp al cliente"
+                              >
+                                <Phone className="w-3 h-3" />
+                                <span>WhatsApp</span>
+                              </a>
+                            )}
+                          </div>
+                        )}
 
                         {/* Credentials box */}
                         {service.email && (
@@ -1130,6 +1253,26 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                           <span className="text-slate-500">Monto del servicio:</span>
                           <span className="text-white">{formatCurrency(service.revenue || 0)}</span>
                         </div>
+
+                        {/* Action buttons: Solicitar Renovación & Solicitar Soporte */}
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80">
+                          <button
+                            onClick={() => handleRequestRenewal(service)}
+                            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 font-black text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+                            title="Solicitar renovación por WhatsApp"
+                          >
+                            <RefreshCw className="w-3 h-3 shrink-0" />
+                            <span className="truncate">Solicitar Renovación</span>
+                          </button>
+                          <button
+                            onClick={() => handleRequestSupport(service)}
+                            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-black text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+                            title="Reportar problema o solicitar soporte por WhatsApp"
+                          >
+                            <LifeBuoy className="w-3 h-3 shrink-0" />
+                            <span className="truncate">Solicitar Soporte</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1224,7 +1367,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                     🎉 ¡Al día! No tiene valores o trámites pendientes de pago.
                   </div>
                 ) : (
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
@@ -1240,12 +1383,39 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                           {receivables.map((r, i) => (
                             <tr key={r.id + '_' + i} className="hover:bg-slate-800/30 transition-colors font-semibold">
                               <td className="p-4">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{r.source}</span>
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{r.source}</span>
+                                    {r.status === 'active' && (
+                                      <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Activa</span>
+                                    )}
+                                  </div>
                                   <span className="text-white text-sm font-bold">{r.description}</span>
+                                  
+                                  {/* Reseller final client information if applicable */}
+                                  {(r.finalClientName || r.finalClientContact) && (
+                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] bg-slate-950/70 border border-slate-800/80 px-2.5 py-1.5 rounded-lg w-fit">
+                                      <span className="text-slate-400 flex items-center gap-1 font-normal">
+                                        <User className="w-3 h-3 text-indigo-400" />
+                                        Cliente: <strong className="text-slate-200">{r.finalClientName || 'Asignado'}</strong>
+                                      </span>
+                                      {r.finalClientContact && (
+                                        <a
+                                          href={`https://wa.me/${cleanPhoneNumber(r.finalClientContact)}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-emerald-400 hover:text-emerald-300 font-mono font-bold flex items-center gap-1 hover:underline ml-1"
+                                          title="Contactar al cliente final por WhatsApp"
+                                        >
+                                          <Phone className="w-3 h-3" />
+                                          {r.finalClientContact}
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </td>
-                              <td className="p-4 text-slate-400 font-mono">
+                              <td className="p-4 text-slate-400 font-mono whitespace-nowrap">
                                 {r.dueDate}
                               </td>
                               <td className="p-4 text-right text-slate-400 font-mono">
@@ -1260,6 +1430,28 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
                             </tr>
                           ))}
                         </tbody>
+                        <tfoot>
+                          <tr className="bg-slate-950/90 border-t-2 border-slate-800 text-xs font-black">
+                            <td className="p-4 text-white uppercase tracking-wider">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                                <span>Total General Pendiente de Cancelar</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-slate-500 font-normal italic text-[11px]">
+                              {receivables.length} registro(s)
+                            </td>
+                            <td className="p-4 text-right text-slate-300 font-mono">
+                              {formatCurrency(receivables.reduce((sum, r) => sum + (r.totalAmount || 0), 0))}
+                            </td>
+                            <td className="p-4 text-right text-emerald-400 font-mono">
+                              {formatCurrency(receivables.reduce((sum, r) => sum + ((r.totalAmount || 0) - (r.pendingAmount || 0)), 0))}
+                            </td>
+                            <td className="p-4 text-right text-rose-400 text-sm font-black font-mono">
+                              {formatCurrency(receivables.reduce((sum, r) => sum + (r.pendingAmount || 0), 0))}
+                            </td>
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   </div>
@@ -1363,12 +1555,39 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
       </AnimatePresence>
 
       {/* Footer Branding Credit */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600 font-semibold flex flex-col gap-1.5 mt-12">
+      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600 font-semibold flex flex-col gap-1.5 mt-12 mb-14 md:mb-0">
         <p>© 2026 Control Financiero. Todos los derechos reservados.</p>
         <p className="text-[10px] text-slate-700 tracking-wider">
           Acceso Seguro Encriptado • Sincronización Real-Time con Base de Datos
         </p>
       </footer>
+
+      {/* FLOATING WHATSAPP BUTTON (BOTTOM-RIGHT) */}
+      {merchantSettings?.phone && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            onClick={handleOpenBlankWhatsApp}
+            className="group flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-500 text-white pl-4 pr-5 py-3.5 rounded-full shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 hover:scale-105 active:scale-95 border-2 border-emerald-400/40 cursor-pointer"
+            title="Abrir chat de WhatsApp con asesor"
+          >
+            <div className="relative">
+              <MessageCircle className="w-6 h-6 fill-white stroke-emerald-600" />
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-200"></span>
+              </span>
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[9px] font-black uppercase tracking-wider text-emerald-100 opacity-90 leading-tight">
+                Atención Directa
+              </span>
+              <span className="text-xs font-black text-white leading-tight">
+                WhatsApp
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
 
     </div>
   );

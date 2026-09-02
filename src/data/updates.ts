@@ -9,6 +9,22 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_21_0_client_public_portal_enhancements",
+    version: "V7.21.0",
+    title: "V7.21.0 • Mejoras de Interacción, Renovación, Soporte y Corte en Portal de Clientes",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se implementaron mejoras integrales en el Portal Público del Cliente: (1) Regla de corte exacta a las 15:00 UTC-5 (Ecuador) para expiración automática de cuentas activas; (2) Botones de acción directa por WhatsApp 'Solicitar Renovación' y 'Solicitar Soporte' con datos de acceso preformateados (correo/usuario, perfil, contraseña); (3) Botón flotante inferior derecho para contacto directo por WhatsApp con el asesor; (4) Visualización y enlace a WhatsApp del cliente final en cuentas asignadas por revendedores; (5) Fila de sumatoria y totales consolidados al pie de la tabla de valores pendientes.",
+    type: "feature"
+  },
+  {
+    id: "v_7_20_0_public_client_portal_access_resolution",
+    version: "V7.20.0",
+    title: "V7.20.0 • Habilitación y Despliegue de Acceso Público al Portal de Clientes",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se configuraron y desplegaron las reglas de seguridad en Firestore para permitir la consulta pública y segura del Portal de Clientes y Recibos Digitales mediante enlaces directos (WhatsApp/Web). Ahora cualquier cliente puede consultar su estado de cuenta, servicios digitales, trámites ANT y cuentas bancarias de pago en tiempo real sin requerir inicio de sesión.",
+    type: "security"
+  },
+  {
     id: "v_7_19_3_settings_text_borders_enhancement",
     version: "V7.19.3",
     title: "V7.19.3 • Bordes Negros en Textos Clave de Configuración",
