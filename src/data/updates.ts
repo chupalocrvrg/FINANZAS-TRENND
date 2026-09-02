@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_22_0_encrypted_portal_url_and_cloaking",
+    version: "V7.22.0",
+    title: "V7.22.0 • Encriptación Criptográfica y Enmascaramiento de URLs en Portal de Clientes",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se implementó un motor de cifrado y enmascaramiento URL-Safe para el Portal Público de Clientes y Recibos. (1) Toda la información sensible (ID del asesor, nombre del cliente, tokens y firmas) se comprime y encripta con salt de seguridad en un único parámetro '?p=...'; (2) Al abrirse en el navegador, el sistema procesa el enlace en memoria y limpia de inmediato la barra de direcciones (URL Cloaking) mostrando un acceso limpio y protegido sin exponer datos en el historial ni en la pantalla.",
+    type: "security"
+  },
+  {
     id: "v_7_21_0_client_public_portal_enhancements",
     version: "V7.21.0",
     title: "V7.21.0 • Mejoras de Interacción, Renovación, Soporte y Corte en Portal de Clientes",

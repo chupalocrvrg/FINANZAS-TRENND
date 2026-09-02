@@ -32,6 +32,11 @@ import {
 } from 'lucide-react';
 import { formatCurrency, cn, getGMT5DateString } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  encryptPortalPayload, 
+  decryptPortalPayload, 
+  DecryptedPortalData 
+} from '../lib/portalCrypto';
 
 export function generateSecureToken(ownerId: string, clientName: string): string {
   const combined = `${ownerId}:${clientName.toLowerCase().trim()}:security_salt_2026`;
@@ -45,10 +50,8 @@ export function generateSecureToken(ownerId: string, clientName: string): string
 }
 
 /**
- * Generates an obfuscated, completely unpredictable URL for a client's public portal (Mejora 2)
- * If the client already has an active portalToken in CRM, it uses it.
- * If not, it generates a secure random token, updates CRM in background, and uses that.
- * Fallback to secure signature token if no CRM entry is found.
+ * Generates an encrypted, URL-safe, completely masked link for a client's public portal
+ * Encrypts ownerId, clientName and portalToken into a single secure string (e.g. ?p=...)
  */
 export function getClientPortalUrl(
   ownerId: string,
@@ -59,9 +62,10 @@ export function getClientPortalUrl(
   const trimmedName = clientName.toLowerCase().trim();
   const entity = entities.find(e => e.name?.toLowerCase().trim() === trimmedName);
 
+  let token = '';
   if (entity) {
     if (entity.portalToken) {
-      return `${origin}/?view=client-portal&owner=${ownerId}&token=${entity.portalToken}`;
+      token = entity.portalToken;
     } else {
       // Generate secure 16-character alphanumeric token
       const randToken = 'pt_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
@@ -73,13 +77,39 @@ export function getClientPortalUrl(
       
       // Update local object so we don't regenerate in same session
       entity.portalToken = randToken;
-      return `${origin}/?view=client-portal&owner=${ownerId}&token=${randToken}`;
+      token = randToken;
     }
+  } else {
+    token = generateSecureToken(ownerId, clientName);
   }
 
-  // Graceful fallback to secure hashed token if no CRM entity matches
-  const secureHash = generateSecureToken(ownerId, clientName);
-  return `${origin}/?view=client-portal&owner=${ownerId}&client=${encodeURIComponent(clientName)}&token=${secureHash}`;
+  // Create masked, encrypted URL
+  const cipherToken = encryptPortalPayload({
+    view: 'client-portal',
+    ownerId,
+    clientName: entity ? undefined : clientName,
+    token
+  });
+
+  return `${origin}/?p=${cipherToken}`;
+}
+
+/**
+ * Generates an encrypted, URL-safe link for an individual public voucher / receipt
+ */
+export function getVoucherPublicUrl(
+  ownerId: string,
+  voucherId: string,
+  voucherType: string = 'digital'
+): string {
+  const origin = window.location.origin;
+  const cipherToken = encryptPortalPayload({
+    view: 'voucher',
+    ownerId,
+    voucherId,
+    voucherType
+  });
+  return `${origin}/?p=${cipherToken}`;
 }
 
 interface ClientPublicPortalProps {
@@ -87,12 +117,53 @@ interface ClientPublicPortalProps {
 }
 
 export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
-  const [params, setParams] = useState<URLSearchParams>(new URLSearchParams(window.location.search));
-  const viewType = params.get('view'); // 'client-portal' or 'voucher'
-  const ownerId = params.get('owner'); // Merchant UID
-  const clientName = params.get('client'); // Client name
-  const voucherId = params.get('id'); // For individual voucher
-  const voucherType = params.get('type') || 'digital'; // 'digital', 'ant', 'ledger'
+  // Parse either encrypted ?p=... or legacy URL parameters
+  const [portalInfo] = useState<DecryptedPortalData | null>(() => {
+    const rawSearch = window.location.search;
+    const urlParams = new URLSearchParams(rawSearch);
+    const pParam = urlParams.get('p') || urlParams.get('portal');
+    
+    if (pParam && pParam !== 'acceso-seguro' && pParam !== 'client') {
+      const decrypted = decryptPortalPayload(pParam);
+      if (decrypted) {
+        // Immediate URL Bar Cloaking / Cleansing
+        try {
+          window.history.replaceState({}, document.title, window.location.pathname + '?portal=acceso-seguro');
+        } catch (e) {
+          // ignore
+        }
+        return decrypted;
+      }
+    }
+
+    // Fallback to legacy plain-text parameters
+    const view = (urlParams.get('view') as 'client-portal' | 'voucher') || (urlParams.get('portal') === 'client' ? 'client-portal' : null);
+    if (view || urlParams.get('owner')) {
+      const legacyData: DecryptedPortalData = {
+        view: view || 'client-portal',
+        ownerId: urlParams.get('owner') || '',
+        clientName: urlParams.get('client') || undefined,
+        token: urlParams.get('token') || undefined,
+        voucherId: urlParams.get('id') || undefined,
+        voucherType: urlParams.get('type') || 'digital'
+      };
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname + '?portal=acceso-seguro');
+      } catch (e) {
+        // ignore
+      }
+      return legacyData;
+    }
+
+    return null;
+  });
+
+  const viewType = portalInfo?.view || 'client-portal';
+  const ownerId = portalInfo?.ownerId || '';
+  const clientName = portalInfo?.clientName || '';
+  const token = portalInfo?.token || '';
+  const voucherId = portalInfo?.voucherId || '';
+  const voucherType = portalInfo?.voucherType || 'digital';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -198,14 +269,13 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
   // Fetch client statement data
   const fetchPortalData = async () => {
     if (!ownerId) {
-      setError('Falta el parámetro de propietario requerido en el enlace.');
+      setError('Enlace inválido o incompleto: Falta el parámetro de propietario.');
       setLoading(false);
       return;
     }
 
-    const token = params.get('token');
     if (!token) {
-      setError('Falta el token de seguridad requerido en el enlace.');
+      setError('Falta el token de seguridad o firma de verificación en el enlace.');
       setLoading(false);
       return;
     }
@@ -521,7 +591,7 @@ export function ClientPublicPortal({ onBackToApp }: ClientPublicPortalProps) {
       setError('Tipo de vista no admitido.');
       setLoading(false);
     }
-  }, [viewType, ownerId, clientName, voucherId]);
+  }, [viewType, ownerId, clientName, token, voucherId]);
 
   // Handle PDF/Download Receipt
   const handlePrint = () => {

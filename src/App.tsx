@@ -339,10 +339,18 @@ export default function App() {
     </div>
   );
 
-  // Bypasess authentication checks for the public Customer Consultation Portal and individual vouchers
+  // Bypasses authentication checks for the public Customer Consultation Portal and individual vouchers
   const urlParams = new URLSearchParams(window.location.search);
   const portalView = urlParams.get('view');
-  if (portalView === 'client-portal' || portalView === 'voucher') {
+  const pPayload = urlParams.get('p');
+  const portalParam = urlParams.get('portal');
+  if (
+    portalView === 'client-portal' || 
+    portalView === 'voucher' || 
+    pPayload || 
+    portalParam === 'client' || 
+    portalParam === 'acceso-seguro'
+  ) {
     return (
       <ClientPublicPortal 
         onBackToApp={user ? () => {
