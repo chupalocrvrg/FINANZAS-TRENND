@@ -9,6 +9,54 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_27_0_portal_theme_toggle_glassmorphism",
+    version: "V7.27.0",
+    title: "V7.27.0 • Selector de Tema Dinámico (Oscuro / Claro Glassmorphism) en Enlaces Personalizados de Clientes",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Implementación del conmutador de temas y estética Glassmorphism en páginas personalizadas públicas de clientes y revendedores: (1) Botón interactivo de alternancia de tema (Oscuro 🌙 / Claro ☀️) integrado en la cabecera del portal público con persistencia en localStorage; (2) Rediseño Glassmorphism para el Tema Claro: efecto de vidrio translúcido con desenfoque de fondo (backdrop-blur-xl), sutiles bordes claros y sombras suaves; (3) Tipografía de alto contraste calibrada (text-slate-900 / text-slate-700 / text-indigo-700 / text-emerald-600) para asegurar legibilidad impecable en todas las secciones: comprobante único, bento de estadísticas, cuentas activas, cuentas pendientes o vencidas, catálogo con recargas de juegos y trámites, canales bancarios y visor QR emergente.",
+    type: "feature"
+  },
+  {
+    id: "v_7_26_0_game_recharges_and_tramites_catalog_integration",
+    version: "V7.26.0",
+    title: "V7.26.0 • Módulo de Recarga de Juegos, Catálogo de Trámites e Integración en Portal de Clientes",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Evolución del sistema E-Commerce y Catálogo Público: (1) Reemplazo definitivo de 'Físico/Inventario' por el nuevo módulo especializado 'Recarga de Juegos' con soporte para múltiples paquetes de monedas y diamantes por juego, requisitos de recarga (UID, Nickname, servidor), costos y precios PVP/Revendedor; (2) Catálogo de Trámites y Gestiones ANT configurable con requisitos documentales, tiempos estimados y opciones de precio o cotización; (3) Integración total en el Portal Público de Clientes: la pestaña 'Catálogo' ahora incorpora sub-categorías de navegación (Todos, Suscripciones, Recarga de Juegos, Trámites) con buscador universal; (4) Acciones directas por WhatsApp con mensajes pre-redactados para recargar juegos con datos de cuenta, solicitar trámites o pedir cotización e información cuando el trámite está bajo consulta.",
+    type: "feature"
+  },
+  {
+    id: "v_7_25_1_fix_public_catalog_loading_and_permissions",
+    version: "V7.25.1",
+    title: "V7.25.1 • Corrección de Carga del Catálogo en Portal de Clientes y Permisos Públicos",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Solución definitiva para la visualización del Catálogo Disponible en el Portal Público de Clientes: (1) Actualización de reglas de seguridad en Firestore para permitir lectura pública (get, list) de la colección digital_catalog para visitantes con enlace seguro; (2) Motor híbrido de catálogo que combina automáticamente los productos registrados en el catálogo explícito con el inventario de servicios digitales activos del comercio, garantizando que el catálogo siempre muestre opciones disponibles; (3) Soporte inteligente de precios y márgenes según la entidad (PVP para clientes estándar, tarifas preferenciales de revendedor o mayorista con cálculo automático de márgenes).",
+    type: "feature"
+  },
+  {
+    id: "v_7_25_0_client_portal_tabbed_interface_and_catalog",
+    version: "V7.25.0",
+    title: "V7.25.0 • Portal de Clientes por Pestañas, Control de Cuentas Vencidas y Catálogo Dinámico con Oportunidad de Ingresos",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Reestructuración integral de la experiencia del Portal Público de Clientes: (1) Navegación por Pestañas: Se reemplazó la vista en lista vertical por 4 pestañas especializadas (Activas, Por Pagar / Vencidas, Catálogo, Cuentas de Pago); (2) Control Exacto de Cuentas Vencidas: Sección dedicada que expone con precisión el servicio, usuario/correo asignado, fecha de vencimiento y saldo pendiente con botón directo para reportar pago por WhatsApp; (3) Pestaña de Catálogo Dinámico: Catálogo de servicios digitales con precios adaptados según el rol del cliente (PVP para cliente final, tarifas preferenciales para revendedores o intermediarios); (4) Banner Superior de Oportunidad de Negocio: Mensaje destacado 'PUEDES GENERAR INGRESOS CON LA VENTA DE ESTOS SERVICIOS CON PRECIOS PREFERENCIALES, SOLICITA MÁS INFORMACIÓN AQUÍ' con botón directo a WhatsApp con texto preconfigurado; (5) Bento Estadístico Interactivo: Tarjetas superiores que funcionan como accesos rápidos para alternar entre pestañas.",
+    type: "feature"
+  },
+  {
+    id: "v_7_24_0_mother_accounts_capacity_sync_and_liberation",
+    version: "V7.24.0",
+    title: "V7.24.0 • Gestión de Cuentas Madre con Cupos Dinámicos, Sincronización de Claves y Venta por Servicio",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se implementó el ciclo de vida inteligente para Cuentas Madre en el módulo de Comercio Digital: (1) Definición de capacidad de perfiles (cupo máximo) al registrar o editar la cuenta madre; (2) Indicador dinámico de estado 'Disponible' vs 'Utilizada (Llena)' con barra de progreso de cupos; (3) Sincronización atómica en cascada: al modificar contraseñas, correos o accesos BOT de la cuenta madre, se propagan y actualizan automáticamente en todos los perfiles hijos vinculados; (4) Liberación de cupos: al cancelar, cambiar de servicio o dar de baja un perfil de cliente, el cupo vuelve a estar disponible al instante; (5) Modal 'Vender Perfil' completamente reorganizado por servicio disponible mostrando el total de cupos libres y permitiendo vender o liberar perfiles en un clic.",
+    type: "feature"
+  },
+  {
+    id: "v_7_23_1_renewal_bypass_wallet_validation",
+    version: "V7.23.1",
+    title: "V7.23.1 • Desactivación de Validación de Cuenta/Caja en Renovaciones",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Se corrigió la validación de confirmación en el modal de renovación de servicios digitales para respetar la suspensión temporal de selección de cajas y billeteras, eliminando la alerta que exigía seleccionar una cuenta de origen o destino para poder procesar la renovación.",
+    type: "core"
+  },
+  {
     id: "v_7_23_0_full_debt_visibility_in_public_portal",
     version: "V7.23.0",
     title: "V7.23.0 • Visibilidad Total y Consolidación de Deuda en Portal Público de Clientes",

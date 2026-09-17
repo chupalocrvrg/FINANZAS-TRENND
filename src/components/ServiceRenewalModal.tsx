@@ -78,11 +78,12 @@ export function ServiceRenewalModal({
     const parsedPrice = parseFloat(clientPrice) || 0;
     const parsedCost = parseFloat(supplierCost) || 0;
 
-    if (clientPaymentType === 'paid' && !clientWalletId) {
+    // Wallet account selection is suspended until further notice (isWalletsDisabled = true)
+    if (!isWalletsDisabled && clientPaymentType === 'paid' && !clientWalletId) {
       alert("Por favor, selecciona la cuenta donde ingresa el cobro del cliente.");
       return;
     }
-    if (supplierPaymentType === 'paid' && !supplierWalletId) {
+    if (!isWalletsDisabled && supplierPaymentType === 'paid' && !supplierWalletId) {
       alert("Por favor, selecciona la cuenta desde donde se paga el costo al proveedor.");
       return;
     }

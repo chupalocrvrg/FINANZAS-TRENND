@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { DigitalServices } from './DigitalServices';
 import { Transactions } from './Transactions';
-import { PhysicalCommerce } from './PhysicalCommerce';
+import { GameRecharges } from './GameRecharges';
 import { cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
-import { ShoppingBag, Activity, Package } from 'lucide-react';
+import { ShoppingBag, Activity, Gamepad2 } from 'lucide-react';
 
 export function Ecommerce({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState<'suscripciones' | 'tramites' | 'fisico'>('suscripciones');
+  const [activeTab, setActiveTab] = useState<'suscripciones' | 'juegos' | 'tramites'>('suscripciones');
   const { settings } = useAuth();
   const isDark = settings?.theme === 'dark' || (settings?.theme === 'system' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -18,46 +18,47 @@ export function Ecommerce({ user }: { user: any }) {
           <button
             onClick={() => setActiveTab('suscripciones')}
             className={cn(
-              "flex-1 whitespace-nowrap min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all",
+              "flex-1 whitespace-nowrap min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
               activeTab === 'suscripciones' 
                 ? (isDark ? "bg-slate-700 text-white shadow" : "bg-slate-100 text-black shadow-sm") 
                 : (isDark ? "text-white/80 hover:text-white" : "text-black/80 hover:text-black")
             )}
           >
-            <ShoppingBag className="w-4 h-4" />
+            <ShoppingBag className="w-4 h-4 text-emerald-500" />
             Suscripciones
           </button>
           <button
-            onClick={() => setActiveTab('fisico')}
+            onClick={() => setActiveTab('juegos')}
             className={cn(
-              "flex-1 whitespace-nowrap min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all",
-              activeTab === 'fisico' 
+              "flex-1 whitespace-nowrap min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
+              activeTab === 'juegos' 
                 ? (isDark ? "bg-slate-700 text-white shadow" : "bg-slate-100 text-black shadow-sm") 
                 : (isDark ? "text-white/80 hover:text-white" : "text-black/80 hover:text-black")
             )}
           >
-            <Package className="w-4 h-4" />
-            Físico/Inventario
+            <Gamepad2 className="w-4 h-4 text-violet-500" />
+            Recarga de Juegos
           </button>
           <button
             onClick={() => setActiveTab('tramites')}
             className={cn(
-              "flex-1 whitespace-nowrap min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all",
+              "flex-1 whitespace-nowrap min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
               activeTab === 'tramites' 
                 ? (isDark ? "bg-slate-700 text-white shadow" : "bg-slate-100 text-black shadow-sm") 
                 : (isDark ? "text-white/80 hover:text-white" : "text-black/80 hover:text-black")
             )}
           >
-            <Activity className="w-4 h-4" />
+            <Activity className="w-4 h-4 text-indigo-500" />
             Trámites
           </button>
         </div>
       </div>
       <div className="flex-1 w-full overflow-y-auto">
         {activeTab === 'suscripciones' && <DigitalServices />}
-        {activeTab === 'fisico' && <PhysicalCommerce user={user} isDark={isDark} />}
+        {activeTab === 'juegos' && <GameRecharges />}
         {activeTab === 'tramites' && <Transactions />}
       </div>
     </div>
   );
 }
+

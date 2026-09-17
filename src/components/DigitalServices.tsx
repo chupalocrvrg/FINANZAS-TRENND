@@ -26,7 +26,16 @@ import {
   RotateCcw,
   Link,
   ExternalLink,
-  Bot
+  Bot,
+  Users,
+  Layers,
+  Unlock,
+  UserMinus,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
 import { formatCurrency, cn, getGMT5DateString, calculateServiceExpirationDate, addSecurityAuditLog, formatSalesMessage } from '../lib/utils';
@@ -86,7 +95,7 @@ export interface DigitalServiceItem {
   botUrl?: string;
   botUser?: string;
   botPassword?: string;
-  status?: 'active' | 'expired' | 'pending';
+  status?: 'active' | 'expired' | 'pending' | 'cancelled';
   isPaid?: boolean;
   isCostPaid?: boolean;
   revenueWalletId?: string;
@@ -96,7 +105,40 @@ export interface DigitalServiceItem {
   costPaid?: number;
   deletedFromModule?: boolean;
   parentServiceId?: string;
+  maxProfiles?: number;
+  isProfileFreed?: boolean;
 }
+
+export const getMotherAccountStats = (
+  motherAccount: DigitalServiceItem,
+  allServices: DigitalServiceItem[],
+  catItems: CatalogItem[]
+) => {
+  const catItem = catItems.find(c => c.name.toLowerCase() === motherAccount.name.toLowerCase());
+  const maxCapacity = motherAccount.maxProfiles && motherAccount.maxProfiles > 0
+    ? motherAccount.maxProfiles
+    : (catItem?.maxScreens && catItem.maxScreens > 0 ? catItem.maxScreens : 5);
+
+  const activeChildren = allServices.filter(s =>
+    s.parentServiceId === motherAccount.id &&
+    !s.deletedFromModule &&
+    !s.isProfileFreed &&
+    s.status !== 'cancelled'
+  );
+
+  const occupiedCount = activeChildren.length;
+  const availableCount = Math.max(0, maxCapacity - occupiedCount);
+  const isFull = availableCount === 0;
+
+  return {
+    maxCapacity,
+    occupiedCount,
+    availableCount,
+    isFull,
+    statusText: isFull ? 'Utilizada' : 'Disponible',
+    activeChildren
+  };
+};
 
 export function DigitalServices() {
   const { user, settings } = useAuth();
@@ -217,7 +259,12 @@ export function DigitalServices() {
   const [successMsg, setSuccessMsg] = useState<{show: boolean, phone: string, text: string, service?: any}>({show: false, phone: '', text: ''});
 
   // Expiration / status filter for contract management
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired' | 'matriz_available' | 'matriz_full'>('all');
+
+  // Mother accounts UI expansion states
+  const [expandedMotherAccounts, setExpandedMotherAccounts] = useState<Record<string, boolean>>({});
+  const [profilesSearchTerm, setProfilesSearchTerm] = useState('');
+  const [expandedModalAccounts, setExpandedModalAccounts] = useState<Record<string, boolean>>({});
 
   // Advanced Filter States
   const [showFilters, setShowFilters] = useState<boolean>(false);
@@ -249,8 +296,9 @@ export function DigitalServices() {
     password: '',
     pin: '',
     serviceType: 'completa' as 'completa' | 'pantalla' | 'profile' | 'matriz',
+    maxProfiles: 5 as number | undefined,
     profileName: '',
-    status: 'active' as 'active' | 'expired' | 'pending',
+    status: 'active' as 'active' | 'expired' | 'pending' | 'cancelled',
     isPaid: true,
     isCostPaid: true,
     revenueWalletId: '',
@@ -439,6 +487,7 @@ export function DigitalServices() {
       password: formData.password,
       pin: formData.pin,
       serviceType: formData.serviceType,
+      maxProfiles: formData.serviceType === 'matriz' ? (Number(formData.maxProfiles) || 5) : null,
       profileName: formData.profileName,
       status: formData.status,
       isPaid: formData.isPaid,
@@ -524,6 +573,37 @@ export function DigitalServices() {
         // Edit Mode
         await updateDoc(doc(db, 'digital_services', formData.id), serviceData);
         await logServiceHistory(formData.id, 'updated', serviceData);
+
+        // Cascading credential synchronization if this is a Mother Account (matriz)
+        if (formData.serviceType === 'matriz') {
+          const childProfiles = services.filter(s => s.parentServiceId === formData.id && !s.deletedFromModule);
+          if (childProfiles.length > 0) {
+            try {
+              const batch = writeBatch(db);
+              childProfiles.forEach(child => {
+                const childRef = doc(db, 'digital_services', child.id);
+                const updates: any = {
+                  updatedAt: new Date().toISOString()
+                };
+                if (serviceData.email !== undefined) updates.email = serviceData.email;
+                if (serviceData.password !== undefined) updates.password = serviceData.password;
+                if (serviceData.isBot !== undefined) updates.isBot = !!serviceData.isBot;
+                if (serviceData.botUrl !== undefined) updates.botUrl = serviceData.botUrl;
+                if (serviceData.botUser !== undefined) updates.botUser = serviceData.botUser;
+                if (serviceData.botPassword !== undefined) updates.botPassword = serviceData.botPassword;
+
+                batch.update(childRef, updates);
+              });
+              await batch.commit();
+              await sendLocalPushNotification(
+                'Credenciales Sincronizadas 🔄',
+                `Se actualizó la contraseña y credenciales en ${childProfiles.length} perfil(es) vinculado(s) a la Cuenta Madre.`
+              );
+            } catch (cascadeErr) {
+              console.error("Error al sincronizar credenciales en perfiles hijos:", cascadeErr);
+            }
+          }
+        }
       } else {
         // Create Mode
         const docRef = await addDoc(collection(db, 'digital_services'), {
@@ -631,6 +711,7 @@ export function DigitalServices() {
       password: '',
       pin: '',
       serviceType: isMatriz ? 'matriz' : 'completa',
+      maxProfiles: isMatriz ? 5 : undefined,
       profileName: '',
       status: 'active',
       isPaid: true,
@@ -642,6 +723,7 @@ export function DigitalServices() {
   };
 
   const handleEdit = (service: DigitalServiceItem) => {
+    const catItem = catalogItems.find(c => c.name.toLowerCase() === service.name.toLowerCase());
     setFormData({
       id: service.id,
       name: service.name,
@@ -663,6 +745,7 @@ export function DigitalServices() {
       password: service.password || '',
       pin: service.pin || '',
       serviceType: (service as any).serviceType || 'completa',
+      maxProfiles: (service as any).maxProfiles || (catItem?.maxScreens || 5),
       profileName: (service as any).profileName || '',
       status: service.status || 'active',
       isPaid: service.isPaid !== false, // default true if not false
@@ -672,6 +755,37 @@ export function DigitalServices() {
       parentServiceId: (service as any).parentServiceId || ''
     });
     setIsModalOpen(true);
+  };
+
+  const handleFreeProfile = (profileService: DigitalServiceItem) => {
+    const mother = services.find(s => s.id === profileService.parentServiceId);
+    const motherLabel = mother ? `de la cuenta madre "${mother.name}" (${mother.email || ''})` : '';
+
+    triggerConfirm(
+      "¿Liberar cupo de este perfil?",
+      `El perfil asignado a "${profileService.clientName || 'Cliente'}" (${profileService.profileName || profileService.name}) quedará cancelado/archivado y su cupo se devolverá inmediatamente ${motherLabel} para poder venderse a otro cliente. ¿Deseas continuar?`,
+      async () => {
+        try {
+          await updateDoc(doc(db, 'digital_services', profileService.id), {
+            status: 'cancelled',
+            isProfileFreed: true,
+            deletedFromModule: true,
+            updatedAt: new Date().toISOString()
+          });
+          await logServiceHistory(profileService.id, 'profile_freed', {
+            parentServiceId: profileService.parentServiceId,
+            freedAt: new Date().toISOString()
+          });
+          await sendLocalPushNotification(
+            'Cupo Liberado 🔓',
+            `El cupo del perfil de "${profileService.clientName || 'Cliente'}" fue liberado y ya está disponible nuevamente para la venta.`
+          );
+        } catch (err) {
+          console.error("Error al liberar perfil:", err);
+          alert("Ocurrió un error al intentar liberar el cupo del perfil.");
+        }
+      }
+    );
   };
 
   const logServiceHistory = async (serviceId: string, action: string, details: any) => {
@@ -1114,6 +1228,16 @@ export function DigitalServices() {
     if (statusFilter === 'active' && !isActive) return false;
     if (statusFilter === 'expiring' && !expiring) return false;
     if (statusFilter === 'expired' && !expired) return false;
+    if (statusFilter === 'matriz_available') {
+      if ((service as any).serviceType !== 'matriz') return false;
+      const stats = getMotherAccountStats(service, services, catalogItems);
+      if (stats.isFull) return false;
+    }
+    if (statusFilter === 'matriz_full') {
+      if ((service as any).serviceType !== 'matriz') return false;
+      const stats = getMotherAccountStats(service, services, catalogItems);
+      if (!stats.isFull) return false;
+    }
 
     // 2. Apply advanced filters
     if (filterSupplierId && service.supplierId !== filterSupplierId) return false;
@@ -1181,6 +1305,8 @@ export function DigitalServices() {
   }).length;
   const expiringCounts = services.filter(s => isExpiringSoon(s.expirationDate)).length;
   const expiredCounts = services.filter(s => s.status === 'expired' || (s.expirationDate && new Date(s.expirationDate) < new Date())).length;
+  const matrizAvailableCounts = services.filter(s => !s.deletedFromModule && (s as any).serviceType === 'matriz' && !getMotherAccountStats(s, services, catalogItems).isFull).length;
+  const matrizFullCounts = services.filter(s => !s.deletedFromModule && (s as any).serviceType === 'matriz' && getMotherAccountStats(s, services, catalogItems).isFull).length;
 
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
@@ -1382,6 +1508,38 @@ export function DigitalServices() {
               Vencidos
               <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'expired' ? "bg-rose-500 text-white" : (isDark ? "bg-slate-800 text-white" : "bg-slate-200/80 text-black"))}>
                 {expiredCounts}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('matriz_available')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+                statusFilter === 'matriz_available'
+                  ? (isDark ? "bg-slate-800 text-emerald-400 shadow-md font-extrabold" : "bg-white text-emerald-600 shadow-sm border border-emerald-500/20 font-extrabold")
+                  : (isDark ? "text-white hover:text-white" : "text-black hover:text-black")
+              )}
+            >
+              <Layers className="w-3.5 h-3.5 text-emerald-500" />
+              Madres Disponibles
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'matriz_available' ? "bg-emerald-500 text-white" : (isDark ? "bg-slate-800 text-white" : "bg-slate-200/80 text-black"))}>
+                {matrizAvailableCounts}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('matriz_full')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+                statusFilter === 'matriz_full'
+                  ? (isDark ? "bg-slate-800 text-fuchsia-400 shadow-md font-extrabold" : "bg-white text-fuchsia-600 shadow-sm border border-fuchsia-500/20 font-extrabold")
+                  : (isDark ? "text-white hover:text-white" : "text-black hover:text-black")
+              )}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-fuchsia-500" />
+              Madres Utilizadas
+              <span className={cn("px-1.5 py-0.5 rounded-md font-mono text-[8px] font-bold", statusFilter === 'matriz_full' ? "bg-fuchsia-500 text-white" : (isDark ? "bg-slate-800 text-white" : "bg-slate-200/80 text-black"))}>
+                {matrizFullCounts}
               </span>
             </button>
           </div>
@@ -1893,6 +2051,172 @@ export function DigitalServices() {
                         )}
                       </div>
                     )}
+
+                    {/* Panel de Cuenta Madre o Vinculación a Cuenta Madre */}
+                    {(service as any).serviceType === 'matriz' && (() => {
+                      const stats = getMotherAccountStats(service, services, catalogItems);
+                      const isExpanded = !!expandedMotherAccounts[service.id];
+                      return (
+                        <div className={cn(
+                          "mb-4 p-3 rounded-2xl border transition-all",
+                          stats.isFull
+                            ? "border-rose-500/30 bg-rose-500/5"
+                            : "border-fuchsia-500/30 bg-fuchsia-500/5"
+                        )}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className={cn(
+                              "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 border shadow-xs",
+                              stats.isFull
+                                ? "bg-rose-500/10 text-rose-500 border-rose-500/30"
+                                : "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                            )}>
+                              {stats.isFull ? '🔴 Cuenta Madre Utilizada' : '🟢 Cuenta Madre Disponible'}
+                            </span>
+                            <span className="text-[10px] font-extrabold font-mono text-fuchsia-600 dark:text-fuchsia-400">
+                              {stats.occupiedCount} / {stats.maxCapacity} cupos
+                            </span>
+                          </div>
+
+                          {/* Progress bar */}
+                          <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2.5">
+                            <div 
+                              className={cn("h-full transition-all duration-300", stats.isFull ? "bg-rose-500" : "bg-gradient-to-r from-fuchsia-500 to-indigo-500")}
+                              style={{ width: `${Math.min(100, Math.round((stats.occupiedCount / stats.maxCapacity) * 100))}%` }}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedMotherAccounts(prev => ({
+                                  ...prev,
+                                  [service.id]: !prev[service.id]
+                                }));
+                              }}
+                              className="text-[9px] font-bold text-fuchsia-600 dark:text-fuchsia-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Users className="w-3 h-3" />
+                              <span>{isExpanded ? 'Ocultar' : 'Ver'} perfiles ({stats.activeChildren.length})</span>
+                              {isExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                            </button>
+
+                            {!stats.isFull ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const d = new Date();
+                                  d.setMonth(d.getMonth() + 1);
+                                  setFormData({
+                                    id: '',
+                                    name: service.name.replace(/complet[ao]/i, 'Perfil').trim(),
+                                    category: service.category,
+                                    revenue: '',
+                                    cost: '0',
+                                    supplierId: service.supplierId || '',
+                                    clientName: '',
+                                    clientContact: '',
+                                    clientType: 'client',
+                                    finalClientName: '',
+                                    finalClientContact: '',
+                                    isBot: !!service.isBot,
+                                    botUrl: service.botUrl || '',
+                                    botUser: service.botUser || '',
+                                    botPassword: service.botPassword || '',
+                                    expirationDate: d.toISOString().split('T')[0],
+                                    email: service.email || '',
+                                    password: service.password || '',
+                                    pin: '',
+                                    serviceType: 'profile',
+                                    maxProfiles: undefined,
+                                    profileName: '',
+                                    status: 'active',
+                                    isPaid: false,
+                                    isCostPaid: true,
+                                    revenueWalletId: '',
+                                    costWalletId: '',
+                                    parentServiceId: service.id
+                                  });
+                                  setIsModalOpen(true);
+                                }}
+                                className="px-2.5 py-1 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-700 text-white text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                                <span>Vender Perfil</span>
+                              </button>
+                            ) : (
+                              <span className="text-[9px] font-black uppercase text-rose-500 tracking-wider">
+                                Sin cupos libres
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Accordion list of active sold profiles */}
+                          {isExpanded && (
+                            <div className="mt-2.5 pt-2.5 border-t border-dashed border-fuchsia-500/20 space-y-1.5">
+                              {stats.activeChildren.length === 0 ? (
+                                <p className="text-[9px] text-slate-500 dark:text-slate-400 italic text-center py-1">
+                                  No hay perfiles activos vendidos aún en esta cuenta madre.
+                                </p>
+                              ) : (
+                                stats.activeChildren.map(child => (
+                                  <div key={child.id} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                                    <div className="min-w-0 flex-1 text-left">
+                                      <p className="font-bold text-[10px] text-slate-900 dark:text-slate-100 truncate">
+                                        {child.clientName || 'Cliente sin nombre'}
+                                      </p>
+                                      <p className="text-[8px] text-slate-500 dark:text-slate-400 truncate">
+                                        {child.profileName ? `Perfil: ${child.profileName}` : child.name} • Vence: {child.expirationDate || 'N/A'}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleFreeProfile(child);
+                                      }}
+                                      className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 text-[8px] font-black uppercase tracking-wider shrink-0 cursor-pointer flex items-center gap-1"
+                                      title="Liberar cupo de este cliente para volver a venderlo"
+                                    >
+                                      <UserMinus className="w-2.5 h-2.5" />
+                                      <span>Liberar</span>
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Badge y botón para perfil vinculado a cuenta madre */}
+                    {service.parentServiceId && (
+                      <div className="mb-4 p-2.5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 flex items-center justify-between gap-2">
+                        <div className="min-w-0 text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider text-indigo-500 dark:text-indigo-400 block">
+                            🔗 Vinculada a Cuenta Madre
+                          </span>
+                          <span className="text-[9px] font-semibold text-slate-600 dark:text-slate-300 truncate block">
+                            {services.find(s => s.id === service.parentServiceId)?.email || 'Matriz'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFreeProfile(service);
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 text-[8px] font-black uppercase tracking-wider shrink-0 cursor-pointer flex items-center gap-1"
+                          title="Liberar cupo de esta cuenta madre para volver a venderlo"
+                        >
+                          <UserMinus className="w-2.5 h-2.5" />
+                          <span>Liberar Cupo</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Profit margins */}
@@ -2058,6 +2382,85 @@ export function DigitalServices() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Selector de Modalidad */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">
+                    Modalidad de Cuenta
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, serviceType: 'matriz', maxProfiles: prev.maxProfiles || 5 }))}
+                      className={cn(
+                        "py-2.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex flex-col items-center gap-1 text-center",
+                        formData.serviceType === 'matriz'
+                          ? "bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm font-extrabold"
+                          : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700")
+                      )}
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>🏢 Cuenta Madre</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, serviceType: 'completa' }))}
+                      className={cn(
+                        "py-2.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex flex-col items-center gap-1 text-center",
+                        formData.serviceType === 'completa'
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm font-extrabold"
+                          : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700")
+                      )}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>👤 Completa</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, serviceType: 'pantalla' }))}
+                      className={cn(
+                        "py-2.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex flex-col items-center gap-1 text-center",
+                        formData.serviceType === 'pantalla' || formData.serviceType === 'profile'
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm font-extrabold"
+                          : (isDark ? "bg-slate-800/60 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700")
+                      )}
+                    >
+                      <Tv className="w-3.5 h-3.5" />
+                      <span>📺 Perfil</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Si es Cuenta Madre, definir el cupo máximo de perfiles */}
+                {formData.serviceType === 'matriz' && (
+                  <div className="p-4 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/5 space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-fuchsia-600 dark:text-fuchsia-400 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" />
+                        Capacidad de Perfiles (Cupos a Llenar)
+                      </label>
+                      <span className="text-[10px] font-bold font-mono text-fuchsia-500">
+                        {formData.maxProfiles || 5} perfiles
+                      </span>
+                    </div>
+                    <input 
+                      type="number"
+                      required
+                      min={1}
+                      max={30}
+                      value={formData.maxProfiles ?? 5}
+                      onChange={(e) => setFormData({ ...formData, maxProfiles: parseInt(e.target.value) || 1 })}
+                      className={cn(
+                        "w-full p-3 rounded-xl border text-sm font-black font-mono outline-none",
+                        isDark ? "bg-slate-800 border-fuchsia-500/40 text-white focus:border-fuchsia-400" : "bg-white border-fuchsia-300 text-slate-900 focus:border-fuchsia-500"
+                      )}
+                      placeholder="Ej. 5"
+                    />
+                    <p className="text-[9.5px] text-slate-500 dark:text-slate-400">
+                      Indica cuántos perfiles individuales se pueden vender de esta cuenta madre. Al vender todos los cupos pasará de estado <strong className="text-emerald-500">Disponible</strong> a <strong className="text-rose-500">Utilizada</strong>.
+                    </p>
+                  </div>
+                )}
+
                 {/* 1. Datos Cuenta/Catalogo */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -2670,88 +3073,190 @@ export function DigitalServices() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfilesManager(false)} className={cn("absolute inset-0", isDark ? "bg-slate-950/80" : "bg-slate-900/20", "backdrop-blur-md")} />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("relative w-full max-w-3xl p-8 rounded-3xl border shadow-2xl z-10", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100")}>
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className={cn("text-2xl font-bold uppercase tracking-tight", isDark ? "text-white" : "text-slate-900")}>Venta de Perfiles</h3>
-                  <p className="text-slate-700 dark:text-slate-300 text-sm">Selecciona una cuenta matriz para crear perfiles. Las fechas de corte se calculan 1 mes a partir de hoy.</p>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm">Organizado por servicio disponible. Selecciona una cuenta madre con cupos libres para vender un perfil individual.</p>
                 </div>
                 <button onClick={() => setShowProfilesManager(false)} className="p-2 bg-slate-100/10 rounded-full text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-200/20 transition-colors">
                   <X />
                 </button>
               </div>
-              <div className="grid grid-cols-1 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="space-y-6 max-h-[65vh] overflow-y-auto pr-2">
                 {(() => {
-                  const completeAccounts = services.filter(s => {
-                    const catItem = catalogItems.find(c => c.name.toLowerCase() === s.name.toLowerCase());
-                    return s.status === 'active' && (s as any).serviceType === 'matriz' && catItem && (catItem.maxScreens && catItem.maxScreens > 0);
+                  const motherAccounts = services.filter(s => {
+                    return (s as any).serviceType === 'matriz';
                   });
-                  if (completeAccounts.length === 0) return <div className="p-8 text-center text-slate-700 dark:text-slate-300 font-bold uppercase tracking-widest text-xs">No hay cuentas matrices activas disponibles.</div>;
-                  
-                  return completeAccounts.map(account => {
-                    const maxScreens = catalogItems.find(c => c.name.toLowerCase() === account.name.toLowerCase())?.maxScreens || 1;
-                    const soldProfiles = services.filter(p => p.parentServiceId === account.id);
-                    const available = maxScreens - soldProfiles.length;
-                    
+                  if (motherAccounts.length === 0) {
                     return (
-                      <div key={account.id} className={cn("p-4 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4", isDark ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200")}>
-                        <div>
-                          <h4 className={cn("font-bold text-sm", isDark ? "text-slate-200" : "text-slate-800")}>{account.name}</h4>
-                          <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5">{account.email}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                              Disponibles: {available} / {maxScreens}
+                      <div className="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-xs border border-dashed rounded-2xl">
+                        No hay cuentas madre registradas aún. Registra una "Cuenta Madre" primero para vender sus perfiles.
+                      </div>
+                    );
+                  }
+
+                  // Group mother accounts by service name
+                  const groupedByService: { [serviceName: string]: typeof motherAccounts } = {};
+                  motherAccounts.forEach(acc => {
+                    const groupKey = acc.name || 'Otros Servicios';
+                    if (!groupedByService[groupKey]) groupedByService[groupKey] = [];
+                    groupedByService[groupKey].push(acc);
+                  });
+
+                  return Object.entries(groupedByService).map(([serviceName, accounts]) => {
+                    // Calculate total available profiles for this service group
+                    const totalAvailable = accounts.reduce((acc, curr) => {
+                      const stats = getMotherAccountStats(curr, services, catalogItems);
+                      return acc + stats.availableCount;
+                    }, 0);
+
+                    return (
+                      <div key={serviceName} className="space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-black uppercase tracking-tight text-indigo-600 dark:text-indigo-400">
+                              📺 {serviceName}
                             </span>
-                            {soldProfiles.length > 0 && (
-                              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full">
-                                Ocupadas: {soldProfiles.length}
-                              </span>
-                            )}
+                            <span className="text-xs text-slate-500">({accounts.length} {accounts.length === 1 ? 'cuenta madre' : 'cuentas madre'})</span>
                           </div>
+                          <span className={cn(
+                            "text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border",
+                            totalAvailable > 0 
+                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" 
+                              : "bg-rose-500/10 text-rose-500 border-rose-500/30"
+                          )}>
+                            {totalAvailable > 0 ? `${totalAvailable} cupos libres` : 'Sin cupos disponibles'}
+                          </span>
                         </div>
-                        {available > 0 ? (
-                          <button
-                            onClick={() => {
-                              const d = new Date();
-                              d.setMonth(d.getMonth() + 1);
-                              setFormData({
-                                id: '',
-                                name: account.name.replace(/complet[ao]/i, 'Perfil').trim(),
-                                category: account.category,
-                                revenue: '',
-                                cost: '0', // Cost is assumed covered by parent account
-                                supplierId: account.supplierId || '',
-                                clientName: '',
-                                clientContact: '',
-                                clientType: 'client',
-                                expirationDate: d.toISOString().split('T')[0],
-                                email: account.email || '',
-                                password: account.password || '',
-                                pin: '',
-                                serviceType: 'profile',
-                                profileName: '',
-                                status: 'active',
-                                isPaid: false,
-                                isCostPaid: true, // Auto true for profile
-                                parentServiceId: account.id,
-                                finalClientName: '',
-                                finalClientContact: '',
-                                revenueWalletId: '',
-                                costWalletId: '',
-                                isBot: false,
-                                botUrl: '',
-                                botUser: '',
-                                botPassword: ''
-                              });
-                              setShowProfilesManager(false);
-                              setIsModalOpen(true);
-                            }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap shadow-sm transition-all"
-                          >
-                            Vender Perfil
-                          </button>
-                        ) : (
-                          <span className="text-xs font-bold uppercase tracking-widest text-rose-500">Sin Cupos</span>
-                        )}
+
+                        <div className="grid grid-cols-1 gap-3">
+                          {accounts.map(account => {
+                            const stats = getMotherAccountStats(account, services, catalogItems);
+                            const isAvailable = stats.availableCount > 0;
+
+                            return (
+                              <div 
+                                key={account.id} 
+                                className={cn(
+                                  "p-4 rounded-2xl border transition-all flex flex-col gap-3",
+                                  isAvailable 
+                                    ? (isDark ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200") 
+                                    : (isDark ? "bg-slate-900/40 border-slate-800/60 opacity-80" : "bg-slate-100/60 border-slate-200 opacity-85")
+                                )}
+                              >
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h4 className={cn("font-bold text-sm", isDark ? "text-slate-100" : "text-slate-800")}>{account.name}</h4>
+                                      <span className={cn(
+                                        "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border",
+                                        isAvailable
+                                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                                          : "bg-rose-500/10 text-rose-500 border-rose-500/30"
+                                      )}>
+                                        {isAvailable ? 'Disponible' : 'Utilizada (Llena)'}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-0.5 font-mono">{account.email}</p>
+                                    
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <span className="text-[10px] font-extrabold font-mono text-fuchsia-600 dark:text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded-full">
+                                        Cupos: {stats.occupiedCount} / {stats.maxCapacity} ocupados
+                                      </span>
+                                      <span className="text-[10px] font-extrabold font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                        {stats.availableCount} disponibles
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 self-end sm:self-center">
+                                    {isAvailable ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const d = new Date();
+                                          d.setMonth(d.getMonth() + 1);
+                                          setFormData({
+                                            id: '',
+                                            name: account.name.replace(/complet[ao]/i, 'Perfil').trim(),
+                                            category: account.category,
+                                            revenue: '',
+                                            cost: '0', // Costo cubierto por cuenta madre
+                                            supplierId: account.supplierId || '',
+                                            clientName: '',
+                                            clientContact: '',
+                                            clientType: 'client',
+                                            expirationDate: d.toISOString().split('T')[0],
+                                            email: account.email || '',
+                                            password: account.password || '',
+                                            pin: '',
+                                            serviceType: 'profile',
+                                            maxProfiles: undefined,
+                                            profileName: '',
+                                            status: 'active',
+                                            isPaid: false,
+                                            isCostPaid: true,
+                                            parentServiceId: account.id,
+                                            finalClientName: '',
+                                            finalClientContact: '',
+                                            revenueWalletId: '',
+                                            costWalletId: '',
+                                            isBot: !!account.isBot,
+                                            botUrl: account.botUrl || '',
+                                            botUser: account.botUser || '',
+                                            botPassword: account.botPassword || ''
+                                          });
+                                          setShowProfilesManager(false);
+                                          setIsModalOpen(true);
+                                        }}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        <span>Vender Perfil</span>
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] font-black uppercase tracking-wider text-rose-500 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl">
+                                        Cupos Llenos
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Active children inside this mother account */}
+                                {stats.activeChildren.length > 0 && (
+                                  <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800/50 space-y-1.5">
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">
+                                      Perfiles Activos Vendidos ({stats.activeChildren.length}):
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {stats.activeChildren.map(child => (
+                                        <div key={child.id} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                                          <div className="min-w-0">
+                                            <p className="text-[10px] font-bold text-slate-800 dark:text-slate-200 truncate">
+                                              {child.clientName || 'Cliente'}
+                                            </p>
+                                            <p className="text-[8px] text-slate-500 truncate">
+                                              {child.profileName ? `Perfil: ${child.profileName}` : 'Perfil'} • Vence: {child.expirationDate || 'N/A'}
+                                            </p>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleFreeProfile(child)}
+                                            className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 text-[8px] font-black uppercase tracking-wider shrink-0 cursor-pointer flex items-center gap-1"
+                                            title="Liberar cupo de este cliente para volver a venderlo"
+                                          >
+                                            <UserMinus className="w-2.5 h-2.5" />
+                                            <span>Liberar</span>
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   });

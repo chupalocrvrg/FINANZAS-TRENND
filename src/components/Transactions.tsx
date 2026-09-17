@@ -14,10 +14,13 @@ import {
   Edit2,
   Receipt,
   Share2,
-  Search
+  Search,
+  Activity,
+  FileText
 } from 'lucide-react';
 import { VoucherModal, VoucherData } from './VoucherModal';
 import { NoticeShareModal } from './NoticeShareModal';
+import { TramitesCatalog } from './TramitesCatalog';
 import { Transaction, Entity, Wallet as WalletType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuth } from '../lib/AuthContext';
@@ -27,6 +30,7 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 
 export function Transactions() {
   const { user, settings } = useAuth();
+  const [subTab, setSubTab] = useState<'operaciones' | 'catalogo'>('operaciones');
   const isWalletsDisabled = true;
   const [selectedIntermediary, setSelectedIntermediary] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -433,45 +437,79 @@ export function Transactions() {
 
   return (
     <div className="space-y-6 lg:space-y-8 max-w-7xl mx-auto p-4 lg:p-8 text-left">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 text-left">
-        <div className="space-y-1">
-          <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
-            Modulo de Actualizaciones ANT
-          </h2>
-          <p className={cn("font-medium", isDark ? "text-white" : "text-black")}>Registro de datos transaccionales y liquidación de intermediarios.</p>
+      {/* Sub-tab Navigation */}
+      <div className="flex items-center justify-between gap-4 flex-wrap border-b pb-4 border-slate-200 dark:border-slate-800">
+        <div className={cn("flex space-x-2 p-1 rounded-xl max-w-md", isDark ? "bg-slate-800/80" : "bg-slate-100 border border-slate-200")}>
+          <button
+            onClick={() => setSubTab('operaciones')}
+            className={cn(
+              "flex-1 whitespace-nowrap px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer",
+              subTab === 'operaciones'
+                ? (isDark ? "bg-slate-700 text-white shadow" : "bg-white text-black shadow-sm")
+                : (isDark ? "text-white/70 hover:text-white" : "text-black/70 hover:text-black")
+            )}
+          >
+            <Activity className="w-4 h-4" />
+            Operaciones y Cobranzas
+          </button>
+          <button
+            onClick={() => setSubTab('catalogo')}
+            className={cn(
+              "flex-1 whitespace-nowrap px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer",
+              subTab === 'catalogo'
+                ? (isDark ? "bg-slate-700 text-white shadow" : "bg-white text-black shadow-sm")
+                : (isDark ? "text-white/70 hover:text-white" : "text-black/70 hover:text-black")
+            )}
+          >
+            <FileText className="w-4 h-4" />
+            Catálogo de Trámites
+          </button>
         </div>
-        <button 
-          onClick={() => {
-            setFormData({ id: '', intermediaryId: '', updaterId: '', finalClientName: '', warehouse: '', isPaid: false });
-            setIsModalOpen(true);
-          }}
-          className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95"
-        >
-          <Plus className="w-5 h-5" />
-          Nueva Actualización
-        </button>
       </div>
 
-      {/* Centered Search Bar */}
-      <div className="flex justify-center w-full">
-        <div className="relative w-full max-w-xl">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
-            <Search className="w-5 h-5 animate-pulse text-indigo-500" />
-          </span>
-          <input
-            type="text"
-            placeholder="🔍 Búsqueda general de trámites (por cliente, bodega, intermediario o proveedor)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={cn(
-              "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
-              isDark 
-                ? "border-slate-800 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
-                : "border-slate-200 bg-white text-black placeholder-slate-400 focus:bg-slate-50"
-            )}
-          />
-        </div>
-      </div>
+      {subTab === 'catalogo' ? (
+        <TramitesCatalog />
+      ) : (
+        <>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 text-left">
+            <div className="space-y-1">
+              <h2 className={cn("text-2xl lg:text-3xl font-bold tracking-tight uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
+                Modulo de Actualizaciones ANT
+              </h2>
+              <p className={cn("font-medium", isDark ? "text-white" : "text-black")}>Registro de datos transaccionales y liquidación de intermediarios.</p>
+            </div>
+            <button 
+              onClick={() => {
+                setFormData({ id: '', intermediaryId: '', updaterId: '', finalClientName: '', warehouse: '', isPaid: false });
+                setIsModalOpen(true);
+              }}
+              className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all font-bold shadow-lg shadow-indigo-500/10 active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+              Nueva Actualización
+            </button>
+          </div>
+
+          {/* Centered Search Bar */}
+          <div className="flex justify-center w-full">
+            <div className="relative w-full max-w-xl">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+                <Search className="w-5 h-5 animate-pulse text-indigo-500" />
+              </span>
+              <input
+                type="text"
+                placeholder="🔍 Búsqueda general de trámites (por cliente, bodega, intermediario o proveedor)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={cn(
+                  "w-full pl-11 pr-4 py-3.5 rounded-2xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold shadow-inner text-center tracking-wide",
+                  isDark 
+                    ? "border-slate-800 bg-slate-900/45 text-white placeholder-slate-500 focus:bg-slate-900" 
+                    : "border-slate-200 bg-white text-black placeholder-slate-400 focus:bg-slate-50"
+                )}
+              />
+            </div>
+          </div>
 
       <div className={cn("rounded-3xl border shadow-sm overflow-hidden", isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100 shadow-sm")}>
         <div className={cn("p-5 border-b flex flex-col sm:flex-row justify-between items-center gap-4", isDark ? "border-slate-800 bg-slate-800/30" : "border-slate-50 bg-slate-50/50")}>
@@ -692,6 +730,8 @@ export function Transactions() {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {/* Modal Nueva Actualización */}
       <AnimatePresence>

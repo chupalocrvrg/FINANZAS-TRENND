@@ -99,6 +99,45 @@
         "ownerId": { "type": "string" }
       },
       "required": ["id", "type", "amount", "walletId", "ownerId"]
+    },
+    "digitalCatalog": {
+      "title": "Digital Service Catalog Item",
+      "description": "Catalog of digital products and streaming services.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "pvp": { "type": "number" },
+        "pvpReseller": { "type": "number" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "category", "ownerId"]
+    },
+    "gameRecharge": {
+      "title": "Game Recharge Item",
+      "description": "Catalog of games and token recharge packages.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "requirements": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "tramiteCatalog": {
+      "title": "Tramite Catalog Item",
+      "description": "Catalog of procedures, legal requirements, and services.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "requirements": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "ownerId"]
     }
   },
   "firestore": {
@@ -121,6 +160,18 @@
     "/ledgerEntries/{entryId}": {
       "schema": "ledgerEntry",
       "description": "Ledger entries owned by the user."
+    },
+    "/digital_catalog/{catalogId}": {
+      "schema": "digitalCatalog",
+      "description": "Catalog of digital services available for public consultation."
+    },
+    "/game_recharges_catalog/{gameId}": {
+      "schema": "gameRecharge",
+      "description": "Catalog of games and packages for client recharge."
+    },
+    "/tramites_catalog/{tramiteId}": {
+      "schema": "tramiteCatalog",
+      "description": "Catalog of tramites and documentation procedures."
     }
   }
 }

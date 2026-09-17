@@ -228,10 +228,24 @@ service cloud.firestore {
     }
     
     match /digital_catalog/{catalogId} {
-      allow get, delete: if isValidId(catalogId) && isOwnerOrAdmin(resource.data.ownerId);
-      allow list: if isOwnerOrAdmin(resource.data.ownerId);
+      allow get, list: if true;
+      allow delete: if isValidId(catalogId) && isOwnerOrAdmin(resource.data.ownerId);
       allow create: if isValidId(catalogId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalCatalog(incoming()) || isAdmin());
       allow update: if isValidId(catalogId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId) && (isValidDigitalCatalog(incoming()) || isAdmin());
+    }
+
+    match /game_recharges_catalog/{gameId} {
+      allow get, list: if true;
+      allow delete: if isValidId(gameId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(gameId) && isOwnerOrAdmin(incoming().ownerId);
+      allow update: if isValidId(gameId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId);
+    }
+
+    match /tramites_catalog/{tramiteId} {
+      allow get, list: if true;
+      allow delete: if isValidId(tramiteId) && isOwnerOrAdmin(resource.data.ownerId);
+      allow create: if isValidId(tramiteId) && isOwnerOrAdmin(incoming().ownerId);
+      allow update: if isValidId(tramiteId) && isOwnerOrAdmin(resource.data.ownerId) && isOwnerOrAdmin(incoming().ownerId);
     }
   }
 }

@@ -106,3 +106,45 @@ export interface DashboardStats {
   totalReceivable: number;
   totalPayable: number;
 }
+
+export interface GameRechargePackage {
+  id: string;
+  name: string; // e.g. "100 + 10 Diamantes", "310 Diamantes", "Pase Semanal"
+  cost: number;
+  pvp: number;
+  pvpReseller: number;
+}
+
+export interface GameRechargeItem {
+  id: string;
+  name: string; // e.g. "Free Fire", "Mobile Legends", "Roblox"
+  category: string; // e.g. "Battle Royale", "MOBA", "Sandbox"
+  imageUrl?: string;
+  supplierId?: string;
+  supplierName?: string;
+  requirements: string; // e.g. "ID de Jugador (UID) + Región + Nickname"
+  instructions?: string;
+  packages: GameRechargePackage[];
+  ownerId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  active?: boolean;
+}
+
+export interface TramiteCatalogItem {
+  id: string;
+  name: string; // e.g. "Renovación de Licencia de Conducir"
+  category: string; // e.g. "ANT & Tránsito", "Legal / Notarial", "Vehicular"
+  requirements: string; // e.g. "Cédula original escaneada, matrícula al día"
+  cost?: number;
+  pvp?: number;
+  pvpReseller?: number;
+  estimatedDelivery?: string; // e.g. "24 a 48 horas"
+  supplierId?: string;
+  supplierName?: string;
+  notes?: string;
+  ownerId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  active?: boolean;
+}
