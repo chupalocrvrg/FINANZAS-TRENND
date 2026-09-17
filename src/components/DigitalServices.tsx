@@ -418,9 +418,10 @@ export function DigitalServices() {
     e.preventDefault();
     if (!user) return;
     setIsSubmitting(true);
+    const isMatriz = formData.serviceType === 'matriz';
     
-    // Create entity if not found
-    if (formData.clientName.trim() !== '') {
+    // Create entity if not found (only for direct client sales, not mother accounts/inventory)
+    if (!isMatriz && formData.clientName.trim() !== '') {
       const existingEntity = allEntities.find(ent => ent.name.toLowerCase() === formData.clientName.trim().toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType));
       if (!existingEntity) {
         try {
@@ -453,18 +454,19 @@ export function DigitalServices() {
         s.password === formData.password &&
         s.pin === formData.pin &&
         ((s as any).profileName || '') === formData.profileName &&
-        s.name?.trim().toLowerCase() === formData.name.trim().toLowerCase()
+        s.name?.trim().toLowerCase() === formData.name.trim().toLowerCase() &&
+        (s as any).serviceType === formData.serviceType
       );
 
       if (isDuplicate) {
-        alert("¡Error de duplicado! Ya existe una venta de servicio digital registrada exactamente con la misma cuenta, correo, clave, pin y nombre de perfil.");
+        alert("¡Error de duplicado! Ya existe un registro exactamente con la misma cuenta, correo, clave, pin y servicio.");
         setIsSubmitting(false);
         return;
       }
     }
     
     const sup = suppliers.find(s => s.id === formData.supplierId);
-    const revenueVal = parseFloat(formData.revenue) || 0;
+    const revenueVal = isMatriz ? 0 : (parseFloat(formData.revenue) || 0);
     const costVal = parseFloat(formData.cost) || 0;
     const serviceData: any = {
       name: formData.name,
@@ -473,11 +475,11 @@ export function DigitalServices() {
       cost: costVal,
       supplierId: formData.supplierId,
       supplierName: sup?.name || '',
-      clientName: formData.clientName,
-      clientContact: formData.clientContact,
-      clientType: formData.clientType,
-      finalClientName: formData.finalClientName || '',
-      finalClientContact: formData.finalClientContact || '',
+      clientName: isMatriz ? '' : formData.clientName,
+      clientContact: isMatriz ? '' : formData.clientContact,
+      clientType: isMatriz ? 'client' : formData.clientType,
+      finalClientName: isMatriz ? '' : (formData.finalClientName || ''),
+      finalClientContact: isMatriz ? '' : (formData.finalClientContact || ''),
       isBot: !!formData.isBot,
       botUrl: formData.isBot ? (formData.botUrl || '').trim() : '',
       botUser: formData.isBot ? (formData.botUser || '').trim() : '',
@@ -487,10 +489,10 @@ export function DigitalServices() {
       password: formData.password,
       pin: formData.pin,
       serviceType: formData.serviceType,
-      maxProfiles: formData.serviceType === 'matriz' ? (Number(formData.maxProfiles) || 5) : null,
+      maxProfiles: isMatriz ? (Number(formData.maxProfiles) || 5) : null,
       profileName: formData.profileName,
       status: formData.status,
-      isPaid: formData.isPaid,
+      isPaid: isMatriz ? true : formData.isPaid,
       isCostPaid: formData.isCostPaid,
       revenueWalletId: formData.revenueWalletId || '',
       parentServiceId: formData.parentServiceId || '',
@@ -502,17 +504,17 @@ export function DigitalServices() {
     if (formData.id) {
       const existing = services.find(s => s.id === formData.id);
       if (existing) {
-        serviceData.amountPaid = formData.isPaid ? revenueVal : (existing.amountPaid || 0);
+        serviceData.amountPaid = isMatriz ? 0 : (formData.isPaid ? revenueVal : (existing.amountPaid || 0));
         serviceData.costPaid = formData.isCostPaid ? costVal : (existing.costPaid || 0);
       }
     } else {
-      serviceData.amountPaid = formData.isPaid ? revenueVal : 0;
+      serviceData.amountPaid = isMatriz ? 0 : (formData.isPaid ? revenueVal : 0);
       serviceData.costPaid = formData.isCostPaid ? costVal : 0;
     }
 
     try {
-      // CRM Auto-Registration for new/edited clients if not present in the CRM entities list
-      if (formData.clientName && formData.clientName.trim() !== '') {
+      // CRM Auto-Registration for new/edited clients if not present in the CRM entities list (bypassed for matriz)
+      if (!isMatriz && formData.clientName && formData.clientName.trim() !== '') {
         const trimmedClientName = formData.clientName.trim();
         const existingEntity = allEntities.find(
           (ent) =>
@@ -660,22 +662,29 @@ export function DigitalServices() {
           }
         }
         
-        // Show success modal for new sales
-        const createdService: any = {
-          id: docRef.id,
-          ...serviceData,
-          createdAt: new Date().toISOString()
-        };
-        const phone = serviceData.clientContact || '';
-        const text = formatSalesMessage(settings?.salesMessageTemplate, {
-          clientName: serviceData.clientName || '',
-          name: serviceData.name || '',
-          email: serviceData.email || '',
-          password: serviceData.password || '',
-          pin: serviceData.pin || '',
-          expirationDate: serviceData.expirationDate || ''
-        }, settings?.companyName || 'Control Financiero');
-        setSuccessMsg({ show: true, phone, text, service: createdService });
+        // Show success modal for new sales (only for direct client sales)
+        if (!isMatriz) {
+          const createdService: any = {
+            id: docRef.id,
+            ...serviceData,
+            createdAt: new Date().toISOString()
+          };
+          const phone = serviceData.clientContact || '';
+          const text = formatSalesMessage(settings?.salesMessageTemplate, {
+            clientName: serviceData.clientName || '',
+            name: serviceData.name || '',
+            email: serviceData.email || '',
+            password: serviceData.password || '',
+            pin: serviceData.pin || '',
+            expirationDate: serviceData.expirationDate || ''
+          }, settings?.companyName || 'Control Financiero');
+          setSuccessMsg({ show: true, phone, text, service: createdService });
+        } else {
+          await sendLocalPushNotification(
+            'Cuenta Madre Registrada 🏢',
+            `Se añadió "${serviceData.name}" con capacidad de ${serviceData.maxProfiles || 5} cupos al inventario.`
+          );
+        }
       }
       
       // Reset UI state immediately
@@ -1812,8 +1821,58 @@ export function DigitalServices() {
                         </div>
                       </div>
 
-                    {/* Cliente Info */}
-                    {service.clientName && (
+                    {/* Cliente Info o Identificador de Cuenta Madre */}
+                    {(service as any).serviceType === 'matriz' ? (
+                      <div className={cn(
+                        "mb-3.5 flex flex-col gap-2 border border-fuchsia-500/20 bg-fuchsia-500/5 text-left rounded-xl",
+                        gridCols === 1 ? "p-5 rounded-2xl mb-5 text-sm md:text-base" : gridCols === 2 ? "p-3.5 rounded-xl mb-4 text-xs md:text-sm" : "p-2.5 rounded-xl text-xs mb-3",
+                        isDark ? "bg-fuchsia-950/20" : "bg-fuchsia-50/60"
+                      )}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-base shrink-0">🏢</span>
+                            <div className="min-w-0">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-fuchsia-600 dark:text-fuchsia-400 block truncate">
+                                Inventario • Cuenta Madre
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                                Para venta y asignación de perfiles
+                              </span>
+                            </div>
+                          </div>
+                          <div className="shrink-0">
+                            <button 
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 if (service.isCostPaid === false) {
+                                   setPaymentType('cost');
+                                   setPaymentService(service);
+                                   setPaymentAmount(((service.cost || 0) - (service.costPaid || 0)).toString());
+                                 }
+                              }}
+                              disabled={service.isCostPaid !== false}
+                              className={cn(
+                                "font-black uppercase tracking-widest outline-none transition-colors",
+                                gridCols === 1 ? "text-xs px-3 py-1.5 rounded-lg" : gridCols === 2 ? "text-[10px] px-2.5 py-1 rounded-md" : "text-[8px] px-2 py-0.5 rounded-full",
+                                service.isCostPaid !== false
+                                  ? "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
+                                  : "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 cursor-pointer"
+                              )}>
+                              {service.isCostPaid !== false ? 'Costo Pago' : 'Pagar Costo'}
+                            </button>
+                          </div>
+                        </div>
+                        {service.expirationDate && (
+                          <p className={cn("font-bold flex items-center gap-1.5 mt-1", 
+                            gridCols === 1 ? "text-sm mt-2" : gridCols === 2 ? "text-xs mt-1" : "text-[10px]",
+                            isDark ? "text-white" : "text-black"
+                          )}>
+                            <span className={cn(isDark ? "text-white" : "text-black")}>📅 Expira:</span> 
+                            <span className={cn("font-extrabold", isDark ? "text-white" : "text-black")}>{service.expirationDate}</span>
+                          </p>
+                        )}
+                      </div>
+                    ) : service.clientName ? (
                       <div className={cn(
                         "mb-3.5 flex flex-col gap-0.5", 
                         gridCols === 1 ? "p-5 rounded-2xl mb-5 text-sm md:text-base gap-2" : gridCols === 2 ? "p-3.5 rounded-xl mb-4 text-xs md:text-sm gap-1" : "p-2.5 rounded-xl text-xs mb-3 gap-0.5",
@@ -1896,7 +1955,7 @@ export function DigitalServices() {
                           </p>
                         )}
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Cuenta credenciales ocultas/visibles */}
                     {(service.email || service.password || service.pin || (service as any).profileName) && (
@@ -2577,51 +2636,67 @@ export function DigitalServices() {
                   
                 </div>
 
-                {/* 2. Cliente Predictivo */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1">Nombre de Cliente (Predictivo)</label>
-                    <input 
-                      required
-                      type="text"
-                      list="clients-list"
-                      value={formData.clientName}
-                      onChange={(e) => {
-                        const newName = e.target.value;
-                        const matchingEntity = allEntities.find(ent => ent.name.toLowerCase() === newName.toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType));
-                        setFormData({
-                          ...formData, 
-                          clientName: newName,
-                          clientContact: matchingEntity ? (matchingEntity.contact || '') : formData.clientContact
-                        });
-                      }}
-                      className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
-                      placeholder="Busca o ingresa un nuevo cliente..."
-                    />
-                    <datalist id="clients-list">
-                      {allEntities
-                        .filter(e => e.types ? e.types.includes(formData.clientType) : e.type === formData.clientType)
-                        .map(ent => (
-                          <option key={ent.id} value={ent.name}>{ent.contact ? `(${ent.contact})` : ''}</option>
-                        ))
-                      }
-                    </datalist>
-                  </div>
-                  {(!allEntities.find(ent => ent.name.toLowerCase() === formData.clientName.toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType))) && formData.clientName.trim() !== '' && (
-                    <div className="space-y-1.5 sm:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-amber-500 px-1">Nuevo Cliente: Ingresa WhatsApp</label>
-                      <input 
-                        type="text"
-                        value={formData.clientContact}
-                        onChange={(e) => setFormData({...formData, clientContact: e.target.value})}
-                        className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none border-amber-500/50 focus:border-amber-500", isDark ? "bg-slate-800 text-white" : "bg-amber-50/30")}
-                        placeholder="Ej. +593987654321 (Se guardará automáticamente)"
-                      />
+                {/* 2. Cliente Predictivo (Oculto para Cuenta Madre / Inventario) */}
+                {formData.serviceType === 'matriz' ? (
+                  <div className="p-4 rounded-2xl border border-dashed border-fuchsia-500/30 bg-fuchsia-500/5 flex items-center gap-3 text-left">
+                    <div className="w-9 h-9 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center shrink-0">
+                      <Layers className="w-5 h-5 text-fuchsia-500" />
                     </div>
-                  )}
-                </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-fuchsia-600 dark:text-fuchsia-400 block">
+                        Inventario Base para Cupos
+                      </span>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                        Esta Cuenta Madre se registra en inventario sin cliente asignado. Las ventas y cobros a clientes se registran al vender perfiles o pantallas individuales.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-indigo-500 px-1">Nombre de Cliente (Predictivo)</label>
+                      <input 
+                        required
+                        type="text"
+                        list="clients-list"
+                        value={formData.clientName}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          const matchingEntity = allEntities.find(ent => ent.name.toLowerCase() === newName.toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType));
+                          setFormData({
+                            ...formData, 
+                            clientName: newName,
+                            clientContact: matchingEntity ? (matchingEntity.contact || '') : formData.clientContact
+                          });
+                        }}
+                        className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none", isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-100 focus:bg-white focus:border-indigo-500")}
+                        placeholder="Busca o ingresa un nuevo cliente..."
+                      />
+                      <datalist id="clients-list">
+                        {allEntities
+                          .filter(e => e.types ? e.types.includes(formData.clientType) : e.type === formData.clientType)
+                          .map(ent => (
+                            <option key={ent.id} value={ent.name}>{ent.contact ? `(${ent.contact})` : ''}</option>
+                          ))
+                        }
+                      </datalist>
+                    </div>
+                    {(!allEntities.find(ent => ent.name.toLowerCase() === formData.clientName.toLowerCase() && (ent.types ? ent.types.includes(formData.clientType) : ent.type === formData.clientType))) && formData.clientName.trim() !== '' && (
+                      <div className="space-y-1.5 sm:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-amber-500 px-1">Nuevo Cliente: Ingresa WhatsApp</label>
+                        <input 
+                          type="text"
+                          value={formData.clientContact}
+                          onChange={(e) => setFormData({...formData, clientContact: e.target.value})}
+                          className={cn("w-full p-3.5 rounded-xl border text-sm font-bold outline-none border-amber-500/50 focus:border-amber-500", isDark ? "bg-slate-800 text-white" : "bg-amber-50/30")}
+                          placeholder="Ej. +593987654321 (Se guardará automáticamente)"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                {formData.clientType === 'reseller' && (
+                {formData.serviceType !== 'matriz' && formData.clientType === 'reseller' && (
                   <div 
                     className={cn(
                       "p-4 rounded-2xl border space-y-3.5 animate-in fade-in duration-200",
@@ -2955,7 +3030,7 @@ export function DigitalServices() {
                   <div className="space-y-1.5" style={{ display: formData.serviceType === "matriz" ? "none" : "block" }}>
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 px-1">Precio Venta (PVP) ($)</label>
                     <input 
-                      required
+                      required={formData.serviceType !== "matriz"}
                       type="number"
                       step="0.01"
                       value={formData.revenue}

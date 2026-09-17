@@ -9,6 +9,14 @@ export interface UpdateItem {
 
 export const SYSTEM_UPDATES: UpdateItem[] = [
   {
+    id: "v_7_28_0_mother_account_registration_without_client",
+    version: "V7.28.0",
+    title: "V7.28.0 • Optimización de Cuentas Madre: Registro Directo en Inventario sin Asignación de Cliente",
+    date: new Date().toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }).replace(',', ''),
+    description: "Perfeccionamiento del flujo de registro de Cuentas Madre (Matriz): (1) Eliminación de la obligatoriedad y campos de Nombre de Cliente y WhatsApp al seleccionar Cuenta Madre, sustituyéndolos por un banner informativo de inventario base para cupos; (2) Omisión automática de creación de clientes y entidades ficticias en el CRM al guardar cuentas matriz; (3) Desactivación de modales de mensaje de venta por WhatsApp para cuentas madre, confirmando directamente su almacenamiento en inventario mediante notificación; (4) Rediseño de las tarjetas del módulo para identificar nítidamente las Cuentas Madre con su costo de proveedor y cupos sin asociar clientes inexistentes.",
+    type: "feature"
+  },
+  {
     id: "v_7_27_0_portal_theme_toggle_glassmorphism",
     version: "V7.27.0",
     title: "V7.27.0 • Selector de Tema Dinámico (Oscuro / Claro Glassmorphism) en Enlaces Personalizados de Clientes",
